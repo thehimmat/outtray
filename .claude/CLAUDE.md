@@ -57,7 +57,11 @@ than a reviewed smaller one.
    checkpoint report (below), then stop. Do not start the next phase's code.
 2. **ADR changes.** If work reveals that an accepted ADR needs amending
    (model default, storage mechanism, schema shape), write the proposed
-   amendment and stop for owner sign-off before building on it.
+   amendment and stop for owner sign-off before building on it. Every ADR
+   proposal or amendment includes an "Options considered" section in plain
+   language: each realistic option with pros and cons a non-expert can
+   follow. The owner's quick sign-off (merging the PR) keeps development
+   moving; deep understanding is deferred to the walkthrough gate below.
 3. **Anything public-facing beyond pushing code to this repo**: publishing a
    blog post, publishing to npm, registering a domain, tagging a release,
    posting anywhere. Claude drafts; the owner publishes.
@@ -81,9 +85,17 @@ issue, containing:
 ### Release and publication cadence
 
 - **Tags/releases**: from Phase 1 onward each completed phase gets a tag and
-  a GitHub release, cut only after the owner has seen the checkpoint report.
-  Release notes come from the CHANGELOG and link the phase's blog post once
-  it is published.
+  a GitHub release, cut only after the owner has seen the checkpoint report
+  AND closed the phase's owner-walkthrough issue. When preparing a checkpoint
+  report, also file an issue from the "Owner walkthrough" template
+  (`.github/ISSUE_TEMPLATE/owner-walkthrough.md`) pinned to the phase-end
+  SHA, listing the phase's ADRs, evidence docs, and blog draft. The owner
+  runs the `/walkthrough` skill against that snapshot (tutor + quiz + mock
+  interview; see `.claude/skills/walkthrough/SKILL.md`); closing the issue is
+  their informed sign-off. A PreToolUse hook blocks `git tag` and
+  `gh release create` while any owner-walkthrough issue is open. Release
+  notes come from the CHANGELOG and link the phase's blog post once it is
+  published.
 - **Blog pipeline**: drafts live in `docs/blog/` (one file per post, named
   `NN-slug.md`). A phase is incomplete without its draft committed.
   Publication is always the owner's manual act, targeted within a week of
