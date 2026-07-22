@@ -2,8 +2,8 @@ export {
   EXTRACTION_PROMPT,
   type ExtractInput,
   type ExtractResult,
-  PROMPT_VERSION,
   extract,
+  PROMPT_VERSION,
 } from './extract.js';
 export {
   DOCUMENT_TYPES,
@@ -13,12 +13,6 @@ export {
   documentJsonSchema,
   validateExtraction,
 } from './extraction-schema.js';
-export {
-  type ScanItem,
-  type ScanOptions,
-  type ScanReport,
-  scanDirectory,
-} from './scan.js';
 export type {
   GenerateOptions,
   GenerateRequest,
@@ -31,4 +25,10 @@ export {
   OllamaProvider,
   type OllamaProviderOptions,
 } from './ollama-provider.js';
+export {
+  type ScanItem,
+  type ScanOptions,
+  type ScanReport,
+  scanDirectory,
+} from './scan.js';
 export { cosineSimilarity, rankBySimilarity } from './vector.js';

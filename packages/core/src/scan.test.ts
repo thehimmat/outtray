@@ -23,7 +23,14 @@ class FakeProvider implements ModelProvider {
   constructor(private readonly json: unknown) {}
   async generate(_req: GenerateRequest): Promise<GenerateResult> {
     this.calls += 1;
-    return { json: this.json, jsonChannel: 'content', content: '', thinking: '', doneReason: 'stop', usage };
+    return {
+      json: this.json,
+      jsonChannel: 'content',
+      content: '',
+      thinking: '',
+      doneReason: 'stop',
+      usage,
+    };
   }
 }
 

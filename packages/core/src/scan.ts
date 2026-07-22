@@ -12,7 +12,7 @@
  * later. Non-image files are reported as skipped, not errors.
  */
 
-import { readFile, readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { type ExtractResult, extract } from './extract.js';
 import type { ModelProvider } from './model-provider.js';
