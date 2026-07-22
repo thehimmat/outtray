@@ -8,9 +8,15 @@ When those conflict, favor the showcase.
 
 ## Current state
 
+- **Phase 1 complete** (hard gates): extraction core (`ModelProvider` +
+  `OllamaProvider` around `qwen3-vl:2b`, ADR-0004 discriminated-union contract,
+  `extract()` + `outtray scan`), eval harness (record/replay, scorers,
+  10-fixture synthetic set), and a CI replay gate over a real scoreboard
+  (qwen3-vl:2b: overall P 95% / R 77%; `docs/evals/scoreboard.md`). ADR-0002
+  amended (2b default) and accepted. Awaiting the owner walkthrough before any
+  release tag. **Phase 2 next**: timeboxed retrieval plumbing (see below).
 - **Phase 0 complete** (scaffold, CI, ADRs 0001-0008, threat model, eval
-  methodology). **Phase 1 is next**: extraction core + eval harness +
-  record/replay CI + scoreboard, demoed via `outtray scan <dir>`.
+  methodology).
 - Day-14 checkpoint target: public repo, README + diagram, ADRs, CLI scan
   over 10+ fixtures with Zod-validated confidence-scored output, scoreboard
   with real numbers, record/replay CI gate, first blog post draft (the CI
