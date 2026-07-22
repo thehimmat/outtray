@@ -1,0 +1,197 @@
+{
+  "seed": 20260722,
+  "variantsPerType": 2,
+  "count": 10,
+  "fixtures": [
+    {
+      "id": "bill-001",
+      "type": "bill",
+      "provenance": "synthetic",
+      "files": {
+        "html": {
+          "path": "synthetic/bill-001.html",
+          "sha256": "b5d90f7164ae261b59343b7d89d1d375dbfb102260aaef2dc71d2c674714aa2a"
+        },
+        "labels": {
+          "path": "synthetic/bill-001.labels.json",
+          "sha256": "ef6966351c066748213a09baad06369a0934a03c7dabe474e4d5b8587086b024"
+        },
+        "png": {
+          "path": "synthetic/bill-001.png",
+          "sha256": "65ab11013ca2c3c01781ee555a2f95cf9f69322e25cb5103752d46cb1e2e955c"
+        }
+      }
+    },
+    {
+      "id": "receipt-001",
+      "type": "receipt",
+      "provenance": "synthetic",
+      "files": {
+        "html": {
+          "path": "synthetic/receipt-001.html",
+          "sha256": "eb92e721d33e40bbc75db0860d6395ea839306fee09cf0ad43fbdb81e2ea7dfd"
+        },
+        "labels": {
+          "path": "synthetic/receipt-001.labels.json",
+          "sha256": "07bbf3fc87c6077c7a5c670e6680ccd3dfff9d742631be850a7a099fa6728d61"
+        },
+        "png": {
+          "path": "synthetic/receipt-001.png",
+          "sha256": "fdcf5b4a37a85c9c1a231f62505d4e0ef124afb3509a09d8f57356b768d55817"
+        }
+      }
+    },
+    {
+      "id": "letter-001",
+      "type": "letter",
+      "provenance": "synthetic",
+      "files": {
+        "html": {
+          "path": "synthetic/letter-001.html",
+          "sha256": "65c7fa450dadaa1c1cadeffddaa64fc5449a101d3bbb8ba34441087b34a71f14"
+        },
+        "labels": {
+          "path": "synthetic/letter-001.labels.json",
+          "sha256": "1c27c77da24c3c5cd4998d55fce3d68f19d67bd6ce0cab180b3bce65a57311ee"
+        },
+        "png": {
+          "path": "synthetic/letter-001.png",
+          "sha256": "438b15dfaeb52811d216537c501ea20650c2471aa12f3329303be663c279b82a"
+        }
+      }
+    },
+    {
+      "id": "id_document-001",
+      "type": "id_document",
+      "provenance": "synthetic",
+      "files": {
+        "html": {
+          "path": "synthetic/id_document-001.html",
+          "sha256": "ef44ca0d31e5f89d15c74574583c4f63d4711ed2b6c0b96b6bca885a52cbfe0a"
+        },
+        "labels": {
+          "path": "synthetic/id_document-001.labels.json",
+          "sha256": "fba3cacfb67ad86fa40c5a4b951b1e49bd994c75a20f9b1923cfcce82f4cd739"
+        },
+        "png": {
+          "path": "synthetic/id_document-001.png",
+          "sha256": "9fa9debddac473ac2899e5c0538de9879c8418934f6967b356b824b803c936d3"
+        }
+      }
+    },
+    {
+      "id": "policy-001",
+      "type": "policy",
+      "provenance": "synthetic",
+      "files": {
+        "html": {
+          "path": "synthetic/policy-001.html",
+          "sha256": "ba3e54078209f447660f5f77402c6e798850f2e7a06916b26d78527d1a7ca87d"
+        },
+        "labels": {
+          "path": "synthetic/policy-001.labels.json",
+          "sha256": "b5831ac0bfee013dc99f5d6502575133a9f2039e59150f0a3538d2856c0dcc3e"
+        },
+        "png": {
+          "path": "synthetic/policy-001.png",
+          "sha256": "e899c1f33f3183c902f1bd4ce99d44db16f748de50f084ff8b298f7c4081f8a0"
+        }
+      }
+    },
+    {
+      "id": "bill-002",
+      "type": "bill",
+      "provenance": "synthetic",
+      "files": {
+        "html": {
+          "path": "synthetic/bill-002.html",
+          "sha256": "c3b7deea34d629a12d5a21f8637a1a4cd8e5a21bee94edb142b2d6ffccf27b92"
+        },
+        "labels": {
+          "path": "synthetic/bill-002.labels.json",
+          "sha256": "fadca38250bddbea8eac214c70d4122ddbc6c9c884fff860e1f877fef4eaa53c"
+        },
+        "png": {
+          "path": "synthetic/bill-002.png",
+          "sha256": "1f20d71e537be01856088233d056a5167187b288b5ae06c58c3f9e6211cc6d39"
+        }
+      }
+    },
+    {
+      "id": "receipt-002",
+      "type": "receipt",
+      "provenance": "synthetic",
+      "files": {
+        "html": {
+          "path": "synthetic/receipt-002.html",
+          "sha256": "976fed165f1df0d8630624dfd5e1c1636071ed611da63ce4ae2d51f35d2a8e12"
+        },
+        "labels": {
+          "path": "synthetic/receipt-002.labels.json",
+          "sha256": "86938ca661995b7b28ddafe98002b3eaefa979177228257c3558c169b0a60f50"
+        },
+        "png": {
+          "path": "synthetic/receipt-002.png",
+          "sha256": "82256ed02a64e8f5da50648751d3782dec89d7086be29509bd6b38c2fe45ccb3"
+        }
+      }
+    },
+    {
+      "id": "letter-002",
+      "type": "letter",
+      "provenance": "synthetic",
+      "files": {
+        "html": {
+          "path": "synthetic/letter-002.html",
+          "sha256": "3aac483dd45828e203eccba415634e1c8a08d0107efee4734199a0d836a89c23"
+        },
+        "labels": {
+          "path": "synthetic/letter-002.labels.json",
+          "sha256": "9c4145097ccc6017e7f2c39960e196bf76c11985147d161223b4c18af3c3ce0a"
+        },
+        "png": {
+          "path": "synthetic/letter-002.png",
+          "sha256": "74fd8533c1b2c4ed86998fa745cd8f662a44705eff0d3a11104c94b2a0de9f97"
+        }
+      }
+    },
+    {
+      "id": "id_document-002",
+      "type": "id_document",
+      "provenance": "synthetic",
+      "files": {
+        "html": {
+          "path": "synthetic/id_document-002.html",
+          "sha256": "b4985343644cedeac8a559c538472b0f82e65d811cda7beda745adc36a2c4382"
+        },
+        "labels": {
+          "path": "synthetic/id_document-002.labels.json",
+          "sha256": "df31cf419baa3f07465deb86ce423db1549f544f4253eab602f5c5001ed5cc06"
+        },
+        "png": {
+          "path": "synthetic/id_document-002.png",
+          "sha256": "889223e74773c5f36b24d54460f890301a019847ca2061c0e857adb2ced2c2a7"
+        }
+      }
+    },
+    {
+      "id": "policy-002",
+      "type": "policy",
+      "provenance": "synthetic",
+      "files": {
+        "html": {
+          "path": "synthetic/policy-002.html",
+          "sha256": "76762d0ffa016bbe15caab1ed8288f75ba7e6f25e15e506d7537445a7f2c7464"
+        },
+        "labels": {
+          "path": "synthetic/policy-002.labels.json",
+          "sha256": "0ad916f92c7d9fe609dea4801d052fc3571e1b28a06b1566949aef507b0f7526"
+        },
+        "png": {
+          "path": "synthetic/policy-002.png",
+          "sha256": "6263898f81447ec1ef549c607b9d4a6d167b3f26d63d89e6735a6964f063978c"
+        }
+      }
+    }
+  ]
+}

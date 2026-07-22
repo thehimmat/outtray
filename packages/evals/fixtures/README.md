@@ -17,3 +17,22 @@ are also exactly the kind of data this product exists to protect, so:
    committed scoreboard.
 
 See `docs/evals/METHODOLOGY.md` for the full eval design.
+
+## Committed synthetic set
+
+`synthetic/` holds the committed fixtures, and `manifest.json` is their source
+of truth (every file appears there with a SHA-256; CI fails on any unmanifested
+file or checksum mismatch, and on HTML/labels that no longer reproduce from the
+seed). Each fixture is three files: `<id>.html` (the reproducible render
+source), `<id>.png` (rendered page, the model input), and `<id>.labels.json`
+(ground truth for the scored fields).
+
+Rebuild after changing the generator (needs Google Chrome; dev machine only,
+never CI):
+
+```
+pnpm build && pnpm --filter @outtray/evals fixtures:build
+```
+
+The generator lives in `src/fixtures/generate.ts` and is deterministic from the
+seed in the manifest.

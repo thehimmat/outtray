@@ -13,5 +13,8 @@
   },
   "dependencies": {
     "@outtray/core": "workspace:*"
+  },
+  "scripts": {
+    "fixtures:build": "node scripts/build-fixtures.mjs"
   }
 }

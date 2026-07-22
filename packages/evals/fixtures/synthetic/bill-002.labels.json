@@ -1,0 +1,7 @@
+{
+  "type": "bill",
+  "payee": "Regional Gas Co",
+  "amount_due": "$453.00",
+  "due_date": "2025-03-25",
+  "late_fee": "$45.00"
+}
