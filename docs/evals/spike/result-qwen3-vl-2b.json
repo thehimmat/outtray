@@ -1,0 +1,34 @@
+{
+  "model": "qwen3-vl:2b",
+  "ok": true,
+  "num_ctx": 4096,
+  "image": "renewal-1000.png",
+  "discriminated_union_accepted": true,
+  "wall_ms": 3440,
+  "load_ms": 145,
+  "prompt_eval_count": 1133,
+  "prompt_tok_per_sec": 1832.4,
+  "eval_count": 129,
+  "done_reason": "stop",
+  "think": false,
+  "thinking_chars": 299,
+  "gen_tok_per_sec": 49.4,
+  "total_ms": 3418,
+  "validates_against_zod": true,
+  "json_channel": "thinking",
+  "validation_error": null,
+  "extracted": {
+    "type": "bill",
+    "summary": "$301.00",
+    "action_items": [
+      {
+        "text": "A smog certification is on file and valid. Payment of $301.00 must be received by August 31, 2026.",
+        "due_date": "2026-08-31"
+      }
+    ],
+    "payee": "JORDAN A RIVERA",
+    "amount_due": "$301.00",
+    "due_date": "August 31, 2026",
+    "late_fee": "$54.00"
+  }
+}

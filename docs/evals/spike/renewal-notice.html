@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    color: #1a1a1a;
+    background: #ffffff;
+    width: 816px;      /* ~8.5in at 96dpi */
+    padding: 56px 64px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .masthead { display: flex; justify-content: space-between; border-bottom: 3px solid #14497a; padding-bottom: 14px; margin-bottom: 22px; }
+  .agency { font-size: 20px; font-weight: 700; color: #14497a; letter-spacing: 0.5px; }
+  .agency small { display: block; font-size: 11px; font-weight: 400; color: #555; letter-spacing: 0; }
+  .doc-meta { text-align: right; font-size: 12px; color: #333; }
+  h1 { font-size: 22px; margin: 6px 0 20px; color: #b02a2a; }
+  .addr { margin-bottom: 20px; font-size: 13px; }
+  table.detail { width: 100%; border-collapse: collapse; margin: 18px 0; }
+  table.detail td { padding: 7px 10px; border-bottom: 1px solid #ddd; }
+  table.detail td.label { color: #555; width: 45%; }
+  table.detail td.val { font-weight: 600; text-align: right; }
+  .amount-box { background: #f4f7fb; border: 1px solid #cdd9e6; padding: 16px 20px; margin: 22px 0; display: flex; justify-content: space-between; align-items: center; }
+  .amount-box .big { font-size: 26px; font-weight: 700; color: #14497a; }
+  .callout { background: #fff6e6; border-left: 4px solid #e0a000; padding: 12px 16px; margin: 20px 0; font-size: 13px; }
+  .footer { margin-top: 28px; font-size: 11px; color: #666; border-top: 1px solid #ddd; padding-top: 12px; }
+  .barcode { font-family: "Libre Barcode 39", monospace; letter-spacing: 2px; font-size: 12px; color:#000; }
+</style>
+</head>
+<body>
+  <div class="masthead">
+    <div class="agency">STATE DEPARTMENT OF MOTOR VEHICLES
+      <small>Vehicle Services Division &middot; Sacramento, CA 95818</small>
+    </div>
+    <div class="doc-meta">
+      Notice No. <strong>RN-2026-0847213</strong><br>
+      Issue date: June 28, 2026<br>
+      Account: DL-X4471902
+    </div>
+  </div>
+
+  <h1>Vehicle Registration Renewal Notice</h1>
+
+  <div class="addr">
+    JORDAN A. RIVERA<br>
+    1428 Larkspur Terrace, Apt 3B<br>
+    Fair Oaks, CA 95628
+  </div>
+
+  <p>Your vehicle registration is due for renewal. To avoid a late penalty, payment
+  must be received on or before the expiration date shown below.</p>
+
+  <table class="detail">
+    <tr><td class="label">Vehicle</td><td class="val">2019 Subaru Outback</td></tr>
+    <tr><td class="label">License plate</td><td class="val">8KFC213</td></tr>
+    <tr><td class="label">VIN (last 6)</td><td class="val">...... 402887</td></tr>
+    <tr><td class="label">Registration expires</td><td class="val">August 31, 2026</td></tr>
+    <tr><td class="label">Renewal period</td><td class="val">Sep 1, 2026 &ndash; Aug 31, 2027</td></tr>
+  </table>
+
+  <div class="amount-box">
+    <div>Total amount due<br><small style="color:#666;font-weight:400">Registration $274.00 + County fee $19.00 + Smog $8.00</small></div>
+    <div class="big">$301.00</div>
+  </div>
+
+  <div class="callout">
+    <strong>Action required:</strong> A smog certification is on file and valid.
+    Payment of $301.00 must be received by <strong>August 31, 2026</strong>.
+    Registrations paid after this date incur a $54.00 late fee plus penalties.
+  </div>
+
+  <p>Pay online at the state DMV portal using your account number, by mail with the
+  detachable stub below, or at any field office. Do not mail cash.</p>
+
+  <div class="footer">
+    Keep this notice for your records. Proof of insurance is required at renewal.
+    Questions: 1-800-555-0142 &middot; Reference Notice No. RN-2026-0847213.<br>
+    <span class="barcode">*RN20260847213*</span>
+  </div>
+</body>
+</html>
