@@ -1,0 +1,37 @@
+{
+  "key": "8f627078609b331da3d090aeea96be9c93f093fd8370d847a182ace7328c1798",
+  "request": {
+    "model": "qwen3-vl:2b",
+    "promptChars": 413,
+    "imageCount": 1,
+    "hasFormat": true
+  },
+  "result": {
+    "json": {
+      "type": "statement",
+      "summary": "$453.00",
+      "action_items": [
+        {
+          "text": "Payment due date",
+          "due_date": "2025-03-25"
+        }
+      ],
+      "institution": "Regional Gas Co",
+      "account_number": "540222",
+      "period_start": "2026-03-01",
+      "period_end": "2026-03-31",
+      "balance": "$453.00"
+    },
+    "jsonChannel": "thinking",
+    "content": "",
+    "thinking": "{\"type\": \"statement\", \"summary\": \"$453.00\", \"action_items\": [{\"text\": \"Payment due date\", \"due_date\": \"2025-03-25\"}],\"institution\": \"Regional Gas Co\", \"account_number\": \"540222\", \"period_start\": \"2026-03-01\", \"period_end\": \"2026-03-31\", \"balance\": \"$453.00\"}",
+    "doneReason": "stop",
+    "usage": {
+      "loadMs": 160,
+      "promptTokens": 3319,
+      "genTokens": 113,
+      "genTokPerSec": 44.50807742829966,
+      "totalMs": 29667
+    }
+  }
+}

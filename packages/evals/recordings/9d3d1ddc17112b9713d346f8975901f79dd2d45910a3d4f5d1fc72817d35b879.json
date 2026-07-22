@@ -1,0 +1,36 @@
+{
+  "key": "9d3d1ddc17112b9713d346f8975901f79dd2d45910a3d4f5d1fc72817d35b879",
+  "request": {
+    "model": "qwen3-vl:2b",
+    "promptChars": 413,
+    "imageCount": 1,
+    "hasFormat": true
+  },
+  "result": {
+    "json": {
+      "type": "id_document",
+      "summary": "California Driver License",
+      "action_items": [
+        {
+          "text": "Expiry Date",
+          "due_date": "2026-07-23"
+        }
+      ],
+      "holder_name": "Wei Reyes",
+      "id_number": "C4821983",
+      "issuer": "State of California",
+      "expiry_date": "2026-07-23"
+    },
+    "jsonChannel": "thinking",
+    "content": "",
+    "thinking": "{\"type\": \"id_document\", \"summary\": \"California Driver License\", \"action_items\": [{\"text\": \"Expiry Date\", \"due_date\": \"2026-07-23\"}],\"holder_name\": \"Wei Reyes\", \"id_number\": \"C4821983\", \"issuer\": \"State of California\", \"expiry_date\": \"2026-07-23\"}",
+    "doneReason": "stop",
+    "usage": {
+      "loadMs": 402,
+      "promptTokens": 3319,
+      "genTokens": 93,
+      "genTokPerSec": 42.14292705739051,
+      "totalMs": 32690
+    }
+  }
+}

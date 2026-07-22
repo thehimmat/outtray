@@ -1,0 +1,61 @@
+{
+  "stamps": {
+    "model": "qwen3-vl:2b",
+    "promptHash": "8e849caa28e5",
+    "fixtureSetHash": "2e664cbe5d0a",
+    "gitSha": "75ab7d0bf5ca"
+  },
+  "overall": {
+    "tp": 37,
+    "fp": 2,
+    "fn": 11,
+    "tn": 0
+  },
+  "perType": [
+    {
+      "type": "bill",
+      "counts": {
+        "tp": 0,
+        "fp": 2,
+        "fn": 10,
+        "tn": 0
+      }
+    },
+    {
+      "type": "id_document",
+      "counts": {
+        "tp": 10,
+        "fp": 0,
+        "fn": 0,
+        "tn": 0
+      }
+    },
+    {
+      "type": "letter",
+      "counts": {
+        "tp": 10,
+        "fp": 0,
+        "fn": 0,
+        "tn": 0
+      }
+    },
+    {
+      "type": "policy",
+      "counts": {
+        "tp": 10,
+        "fp": 0,
+        "fn": 0,
+        "tn": 0
+      }
+    },
+    {
+      "type": "receipt",
+      "counts": {
+        "tp": 7,
+        "fp": 0,
+        "fn": 1,
+        "tn": 0
+      }
+    }
+  ]
+}

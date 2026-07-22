@@ -1,0 +1,44 @@
+{
+  "key": "bf615fb80d231a13080a8eb62a5ae50bc09b6a73ad5c2a2b44b96cb43706f695",
+  "request": {
+    "model": "qwen3-vl:2b",
+    "promptChars": 413,
+    "imageCount": 1,
+    "hasFormat": true
+  },
+  "result": {
+    "json": {
+      "type": "policy",
+      "summary": "This policy provides the coverage described above for the policy period ending December 16, 2026.",
+      "action_items": [
+        {
+          "text": "Policy number",
+          "due_date": "POL-804220"
+        },
+        {
+          "text": "Coverage",
+          "due_date": "Comprehensive auto, $500 deductible"
+        },
+        {
+          "text": "Expiration date",
+          "due_date": "December 16, 2026"
+        }
+      ],
+      "insurer": "Harbor Casualty",
+      "policy_number": "POL-804220",
+      "coverage_summary": "Comprehensive auto, $500 deductible",
+      "expiry_date": "December 16, 2026"
+    },
+    "jsonChannel": "thinking",
+    "content": "",
+    "thinking": "{\"type\": \"policy\", \"summary\": \"This policy provides the coverage described above for the policy period ending December 16, 2026.\", \"action_items\": [{\"text\": \"Policy number\", \"due_date\": \"POL-804220\"}, {\"text\": \"Coverage\", \"due_date\": \"Comprehensive auto, $500 deductible\"}, {\"text\": \"Expiration date\", \"due_date\": \"December 16, 2026\"}],\"insurer\": \"Harbor Casualty\", \"policy_number\": \"POL-804220\", \"coverage_summary\": \"Comprehensive auto, $500 deductible\", \"expiry_date\": \"December 16, 2026\"}",
+    "doneReason": "stop",
+    "usage": {
+      "loadMs": 174,
+      "promptTokens": 3319,
+      "genTokens": 163,
+      "genTokPerSec": 44.380744311368765,
+      "totalMs": 26960
+    }
+  }
+}

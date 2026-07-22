@@ -1,0 +1,37 @@
+{
+  "key": "201e59723f3289368e7250b226eab652f143bc95d93b31a27ebf542475fba5b9",
+  "request": {
+    "model": "qwen3-vl:2b",
+    "promptChars": 413,
+    "imageCount": 1,
+    "hasFormat": true
+  },
+  "result": {
+    "json": {
+      "type": "statement",
+      "summary": "$91.00",
+      "action_items": [
+        {
+          "text": "Payment due date",
+          "due_date": "2027-02-16"
+        }
+      ],
+      "institution": "Metro Electric",
+      "account_number": "386863",
+      "period_start": "Q3 2026",
+      "period_end": "Q3 2026",
+      "balance": "$91.00"
+    },
+    "jsonChannel": "thinking",
+    "content": "",
+    "thinking": "{\"type\": \"statement\", \"summary\": \"$91.00\", \"action_items\": [{\"text\": \"Payment due date\", \"due_date\": \"2027-02-16\"}],\"institution\": \"Metro Electric\", \"account_number\": \"386863\", \"period_start\": \"Q3 2026\", \"period_end\": \"Q3 2026\", \"balance\": \"$91.00\"}",
+    "doneReason": "stop",
+    "usage": {
+      "loadMs": 10409,
+      "promptTokens": 3319,
+      "genTokens": 104,
+      "genTokPerSec": 43.55791066104993,
+      "totalMs": 42896
+    }
+  }
+}

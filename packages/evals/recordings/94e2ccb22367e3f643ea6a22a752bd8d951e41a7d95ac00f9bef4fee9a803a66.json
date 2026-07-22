@@ -1,0 +1,36 @@
+{
+  "key": "94e2ccb22367e3f643ea6a22a752bd8d951e41a7d95ac00f9bef4fee9a803a66",
+  "request": {
+    "model": "qwen3-vl:2b",
+    "promptChars": 413,
+    "imageCount": 1,
+    "hasFormat": true
+  },
+  "result": {
+    "json": {
+      "type": "id_document",
+      "summary": "Identification Card",
+      "action_items": [
+        {
+          "text": "Expires",
+          "due_date": "2026-01-19"
+        }
+      ],
+      "holder_name": "Nina Nguyen",
+      "id_number": "D8923829",
+      "issuer": "State of Washington",
+      "expiry_date": "2026-01-19"
+    },
+    "jsonChannel": "thinking",
+    "content": "",
+    "thinking": "{\"type\": \"id_document\", \"summary\": \"Identification Card\", \"action_items\": [{\"text\": \"Expires\", \"due_date\": \"2026-01-19\"}],\"holder_name\": \"Nina Nguyen\", \"id_number\": \"D8923829\", \"issuer\": \"State of Washington\", \"expiry_date\": \"2026-01-19\"}",
+    "doneReason": "stop",
+    "usage": {
+      "loadMs": 499,
+      "promptTokens": 3319,
+      "genTokens": 91,
+      "genTokPerSec": 41.73463832808287,
+      "totalMs": 44616
+    }
+  }
+}
