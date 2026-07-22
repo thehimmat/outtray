@@ -4,22 +4,86 @@
  *
  * Thin by design: all domain logic lives in @outtray/core (ADR-0001). This
  * binary is the demo and dogfooding surface until the Tauri shell lands in
- * Phase 3.
+ * Phase 3. It reads files and prints results; it never mutates the documents it
+ * scans (ADR-0008).
  *
- * Failure modes: exits 1 with a usage message on unknown commands; never
- * touches the filesystem or network in Phase 0.
+ * Failure modes: exits 1 on an unknown command, a missing/inaccessible scan
+ * directory, or an unreachable model runtime. Invalid extractions are reported
+ * per file, not treated as a CLI failure.
  */
+
+import { stat } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { OllamaProvider, type ScanReport, scanDirectory } from '@outtray/core';
 
 const USAGE = `outtray: point it at the pile, get an action list.
 
 Usage:
-  outtray scan <dir>   Ingest a folder of documents (lands in Phase 1)
+  outtray scan <dir>   Extract an action list from a folder of document images
   outtray --version    Print version
   outtray --help       Show this help
 `;
 
-function main(argv: readonly string[]): number {
-  const [command] = argv;
+/** Render a scan report as plain text for the terminal. Pure, so it is unit-tested. */
+export function formatReport(dir: string, report: ScanReport): string {
+  const lines: string[] = [
+    `Scanned ${dir}: ${report.scanned.length} document(s), ${report.skipped.length} skipped.`,
+    '',
+  ];
+  for (const { file, result } of report.items) {
+    if (!result.valid || !result.document) {
+      lines.push(`${file}  [could not extract: ${result.error ?? 'unknown error'}]`, '');
+      continue;
+    }
+    const doc = result.document;
+    lines.push(`${file}  [${doc.type}]`, `  ${doc.summary}`);
+    if (doc.action_items.length > 0) {
+      lines.push('  Actions:');
+      for (const item of doc.action_items) {
+        lines.push(`    - ${item.text} (due ${item.due_date ?? 'no date'})`);
+      }
+    }
+    lines.push('');
+  }
+  if (report.skipped.length > 0) {
+    lines.push(`Skipped: ${report.skipped.join(', ')}`);
+  }
+  return `${lines.join('\n').trimEnd()}\n`;
+}
+
+async function runScan(args: readonly string[]): Promise<number> {
+  const dir = args[0];
+  if (!dir) {
+    process.stderr.write('scan needs a directory: outtray scan <dir>\n');
+    return 1;
+  }
+  try {
+    if (!(await stat(dir)).isDirectory()) {
+      process.stderr.write(`Not a directory: ${dir}\n`);
+      return 1;
+    }
+  } catch {
+    process.stderr.write(`Cannot read directory: ${dir}\n`);
+    return 1;
+  }
+
+  let report: ScanReport;
+  try {
+    report = await scanDirectory(new OllamaProvider(), dir);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    process.stderr.write(
+      `scan failed: ${detail}\nIs Ollama running (ollama serve) with qwen3-vl:2b pulled?\n`,
+    );
+    return 1;
+  }
+
+  process.stdout.write(formatReport(dir, report));
+  return 0;
+}
+
+export async function run(argv: readonly string[]): Promise<number> {
+  const [command, ...rest] = argv;
   switch (command) {
     case undefined:
     case '--help':
@@ -31,12 +95,16 @@ function main(argv: readonly string[]): number {
       process.stdout.write('0.0.0\n');
       return 0;
     case 'scan':
-      process.stdout.write('scan is not implemented yet: it lands in Phase 1 (extraction core).\n');
-      return 0;
+      return runScan(rest);
     default:
       process.stderr.write(`Unknown command: ${command}\n\n${USAGE}`);
       return 1;
   }
 }
 
-process.exitCode = main(process.argv.slice(2));
+// Only auto-run when invoked as the binary, not when imported by tests.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  run(process.argv.slice(2)).then((code) => {
+    process.exitCode = code;
+  });
+}

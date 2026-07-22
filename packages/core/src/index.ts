@@ -1,4 +1,11 @@
 export {
+  EXTRACTION_PROMPT,
+  type ExtractInput,
+  type ExtractResult,
+  extract,
+  PROMPT_VERSION,
+} from './extract.js';
+export {
   DOCUMENT_TYPES,
   type DocumentExtraction,
   type DocumentType,
@@ -18,4 +25,10 @@ export {
   OllamaProvider,
   type OllamaProviderOptions,
 } from './ollama-provider.js';
+export {
+  type ScanItem,
+  type ScanOptions,
+  type ScanReport,
+  scanDirectory,
+} from './scan.js';
 export { cosineSimilarity, rankBySimilarity } from './vector.js';
