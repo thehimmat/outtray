@@ -1,0 +1,36 @@
+{
+  "key": "e4bc799b79c0409bf71853c12a808e779442241f554ab4d76e34ae71645c53ad",
+  "request": {
+    "model": "qwen3-vl:2b",
+    "promptChars": 413,
+    "imageCount": 1,
+    "hasFormat": true
+  },
+  "result": {
+    "json": {
+      "type": "letter",
+      "summary": "Notice of annual inspection from Cascade Credit Union to Ana Nguyen regarding an annual inspection.",
+      "action_items": [
+        {
+          "text": "Review enclosed details and contact office with any questions",
+          "due_date": null
+        }
+      ],
+      "sender": "Cascade Credit Union",
+      "recipient": "Ana Nguyen",
+      "subject": "Notice of annual inspection",
+      "sent_date": "2025-07-08"
+    },
+    "jsonChannel": "thinking",
+    "content": "",
+    "thinking": "{\"type\": \"letter\", \"summary\": \"Notice of annual inspection from Cascade Credit Union to Ana Nguyen regarding an annual inspection.\", \"action_items\": [{\"text\": \"Review enclosed details and contact office with any questions\", \"due_date\": null}],\"sender\": \"Cascade Credit Union\", \"recipient\": \"Ana Nguyen\", \"subject\": \"Notice of annual inspection\", \"sent_date\": \"2025-07-08\"}",
+    "doneReason": "stop",
+    "usage": {
+      "loadMs": 262,
+      "promptTokens": 3319,
+      "genTokens": 91,
+      "genTokPerSec": 43.66412023275375,
+      "totalMs": 40998
+    }
+  }
+}

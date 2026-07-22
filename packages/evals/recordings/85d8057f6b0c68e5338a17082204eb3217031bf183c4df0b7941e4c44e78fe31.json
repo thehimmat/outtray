@@ -1,0 +1,35 @@
+{
+  "key": "85d8057f6b0c68e5338a17082204eb3217031bf183c4df0b7941e4c44e78fe31",
+  "request": {
+    "model": "qwen3-vl:2b",
+    "promptChars": 413,
+    "imageCount": 1,
+    "hasFormat": true
+  },
+  "result": {
+    "json": {
+      "type": "receipt",
+      "summary": "$36.49",
+      "action_items": [
+        {
+          "text": "Pay $36.49",
+          "due_date": "2025-08-23"
+        }
+      ],
+      "merchant": "Northside Grocers",
+      "total": "$36.49",
+      "purchased_at": "August 23, 2025"
+    },
+    "jsonChannel": "thinking",
+    "content": "",
+    "thinking": "{\"type\": \"receipt\", \"summary\": \"$36.49\", \"action_items\": [{\"text\": \"Pay $36.49\", \"due_date\": \"2025-08-23\"}],\"merchant\": \"Northside Grocers\", \"total\": \"$36.49\", \"purchased_at\": \"August 23, 2025\"}",
+    "doneReason": "stop",
+    "usage": {
+      "loadMs": 193,
+      "promptTokens": 3319,
+      "genTokens": 86,
+      "genTokPerSec": 41.46860585440276,
+      "totalMs": 40564
+    }
+  }
+}

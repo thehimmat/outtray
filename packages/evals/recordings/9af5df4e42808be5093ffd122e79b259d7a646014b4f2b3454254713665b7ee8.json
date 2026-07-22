@@ -1,0 +1,44 @@
+{
+  "key": "9af5df4e42808be5093ffd122e79b259d7a646014b4f2b3454254713665b7ee8",
+  "request": {
+    "model": "qwen3-vl:2b",
+    "promptChars": 413,
+    "imageCount": 1,
+    "hasFormat": true
+  },
+  "result": {
+    "json": {
+      "type": "policy",
+      "summary": "This policy provides the coverage described above for the policy period ending January 6, 2025.",
+      "action_items": [
+        {
+          "text": "Policy number",
+          "due_date": "POL-769782"
+        },
+        {
+          "text": "Coverage",
+          "due_date": "Comprehensive auto, $500 deductible"
+        },
+        {
+          "text": "Expiration date",
+          "due_date": "January 6, 2025"
+        }
+      ],
+      "insurer": "Evergreen Mutual",
+      "policy_number": "POL-769782",
+      "coverage_summary": "Comprehensive auto, $500 deductible",
+      "expiry_date": "January 6, 2025"
+    },
+    "jsonChannel": "thinking",
+    "content": "",
+    "thinking": "{\"type\": \"policy\", \"summary\": \"This policy provides the coverage described above for the policy period ending January 6, 2025.\", \"action_items\": [{\"text\": \"Policy number\", \"due_date\": \"POL-769782\"}, {\"text\": \"Coverage\", \"due_date\": \"Comprehensive auto, $500 deductible\"}, {\"text\": \"Expiration date\", \"due_date\": \"January 6, 2025\"}],\"insurer\": \"Evergreen Mutual\", \"policy_number\": \"POL-769782\", \"coverage_summary\": \"Comprehensive auto, $500 deductible\", \"expiry_date\": \"January 6, 2025\"}",
+    "doneReason": "stop",
+    "usage": {
+      "loadMs": 176,
+      "promptTokens": 3319,
+      "genTokens": 159,
+      "genTokPerSec": 43.977514490452734,
+      "totalMs": 27597
+    }
+  }
+}

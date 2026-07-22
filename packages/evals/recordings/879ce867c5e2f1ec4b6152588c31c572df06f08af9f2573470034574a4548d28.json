@@ -1,0 +1,35 @@
+{
+  "key": "879ce867c5e2f1ec4b6152588c31c572df06f08af9f2573470034574a4548d28",
+  "request": {
+    "model": "qwen3-vl:2b",
+    "promptChars": 413,
+    "imageCount": 1,
+    "hasFormat": true
+  },
+  "result": {
+    "json": {
+      "type": "receipt",
+      "summary": "$97.49",
+      "action_items": [
+        {
+          "text": "Pay $97.49",
+          "due_date": "2025-07-04"
+        }
+      ],
+      "merchant": "Sunbelt Mart",
+      "total": "$97.49",
+      "purchased_at": "Sunbelt Mart"
+    },
+    "jsonChannel": "thinking",
+    "content": "",
+    "thinking": "{\"type\": \"receipt\", \"summary\": \"$97.49\", \"action_items\": [{\"text\": \"Pay $97.49\", \"due_date\": \"2025-07-04\"}],\"merchant\": \"Sunbelt Mart\", \"total\": \"$97.49\", \"purchased_at\": \"Sunbelt Mart\"}",
+    "doneReason": "stop",
+    "usage": {
+      "loadMs": 158,
+      "promptTokens": 3319,
+      "genTokens": 78,
+      "genTokPerSec": 42.64415638377554,
+      "totalMs": 24646
+    }
+  }
+}

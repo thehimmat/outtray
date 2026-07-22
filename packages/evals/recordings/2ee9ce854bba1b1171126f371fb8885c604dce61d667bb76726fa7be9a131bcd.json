@@ -1,0 +1,36 @@
+{
+  "key": "2ee9ce854bba1b1171126f371fb8885c604dce61d667bb76726fa7be9a131bcd",
+  "request": {
+    "model": "qwen3-vl:2b",
+    "promptChars": 413,
+    "imageCount": 1,
+    "hasFormat": true
+  },
+  "result": {
+    "json": {
+      "type": "letter",
+      "summary": "Notice of annual inspection for a property management company to a client named Jordan Mbeki, dated August 5, 2026.",
+      "action_items": [
+        {
+          "text": "Review enclosed details and contact office with any questions",
+          "due_date": null
+        }
+      ],
+      "sender": "Northgate Property Mgmt",
+      "recipient": "Jordan Mbeki",
+      "subject": "Notice of annual inspection",
+      "sent_date": "2026-08-05"
+    },
+    "jsonChannel": "thinking",
+    "content": "",
+    "thinking": "{\"type\": \"letter\", \"summary\": \"Notice of annual inspection for a property management company to a client named Jordan Mbeki, dated August 5, 2026.\", \"action_items\": [{\"text\": \"Review enclosed details and contact office with any questions\", \"due_date\": null}],\"sender\": \"Northgate Property Mgmt\", \"recipient\": \"Jordan Mbeki\", \"subject\": \"Notice of annual inspection\", \"sent_date\": \"2026-08-05\"}",
+    "doneReason": "stop",
+    "usage": {
+      "loadMs": 144,
+      "promptTokens": 3319,
+      "genTokens": 108,
+      "genTokPerSec": 41.58711846706801,
+      "totalMs": 30906
+    }
+  }
+}

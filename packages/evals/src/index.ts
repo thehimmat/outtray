@@ -1,4 +1,5 @@
 export { canonicalize, contractKey } from './contract.js';
+export { SCORED_FIELDS } from './field-kinds.js';
 export {
   type FixtureLabels,
   type FixtureSpec,
@@ -28,6 +29,14 @@ export {
   type RecordMode,
   StaleRecordingError,
 } from './recording-provider.js';
+export {
+  type Aggregate,
+  type EvalReport,
+  type FieldScore,
+  type FixtureScore,
+  runEval,
+  scoreFixture,
+} from './run-eval.js';
 export {
   type Counts,
   compareField,
