@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 1 extraction core: a `ModelProvider` seam with a local `OllamaProvider`
+  (default `qwen3-vl:2b`, `think:false` plus content-or-thinking JSON recovery),
+  the ADR-0004 discriminated-union extraction contract, and `extract()` wired
+  into `outtray scan <dir>` to produce an action list from a folder of pages.
+- Phase 1 eval harness: record/replay provider (SHA-keyed recordings, CI
+  replays and never calls a model), field scorers (normalization + per-field
+  precision/recall with Wilson intervals), a deterministic 10-fixture synthetic
+  set with a checksummed manifest, and a committed scoreboard with a CI
+  no-regression gate. First numbers: qwen3-vl:2b overall P 95% / R 77%.
+- Memory spike results (`docs/evals/model-memory-spike.md`) and the ADR-0002
+  amendment accepting `qwen3-vl:2b` as the Phase 1 local default.
 - pnpm monorepo scaffold: `packages/core` (pure TypeScript domain logic),
   `packages/evals` (harness, fixtures, scorers), `packages/cli` (thin CLI entry),
   `packages/app` (placeholder until Phase 3).
