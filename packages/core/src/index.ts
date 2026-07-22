@@ -1,3 +1,11 @@
+export {
+  DOCUMENT_TYPES,
+  type DocumentExtraction,
+  type DocumentType,
+  documentExtractionSchema,
+  documentJsonSchema,
+  validateExtraction,
+} from './extraction-schema.js';
 export type {
   GenerateOptions,
   GenerateRequest,
