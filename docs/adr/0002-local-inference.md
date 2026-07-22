@@ -54,11 +54,16 @@ alone. Both are also generations behind mid-2026 releases.
   the escape hatch to an in-process runtime if that exposure becomes
   untenable.
 
-## Amendment (proposed 2026-07-22, PENDING OWNER SIGN-OFF, issue #18)
+## Amendment (accepted 2026-07-22, issue #18)
 
-Status: **proposed, not yet accepted.** Do not build Phase 1 on this until
-signed off. Evidence: the issue #5 memory spike,
-`docs/evals/model-memory-spike.md` (N=1 document, defaults, machine under load).
+Status: **accepted 2026-07-22** on owner sign-off (issue #18). Owner comment:
+
+> Signed off. 2b as default makes sense given it's the only one that fits in
+> memory; keep 4b as the escalation path and revisit if the KV-cache experiment
+> (#15) changes the picture.
+
+Evidence: the issue #5 memory spike, `docs/evals/model-memory-spike.md`
+(N=1 document, defaults, machine under load).
 
 The spike measured the candidates on the 8 GB reference target and revises the
 "Decision" section's lineup as follows:
