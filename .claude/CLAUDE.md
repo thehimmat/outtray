@@ -43,6 +43,59 @@ scoreboard), `cli` (thin entry, demo surface), `app` (placeholder until
 Phase 3). Decisions live in `docs/adr/`; eval design in
 `docs/evals/METHODOLOGY.md`; threats in `docs/THREAT_MODEL.md`.
 
+## Visibility, releases, and owner checkpoints
+
+The owner steers this project through explicit checkpoints. Development may
+move fast between them, but every session must know where to stop and what to
+hand over. The showcase depends on the owner understanding and being able to
+defend every piece in an interview, so an unreviewed feature is worth less
+than a reviewed smaller one.
+
+### Where a session stops (hard stops, no exceptions)
+
+1. **Phase boundaries.** Finish the phase's definition of done, prepare the
+   checkpoint report (below), then stop. Do not start the next phase's code.
+2. **ADR changes.** If work reveals that an accepted ADR needs amending
+   (model default, storage mechanism, schema shape), write the proposed
+   amendment and stop for owner sign-off before building on it.
+3. **Anything public-facing beyond pushing code to this repo**: publishing a
+   blog post, publishing to npm, registering a domain, tagging a release,
+   posting anywhere. Claude drafts; the owner publishes.
+4. **Anything that costs money.** Always an owner decision, always stop.
+
+### The checkpoint report (what to prepare at every stop)
+
+A short write-up, in the PR description or a comment on the phase's tracking
+issue, containing:
+
+- **What works now**, with the exact command to see it (e.g. `pnpm cli scan
+  fixtures/demo`). The owner must be able to run the demo in under a minute.
+- **Numbers**: scoreboard metrics or measurements, with deltas from the
+  previous checkpoint and honest caveats (N, noise, what is not measured).
+- **Drafts prepared, not published**: blog drafts committed to `docs/blog/`,
+  release notes drafted, ADR amendments proposed.
+- **Decisions needed**: each open decision as a GitHub issue with a
+  recommendation, labeled `owner-action` and a priority.
+- **What comes next** if approved, in two or three sentences.
+
+### Release and publication cadence
+
+- **Tags/releases**: from Phase 1 onward each completed phase gets a tag and
+  a GitHub release, cut only after the owner has seen the checkpoint report.
+  Release notes come from the CHANGELOG and link the phase's blog post once
+  it is published.
+- **Blog pipeline**: drafts live in `docs/blog/` (one file per post, named
+  `NN-slug.md`). A phase is incomplete without its draft committed.
+  Publication is always the owner's manual act, targeted within a week of
+  phase end. Priority order: (1) the record/replay CI flagship post at the
+  end of Phase 1, (2) "what local inference actually costs on an 8 GB Air" /
+  two-stage vs VLM measured (seeded by docs/evals/model-memory-spike.md),
+  (3) the rest per the plan's schedule.
+- **Issue hygiene**: anything left unfinished, any discovered bug or idea,
+  and any question for the owner becomes a GitHub issue with a priority
+  label before the session ends. Questions to the owner always get a
+  matching issue so unanswered ones are never lost.
+
 ## Working conventions
 
 - TDD where outputs are verifiable: failing test first. Model-dependent
@@ -50,14 +103,13 @@ Phase 3). Decisions live in `docs/adr/`; eval design in
 - Every public function in core documents its failure modes in its docstring.
 - ADR for every consequential decision (next number: 0009). CHANGELOG (Keep a
   Changelog) updated with user-visible changes.
-- Per-phase definition of done: hard gates are automated (tests, CI,
-  scoreboard no-regression); soft gates are a committed blog draft and
-  CLAUDE.md updated to the new current state.
 - Style: no em dashes, no emojis anywhere (docs, UI, commit messages). UI
   icons come from an icon library, never emoji. Never mention Claude in
   commit messages.
 - The 8 GB machine is easily swamped: prefer `pnpm test` over watch modes,
-  never leave dev servers running, avoid parallel heavy processes.
+  never leave dev servers running, avoid parallel heavy processes. Ollama
+  inference uses most of RAM; do not run it concurrently with builds.
+- Multi-session work uses git worktrees rather than sharing one checkout.
 
 ## Phase sequencing notes
 
