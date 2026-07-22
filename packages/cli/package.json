@@ -1,0 +1,11 @@
+{
+  "name": "@outtray/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Thin command-line entry point over @outtray/core. The demo surface until the Tauri shell lands in Phase 3.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "outtray": "./dist/main.js"
+  }
+}

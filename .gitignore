@@ -1,0 +1,23 @@
+# Dependencies and build output
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# OS noise
+.DS_Store
+
+# Secrets and local config
+.env
+.env.*
+
+# Local databases (user data never ships with the repo)
+*.sqlite
+*.sqlite3
+*.db
+
+# FIXTURE PRIVACY POLICY (see packages/evals/fixtures/README.md):
+# real personal documents are NEVER committed. Anything under a real/
+# fixtures directory stays local to the dev machine only.
+packages/evals/fixtures/real/
+**/fixtures-real/

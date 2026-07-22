@@ -1,0 +1,14 @@
+{
+  "name": "@outtray/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure TypeScript domain logic: extraction, classification, agent orchestration, schemas. Never imports Tauri.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  }
+}
