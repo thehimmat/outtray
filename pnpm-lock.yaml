@@ -33,7 +33,11 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
 
-  packages/evals: {}
+  packages/evals:
+    dependencies:
+      '@outtray/core':
+        specifier: workspace:*
+        version: link:../core
 
 packages:
 
