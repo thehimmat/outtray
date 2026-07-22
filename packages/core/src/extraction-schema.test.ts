@@ -56,7 +56,9 @@ describe('extraction schema (ADR-0004)', () => {
   });
 
   it('compiles to a JSON Schema oneOf covering every document type', () => {
-    const schema = documentJsonSchema as { oneOf?: Array<{ properties?: { type?: { const?: string } } }> };
+    const schema = documentJsonSchema as {
+      oneOf?: Array<{ properties?: { type?: { const?: string } } }>;
+    };
     expect(Array.isArray(schema.oneOf)).toBe(true);
     const discriminants = (schema.oneOf ?? []).map((b) => b.properties?.type?.const);
     for (const t of DOCUMENT_TYPES) {
