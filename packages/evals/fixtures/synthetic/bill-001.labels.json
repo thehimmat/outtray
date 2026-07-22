@@ -1,0 +1,7 @@
+{
+  "type": "bill",
+  "payee": "Metro Electric",
+  "amount_due": "$91.00",
+  "due_date": "2027-02-16",
+  "late_fee": "$56.00"
+}
