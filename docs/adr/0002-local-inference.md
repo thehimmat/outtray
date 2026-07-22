@@ -53,3 +53,39 @@ alone. Both are also generations behind mid-2026 releases.
   anywhere else (see THREAT_MODEL.md). The ModelProvider seam (ADR-0003) is
   the escape hatch to an in-process runtime if that exposure becomes
   untenable.
+
+## Amendment (proposed 2026-07-22, PENDING OWNER SIGN-OFF, issue #18)
+
+Status: **proposed, not yet accepted.** Do not build Phase 1 on this until
+signed off. Evidence: the issue #5 memory spike,
+`docs/evals/model-memory-spike.md` (N=1 document, defaults, machine under load).
+
+The spike measured the candidates on the 8 GB reference target and revises the
+"Decision" section's lineup as follows:
+
+- **Phase 1 local default becomes `qwen3-vl:2b`**, not `qwen3-vl:4b`. On the
+  8 GB Air, 2b is 2.0 GB resident and loads 100% onto the Metal GPU, returning
+  a correct, schema-valid extraction in ~3 s. `qwen3-vl:4b` is 4.0 GB (4096
+  ctx) / 4.6 GB (8192 ctx) resident and spills ~30% to CPU, collapsing prompt
+  throughput to ~28 tok/s and driving the machine into swap; a single page took
+  ~60 s. 2b is the default; 4b is the accuracy-escalation / cloud-parity arm,
+  not the always-on local model. Revisit 4b's local viability under issue #15
+  (q8_0 KV cache).
+- **`granite-docling-258M` is confirmed as the OCR/structure arm, not an
+  extractor.** It is the cheapest (0.46 GB) and fastest and the only candidate
+  whose JSON came back in the `content` channel, but it misclassified the
+  document and produced empty/garbled semantic fields. It feeds cross-arm
+  confidence (as this ADR already positions it), not the extraction decision.
+- **New runtime requirement (issue #19).** Qwen3-VL is a reasoning model; on
+  Ollama 0.32.1 its format-constrained JSON is emitted into `message.thinking`,
+  not `message.content`. The extractor must send `think: false` and read JSON
+  from `content` with a `thinking` fallback, or it gets empty / truncated
+  output.
+- **Portability note (issue #20).** 2b is the right default for the 8 GB floor,
+  but the shipped downloadable app should select the local model by available
+  memory rather than hardcode 2b (4b or larger on 16 GB+). Likely ADR-0009.
+
+Cross-reference: this also resolves the ADR-0004 open question. `z.toJSONSchema()`
+on a `type`-discriminated union compiled and produced valid single-branch output
+on all three models, so the classify-then-extract fallback is not required for
+Phase 1 (kept as a documented contingency).

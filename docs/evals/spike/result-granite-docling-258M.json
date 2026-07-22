@@ -1,0 +1,36 @@
+{
+  "model": "hf.co/ibm-granite/granite-docling-258M-GGUF:latest",
+  "ok": true,
+  "num_ctx": 4096,
+  "image": "renewal-1000.png",
+  "discriminated_union_accepted": true,
+  "wall_ms": 6956,
+  "load_ms": 1628,
+  "prompt_eval_count": 1218,
+  "prompt_tok_per_sec": 409.9,
+  "eval_count": 154,
+  "done_reason": "stop",
+  "think": false,
+  "thinking_chars": 0,
+  "gen_tok_per_sec": 92.4,
+  "total_ms": 6915,
+  "validates_against_zod": true,
+  "json_channel": "content",
+  "validation_error": null,
+  "extracted": {
+    "type": "letter",
+    "summary": "",
+    "action_items": [
+      {
+        "text": "A smog certification is on file and valid.",
+        "due_date": "August 31, 2026"
+      },
+      {
+        "text": "Registration paid after this date incur a $54.00 late fee plus penalties.",
+        "due_date": "August 31, 2026"
+      }
+    ],
+    "sender": "Rn2o260847213*",
+    "subject": "A smog certification is on file and valid. Payment of $301.00 must be received by August 31, 2026."
+  }
+}
