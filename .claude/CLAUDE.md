@@ -8,13 +8,20 @@ When those conflict, favor the showcase.
 
 ## Current state
 
-- **Phase 1 complete** (hard gates): extraction core (`ModelProvider` +
-  `OllamaProvider` around `qwen3-vl:2b`, ADR-0004 discriminated-union contract,
-  `extract()` + `outtray scan`), eval harness (record/replay, scorers,
-  10-fixture synthetic set), and a CI replay gate over a real scoreboard
-  (qwen3-vl:2b: overall P 95% / R 77%; `docs/evals/scoreboard.md`). ADR-0002
-  amended (2b default) and accepted. Awaiting the owner walkthrough before any
-  release tag. **Phase 2 next**: timeboxed retrieval plumbing (see below).
+- **Phase 2 complete**: retrieval plumbing (`EmbeddingProvider` +
+  `OllamaEmbeddingProvider`, chunking, `VectorIndex` brute-force cosine per
+  ADR-0005, cited `retrieve`/`search`), demoed via `outtray find <dir>
+  "<query>"`. Q&A deferred; index persistence (#43) and the embedding-model ADR
+  deferred. **Next: the #30 classification stage** (local personalization,
+  proposed in ADR-0009 pending owner sign-off), to close the bill/statement gap;
+  the Tauri shell is Phase 3 (ADR-0001), not before.
+- **Phase 1 complete**: extraction core (`ModelProvider` + `OllamaProvider`
+  around `qwen3-vl:2b`, ADR-0004 discriminated-union contract, `extract()` +
+  `outtray scan`), eval harness (record/replay, scorers, 10-fixture synthetic
+  set), and a CI replay gate over a real scoreboard (qwen3-vl:2b: overall P 95%
+  / R 77%; `docs/evals/scoreboard.md`). ADR-0002 amended (2b default) and
+  accepted. Phase 1 and Phase 2 each await an owner walkthrough before any
+  release tag.
 - **Phase 0 complete** (scaffold, CI, ADRs 0001-0008, threat model, eval
   methodology).
 - Day-14 checkpoint target: public repo, README + diagram, ADRs, CLI scan

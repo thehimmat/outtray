@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 2 retrieval plumbing: an `EmbeddingProvider` seam with a local
+  `OllamaEmbeddingProvider`, document chunking, and a `VectorIndex` that ranks
+  chunks by in-TypeScript brute-force cosine (ADR-0005) and returns cited
+  passages (document id, page, chunk index). Demoed via `outtray find <dir>
+  "<query>"`; user-facing Q&A remains deferred.
 - Phase 1 extraction core: a `ModelProvider` seam with a local `OllamaProvider`
   (default `qwen3-vl:2b`, `think:false` plus content-or-thinking JSON recovery),
   the ADR-0004 discriminated-union extraction contract, and `extract()` wired
