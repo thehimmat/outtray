@@ -14,14 +14,26 @@
 
 import { stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { OllamaProvider, type ScanReport, scanDirectory } from '@outtray/core';
+import {
+  type FindResult,
+  findInDirectory,
+  OllamaEmbeddingProvider,
+  OllamaProvider,
+  type ScanReport,
+  scanDirectory,
+} from '@outtray/core';
+
+// Demo embedding model. The shipped default is a later retrieval-eval ADR, the
+// way ADR-0002 chose the VLM; this is just what the `find` demo runs against.
+const EMBED_MODEL = 'nomic-embed-text';
 
 const USAGE = `outtray: point it at the pile, get an action list.
 
 Usage:
-  outtray scan <dir>   Extract an action list from a folder of document images
-  outtray --version    Print version
-  outtray --help       Show this help
+  outtray scan <dir>          Extract an action list from a folder of document images
+  outtray find <dir> <query>  Retrieve the passages most relevant to a query, with citations
+  outtray --version           Print version
+  outtray --help              Show this help
 `;
 
 /** Render a scan report as plain text for the terminal. Pure, so it is unit-tested. */
@@ -49,6 +61,63 @@ export function formatReport(dir: string, report: ScanReport): string {
     lines.push(`Skipped: ${report.skipped.join(', ')}`);
   }
   return `${lines.join('\n').trimEnd()}\n`;
+}
+
+/** Render retrieval citations as plain text. Pure, so it is unit-tested. */
+export function formatCitations(query: string, result: FindResult): string {
+  const lines: string[] = [
+    `Query: ${query}`,
+    `Scanned ${result.scanned.scanned.length} document(s).`,
+    '',
+  ];
+  if (result.citations.length === 0) {
+    lines.push('No relevant passages found.');
+    return `${lines.join('\n')}\n`;
+  }
+  result.citations.forEach((c, i) => {
+    const page = c.source.page !== undefined ? ` p${c.source.page}` : '';
+    const snippet = c.text.length > 200 ? `${c.text.slice(0, 200)}...` : c.text;
+    lines.push(`${i + 1}. [${c.score.toFixed(2)}] ${c.source.documentId}${page}`, `   ${snippet}`);
+  });
+  return `${lines.join('\n')}\n`;
+}
+
+async function runFind(args: readonly string[]): Promise<number> {
+  const [dir, ...queryParts] = args;
+  const query = queryParts.join(' ').trim();
+  if (!dir || query === '') {
+    process.stderr.write('usage: outtray find <dir> <query>\n');
+    return 1;
+  }
+  try {
+    if (!(await stat(dir)).isDirectory()) {
+      process.stderr.write(`Not a directory: ${dir}\n`);
+      return 1;
+    }
+  } catch {
+    process.stderr.write(`Cannot read directory: ${dir}\n`);
+    return 1;
+  }
+
+  let result: FindResult;
+  try {
+    result = await findInDirectory(
+      new OllamaProvider(),
+      new OllamaEmbeddingProvider({ model: EMBED_MODEL }),
+      dir,
+      query,
+      5,
+    );
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    process.stderr.write(
+      `find failed: ${detail}\nIs Ollama running with qwen3-vl:2b and ${EMBED_MODEL} pulled?\n`,
+    );
+    return 1;
+  }
+
+  process.stdout.write(formatCitations(query, result));
+  return 0;
 }
 
 async function runScan(args: readonly string[]): Promise<number> {
@@ -96,6 +165,8 @@ export async function run(argv: readonly string[]): Promise<number> {
       return 0;
     case 'scan':
       return runScan(rest);
+    case 'find':
+      return runFind(rest);
     default:
       process.stderr.write(`Unknown command: ${command}\n\n${USAGE}`);
       return 1;

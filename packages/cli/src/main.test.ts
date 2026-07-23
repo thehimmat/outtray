@@ -1,6 +1,6 @@
-import type { ScanReport } from '@outtray/core';
+import type { FindResult, ScanReport } from '@outtray/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { formatReport, run } from './main.js';
+import { formatCitations, formatReport, run } from './main.js';
 
 function captureStdout() {
   return vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
@@ -43,6 +43,19 @@ describe('run (arg handling)', () => {
   it('exits 1 when the scan directory does not exist', async () => {
     const err = captureStderr();
     expect(await run(['scan', '/no/such/outtray/dir'])).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/Cannot read directory/);
+  });
+
+  it('exits 1 when find is missing a directory or query (no network)', async () => {
+    const err = captureStderr();
+    expect(await run(['find'])).toBe(1);
+    expect(await run(['find', '/some/dir'])).toBe(1); // dir but no query
+    expect(err.mock.calls.join('')).toMatch(/usage: outtray find/);
+  });
+
+  it('exits 1 when the find directory does not exist', async () => {
+    const err = captureStderr();
+    expect(await run(['find', '/no/such/outtray/dir', 'butter'])).toBe(1);
     expect(err.mock.calls.join('')).toMatch(/Cannot read directory/);
   });
 });
@@ -102,5 +115,38 @@ describe('formatReport', () => {
       ],
     };
     expect(formatReport('pile', report)).toContain('could not extract: no JSON');
+  });
+});
+
+describe('formatCitations', () => {
+  it('renders ranked citations with scores and sources', () => {
+    const result: FindResult = {
+      scanned: { scanned: ['a.png', 'b.png'], skipped: [], items: [] },
+      citations: [
+        {
+          text: 'Metro Electric bill, $91 due Feb 16.',
+          score: 0.94,
+          source: { documentId: 'a.png', page: undefined, chunkIndex: 0 },
+        },
+        {
+          text: 'Grocery receipt with butter.',
+          score: 0.71,
+          source: { documentId: 'b.png', page: 2, chunkIndex: 1 },
+        },
+      ],
+    };
+    const text = formatCitations('metro electric', result);
+    expect(text).toContain('Query: metro electric');
+    expect(text).toContain('Scanned 2 document(s).');
+    expect(text).toContain('1. [0.94] a.png');
+    expect(text).toContain('2. [0.71] b.png p2');
+  });
+
+  it('says so when nothing is relevant', () => {
+    const result: FindResult = {
+      scanned: { scanned: [], skipped: [], items: [] },
+      citations: [],
+    };
+    expect(formatCitations('x', result)).toContain('No relevant passages found.');
   });
 });
