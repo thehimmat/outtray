@@ -1,7 +1,8 @@
 # ADR-0009: Local-personalization document-type classification stage
 
-Status: **proposed, pending owner sign-off (issue #47).** Do not build on this
-until accepted. Date: 2026-07-22.
+Status: **accepted 2026-07-22** on owner sign-off (issue #47). Owner comment:
+
+> yes. this is the right approach. approved
 
 ## Context
 
