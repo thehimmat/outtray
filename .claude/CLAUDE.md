@@ -8,15 +8,17 @@ When those conflict, favor the showcase.
 
 ## Current state
 
-- **ADR-0009 classification stage built and integrated**: on-device k-NN
-  classifier (seeded, k=3) lifts type accuracy 80% to 100% on the fixture set
-  (`docs/evals/classification-scoreboard.md`), and `outtray scan` is now
-  two-stage with per-item reconciliation verdicts (confirmed / disputed /
-  low-confidence / unclassified, review flags, graceful degradation).
-  **Blocked on two owner sign-offs**: #54 (ADR-0009 amendment: pipeline order
-  + reconciliation strategy; then #57 implements auto-re-extract on disputed
-  types) and #58 (ADR-0010: action layer v1, deterministic planner). Do not
-  build past either gate.
+- **Action layer v1 shipped (ADR-0010, accepted)**: `outtray actions <dir>`
+  plans a deterministic, cited, proposed-only queue (to-dos, expiry alerts,
+  keep/shred advice with rule ids + disclaimer, attention flags, review
+  gating) with no model call in planning. Follow-ups: #64 (action-level eval
+  labels + scoreboard row), #65 (overlapping expiry-flag merge).
+- **ADR-0009 stage complete end to end** (amendment accepted, #54): two-stage
+  scan with reconciliation verdicts plus one typed re-extraction on confident
+  disagreement (`extract-typed-v1`). Scoreboard: VLM 8/10, classifier 10/10,
+  reconciled 10/10 (`docs/evals/classification-scoreboard.md`; dev-run, #52
+  tracks CI replay). Remaining personalization scope of #30 is #67 (user
+  corrections + persisted label store; storage decision shared with #6/#43).
 - **Phase 2 complete**: retrieval plumbing (`EmbeddingProvider` +
   `OllamaEmbeddingProvider`, chunking, `VectorIndex` brute-force cosine per
   ADR-0005, cited `retrieve`/`search`), demoed via `outtray find <dir>
