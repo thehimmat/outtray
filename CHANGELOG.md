@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Action layer v1 (ADR-0010): `outtray actions <dir>` scans a folder and
+  proposes a deterministic action queue: to-dos from extracted action items
+  (deduplicated, past-due ones flagged), expiry alerts inside a 60-day window
+  (expired documents flagged), keep/shred retention advice from a small
+  versioned rules table cited by rule id and carrying a non-advice
+  disclaimer, and attention flags for unreadable documents and type disputes.
+  Every item cites its verbatim extracted evidence, items from documents
+  needing review are marked "review first", everything is proposed-only, and
+  no model is called in the planning step.
 - Typed re-extraction closes the reconciliation loop (accepted ADR-0009
   amendment): when the classifier confidently disagrees with the VLM's type,
   scan re-extracts that document once under the classifier's type-specific

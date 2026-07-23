@@ -1,6 +1,6 @@
-import type { FindResult, ScanItem, ScanReport } from '@outtray/core';
+import type { ActionQueue, FindResult, ScanItem, ScanReport } from '@outtray/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { formatCitations, formatReport, run } from './main.js';
+import { formatActions, formatCitations, formatReport, run } from './main.js';
 
 function captureStdout() {
   return vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
@@ -43,6 +43,14 @@ describe('run (arg handling)', () => {
   it('exits 1 when the scan directory does not exist', async () => {
     const err = captureStderr();
     expect(await run(['scan', '/no/such/outtray/dir'])).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/Cannot read directory/);
+  });
+
+  it('exits 1 when actions is given no directory or a missing one (no network)', async () => {
+    const err = captureStderr();
+    expect(await run(['actions'])).toBe(1);
+    expect(await run(['actions', '/no/such/outtray/dir'])).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/needs a directory/);
     expect(err.mock.calls.join('')).toMatch(/Cannot read directory/);
   });
 
@@ -254,6 +262,71 @@ describe('formatReport', () => {
       classifierError: null,
     };
     expect(formatReport('pile', report)).toContain('could not extract: no JSON');
+  });
+});
+
+describe('formatActions', () => {
+  const queue: ActionQueue = {
+    items: [
+      {
+        id: 'flag-disputed:stmt.png',
+        kind: 'attention_flag',
+        ruleId: 'flag-disputed',
+        title: 'Type disputed for stmt.png: extractor says statement, classifier says bill',
+        date: null,
+        advice: null,
+        needsReviewFirst: true,
+        citations: [{ documentId: 'stmt.png', snippet: 'type: statement' }],
+        status: 'proposed',
+      },
+      {
+        id: 'todo-extracted:renewal.png',
+        kind: 'todo',
+        ruleId: 'todo-extracted',
+        title: 'Pay $301.00',
+        date: '2026-08-31',
+        advice: null,
+        needsReviewFirst: false,
+        citations: [{ documentId: 'renewal.png', snippet: 'Pay $301.00' }],
+        status: 'proposed',
+      },
+      {
+        id: 'ret-bill:renewal.png',
+        kind: 'retention_advice',
+        ruleId: 'ret-bill',
+        title: 'Shred once payment has cleared; keep about a year if tax-relevant.',
+        date: null,
+        advice: 'shred',
+        needsReviewFirst: false,
+        citations: [{ documentId: 'renewal.png', snippet: 'type: bill' }],
+        status: 'proposed',
+      },
+    ],
+    flagged: 1,
+    needsReview: 1,
+    disclaimer: 'Not legal advice.',
+  };
+
+  it('renders sections, citations, review markers, counts, and the disclaimer', () => {
+    const text = formatActions('pile', queue);
+    expect(text).toContain('Proposed actions for pile: 3 item(s).');
+    expect(text).toContain('1 item(s) flagged for attention, 1 not yet reviewed by you.');
+    expect(text).toContain('Attention:');
+    expect(text).toContain('[review first]');
+    expect(text).toContain('To do:');
+    expect(text).toContain('- Pay $301.00 (2026-08-31)');
+    expect(text).toContain('source: renewal.png: "Pay $301.00"');
+    expect(text).toContain('Retention advice:');
+    expect(text).toContain('- shred: Shred once payment has cleared');
+    expect(text).toContain('Not legal advice.');
+  });
+
+  it('never renders an all-clear for an empty queue', () => {
+    const empty: ActionQueue = { items: [], flagged: 0, needsReview: 0, disclaimer: 'D.' };
+    const text = formatActions('pile', empty);
+    expect(text).toContain('0 item(s) flagged for attention');
+    expect(text).toContain('Nothing to propose');
+    expect(text).not.toMatch(/all clear/i);
   });
 });
 
