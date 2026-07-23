@@ -5,6 +5,12 @@ export {
   TypeClassifier,
 } from './classifier.js';
 export {
+  buildClassifier,
+  classifyText,
+  SEED_EXAMPLES,
+  type SeedExample,
+} from './classifier-seeds.js';
+export {
   type EmbeddingProvider,
   OllamaEmbeddingProvider,
   type OllamaEmbeddingProviderOptions,
