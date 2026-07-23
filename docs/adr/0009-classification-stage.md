@@ -68,9 +68,14 @@ a local embedding provider and an in-TypeScript cosine scan already exist.
 - Cold-start quality depends on the seed examples; the synthetic-to-real gap
   applies (METHODOLOGY.md) and is measured before any claims.
 
-## Amendment (proposed 2026-07-22): live-pipeline order and reconciliation
+## Amendment (2026-07-22): live-pipeline order and reconciliation
 
-Status: **proposed**, awaiting owner sign-off (issue #54).
+Status: **accepted 2026-07-22** on owner sign-off (issue #54). Owner comment:
+
+> makes sense. Let's go ahead with this
+
+The accepted reconciliation is option 1 below: on a confident disagreement,
+re-extract once under the classifier's type-specific schema (issue #57).
 
 Wiring the classifier into the live `outtray scan` pipeline (issue #30)
 surfaced two points the accepted text above does not settle.
