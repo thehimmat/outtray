@@ -1,3 +1,4 @@
+export { type Chunk, type ChunkOptions, chunkText } from './chunk.js';
 export {
   type EmbeddingProvider,
   OllamaEmbeddingProvider,
@@ -30,6 +31,15 @@ export {
   OllamaProvider,
   type OllamaProviderOptions,
 } from './ollama-provider.js';
+export {
+  type Citation,
+  type DocumentText,
+  type IndexedChunk,
+  indexDocuments,
+  type SourceRef,
+  search,
+  VectorIndex,
+} from './retrieval.js';
 export {
   type ScanItem,
   type ScanOptions,
