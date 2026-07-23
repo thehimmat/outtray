@@ -79,6 +79,29 @@ describe('RecordingProvider', () => {
     await expect(replayer.generate(req)).rejects.toThrow(/eval:record/);
   });
 
+  it('record-missing replays an existing recording without touching the inner provider', async () => {
+    await new RecordingProvider({
+      inner: new CountingProvider(result),
+      dir,
+      mode: 'record',
+    }).generate(req);
+
+    const inner = new CountingProvider(result);
+    const provider = new RecordingProvider({ inner, dir, mode: 'record-missing' });
+    expect(await provider.generate(req)).toEqual(result);
+    expect(inner.calls).toBe(0);
+  });
+
+  it('record-missing records a miss via the inner provider, then replays it', async () => {
+    const inner = new CountingProvider(result);
+    const provider = new RecordingProvider({ inner, dir, mode: 'record-missing' });
+    expect(await provider.generate(req)).toEqual(result);
+    expect(inner.calls).toBe(1);
+    expect(await readdir(dir)).toContain(`${contractKey(req)}.json`);
+    expect(await provider.generate(req)).toEqual(result);
+    expect(inner.calls).toBe(1); // second call replayed
+  });
+
   it('record mode requires an inner provider', async () => {
     const recorder = new RecordingProvider({ dir, mode: 'record' });
     await expect(recorder.generate(req)).rejects.toThrow(/inner provider/);

@@ -1,0 +1,36 @@
+{
+  "key": "03d824d72e586da420ccbc16fb51e343658d64dfd5da3f7da57d969193f8e32b",
+  "request": {
+    "model": "qwen3-vl:2b",
+    "promptChars": 274,
+    "imageCount": 1,
+    "hasFormat": true
+  },
+  "result": {
+    "json": {
+      "type": "bill",
+      "summary": "$453.00",
+      "action_items": [
+        {
+          "text": "Payment of $453.00 due on March 25, 2025",
+          "due_date": "2025-03-25"
+        }
+      ],
+      "payee": "Regional Gas Co",
+      "amount_due": "$453.00",
+      "due_date": "2025-03-25",
+      "late_fee": "$45.00"
+    },
+    "jsonChannel": "thinking",
+    "content": "",
+    "thinking": "{\"type\": \"bill\", \"summary\": \"$453.00\", \"action_items\": [{\"text\": \"Payment of $453.00 due on March 25, 2025\", \"due_date\": \"2025-03-25\"}],\"payee\": \"Regional Gas Co\", \"amount_due\": \"$453.00\", \"due_date\": \"2025-03-25\", \"late_fee\": \"$45.00\"}",
+    "doneReason": "stop",
+    "usage": {
+      "loadMs": 144,
+      "promptTokens": 3288,
+      "genTokens": 113,
+      "genTokPerSec": 43.91936404760859,
+      "totalMs": 57956
+    }
+  }
+}

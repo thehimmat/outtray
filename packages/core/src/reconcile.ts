@@ -11,6 +11,7 @@
  */
 
 import type { Classification } from './classifier.js';
+import type { ExtractResult } from './extract.js';
 import type { DocumentType } from './extraction-schema.js';
 
 /**
@@ -99,4 +100,24 @@ export function reconcileType(
     vlmType,
     classification,
   };
+}
+
+/**
+ * Upgrade a disputed reconciliation after its one typed re-extraction attempt
+ * (accepted ADR-0009 amendment). The correction rule lives here so the scan
+ * pipeline and the classification eval cannot drift apart.
+ *
+ * Returns a `corrected` reconciliation when `retry` validated as the disputed
+ * classification's type; returns `reconciliation` unchanged (same reference)
+ * for a non-disputed input or a retry that failed or came back off-type, so
+ * callers can detect the upgrade by identity. Pure, never throws.
+ */
+export function applyCorrection(
+  reconciliation: Reconciliation,
+  retry: ExtractResult,
+): Reconciliation {
+  const target = reconciliation.classification?.type;
+  if (reconciliation.status !== 'disputed' || !target) return reconciliation;
+  if (!retry.valid || retry.document?.type !== target) return reconciliation;
+  return { ...reconciliation, effectiveType: target, status: 'corrected', review: false };
 }
