@@ -8,13 +8,20 @@ When those conflict, favor the showcase.
 
 ## Current state
 
+- **ADR-0009 classification stage built and integrated**: on-device k-NN
+  classifier (seeded, k=3) lifts type accuracy 80% to 100% on the fixture set
+  (`docs/evals/classification-scoreboard.md`), and `outtray scan` is now
+  two-stage with per-item reconciliation verdicts (confirmed / disputed /
+  low-confidence / unclassified, review flags, graceful degradation).
+  **Blocked on two owner sign-offs**: #54 (ADR-0009 amendment: pipeline order
+  + reconciliation strategy; then #57 implements auto-re-extract on disputed
+  types) and #58 (ADR-0010: action layer v1, deterministic planner). Do not
+  build past either gate.
 - **Phase 2 complete**: retrieval plumbing (`EmbeddingProvider` +
   `OllamaEmbeddingProvider`, chunking, `VectorIndex` brute-force cosine per
   ADR-0005, cited `retrieve`/`search`), demoed via `outtray find <dir>
   "<query>"`. Q&A deferred; index persistence (#43) and the embedding-model ADR
-  deferred. **Next: the #30 classification stage** (local personalization,
-  proposed in ADR-0009 pending owner sign-off), to close the bill/statement gap;
-  the Tauri shell is Phase 3 (ADR-0001), not before.
+  deferred. The Tauri shell is Phase 3 (ADR-0001), not before.
 - **Phase 1 complete**: extraction core (`ModelProvider` + `OllamaProvider`
   around `qwen3-vl:2b`, ADR-0004 discriminated-union contract, `extract()` +
   `outtray scan`), eval harness (record/replay, scorers, 10-fixture synthetic
@@ -126,7 +133,7 @@ issue, containing:
 - TDD where outputs are verifiable: failing test first. Model-dependent
   tests use recorded fixtures only; CI never runs a model.
 - Every public function in core documents its failure modes in its docstring.
-- ADR for every consequential decision (next number: 0009). CHANGELOG (Keep a
+- ADR for every consequential decision (next number: 0011). CHANGELOG (Keep a
   Changelog) updated with user-visible changes.
 - Style: no em dashes, no emojis anywhere (docs, UI, commit messages). UI
   icons come from an icon library, never emoji. Never mention Claude in
