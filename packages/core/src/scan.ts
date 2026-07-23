@@ -31,6 +31,7 @@ import { type ExtractResult, extract } from './extract.js';
 import { extractionText } from './extraction-text.js';
 import type { ModelProvider } from './model-provider.js';
 import {
+  applyCorrection,
   CLASSIFIER_K,
   CONFIDENCE_THRESHOLD,
   type Reconciliation,
@@ -170,15 +171,10 @@ export async function scanDirectory(
           type: target,
           ...(options.model ? { model: options.model } : {}),
         });
-        if (retry.valid && retry.document?.type === target) {
+        const upgraded = applyCorrection(item.reconciliation, retry);
+        if (upgraded !== item.reconciliation) {
           item.result = retry;
-          item.reconciliation = {
-            effectiveType: target,
-            status: 'corrected',
-            review: false,
-            vlmType: item.reconciliation.vlmType,
-            classification: item.reconciliation.classification,
-          };
+          item.reconciliation = upgraded;
         }
       } catch {
         // Leave the item disputed; its review flag already routes it to a human.

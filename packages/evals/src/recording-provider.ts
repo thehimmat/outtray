@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import type { GenerateRequest, GenerateResult, ModelProvider } from '@outtray/core';
 import { contractKey } from './contract.js';
 
-export type RecordMode = 'record' | 'replay';
+export type RecordMode = 'record' | 'replay' | 'record-missing';
 
 /** Thrown in replay mode when no committed recording matches a request's contract key. */
 export class StaleRecordingError extends Error {
@@ -29,9 +29,13 @@ export class StaleRecordingError extends Error {
 export interface RecordingProviderOptions {
   /** Directory of `<key>.json` recordings. */
   dir: string;
-  /** `record` calls `inner` and writes; `replay` reads only. */
+  /**
+   * `record` calls `inner` and writes every response; `replay` reads only;
+   * `record-missing` replays existing recordings and records only misses via
+   * `inner` (for extending the recorded set without re-running everything).
+   */
   mode: RecordMode;
-  /** The real provider to record from. Required in `record` mode, ignored in `replay`. */
+  /** The real provider to record from. Required unless mode is `replay`. */
   inner?: ModelProvider;
 }
 
@@ -62,26 +66,27 @@ export class RecordingProvider implements ModelProvider {
 
   /**
    * Failure modes: in `replay`, throws `StaleRecordingError` when no recording
-   * matches the request. In `record`, throws if no inner provider was given, or
-   * rejects if the inner provider does. Never falls back to a live call in
-   * replay mode: a missing recording must fail CI, not silently hit a model.
+   * matches the request. In `record` (and on a `record-missing` miss), throws
+   * if no inner provider was given, or rejects if the inner provider does.
+   * Never falls back to a live call in replay mode: a missing recording must
+   * fail CI, not silently hit a model.
    */
   async generate(req: GenerateRequest): Promise<GenerateResult> {
     const key = contractKey(req);
     const file = join(this.#dir, `${key}.json`);
 
-    if (this.#mode === 'replay') {
-      let raw: string;
+    if (this.#mode !== 'record') {
+      let raw: string | null = null;
       try {
         raw = await readFile(file, 'utf8');
       } catch {
-        throw new StaleRecordingError(key);
+        if (this.#mode === 'replay') throw new StaleRecordingError(key);
       }
-      return (JSON.parse(raw) as Recording).result;
+      if (raw !== null) return (JSON.parse(raw) as Recording).result;
     }
 
     if (!this.#inner) {
-      throw new Error("RecordingProvider 'record' mode requires an inner provider.");
+      throw new Error(`RecordingProvider '${this.#mode}' mode requires an inner provider.`);
     }
     const result = await this.#inner.generate(req);
     const recording: Recording = {

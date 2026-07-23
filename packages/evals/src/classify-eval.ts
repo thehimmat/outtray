@@ -1,16 +1,19 @@
 /**
  * Classification eval: does the ADR-0009 classifier improve on the VLM's
- * document-type labels? (METHODOLOGY.md, issue #37.)
+ * document-type labels, and does the reconciled pipeline close the gap
+ * end to end? (METHODOLOGY.md, issue #37.)
  *
- * For each fixture it replays the VLM extraction, turns it into text, and runs
- * the seed classifier over that text, then compares both the VLM's type and the
- * classifier's type against the ground-truth label. The model provider is
- * injected (replay in CI, live on dev); the embedder is injected too. This
- * measures whether the cheap on-device classifier corrects the VLM's
- * bill/statement confusion.
+ * For each fixture it replays the VLM extraction, turns it into text, runs the
+ * seed classifier over that text, then routes the pair through the same
+ * `reconcileType`/`applyCorrection` the scan pipeline uses, including the one
+ * typed re-extraction on a confident disagreement. Three labels are compared
+ * against ground truth: the VLM's, the classifier's, and the reconciled
+ * effective type. The model provider is injected (replay or record-missing on
+ * dev, replay in CI once #52 lands); the embedder is injected too.
  */
 
 import {
+  applyCorrection,
   buildClassifier,
   CLASSIFIER_K,
   classifyText,
@@ -18,6 +21,7 @@ import {
   extract,
   extractionText,
   type ModelProvider,
+  reconcileType,
 } from '@outtray/core';
 import { loadFixture, loadManifest } from './fixtures/load.js';
 
@@ -28,6 +32,10 @@ export interface ClassifyRow {
   vlm: string;
   classifier: string;
   confidence: number | null;
+  /** The pipeline's effective type after reconciliation and any correction. */
+  reconciled: string;
+  /** The reconciliation status the pipeline would report. */
+  status: string;
 }
 
 /** Correct-count out of total for a labeller. */
@@ -36,12 +44,13 @@ export interface Accuracy {
   n: number;
 }
 
-/** Classification accuracy for the VLM and the classifier, overall and per type. */
+/** Classification accuracy for all three labellers, overall and per type. */
 export interface ClassifyReport {
   rows: ClassifyRow[];
   vlm: Accuracy;
   classifier: Accuracy;
-  perType: Array<{ type: string; vlm: Accuracy; classifier: Accuracy }>;
+  reconciled: Accuracy;
+  perType: Array<{ type: string; vlm: Accuracy; classifier: Accuracy; reconciled: Accuracy }>;
 }
 
 /**
@@ -69,42 +78,60 @@ export async function classifyEval(
     const classification = text
       ? await classifyText(classifier, embedder, text, CLASSIFIER_K)
       : null;
+
+    let reconciliation = reconcileType(doc ? doc.type : null, classification);
+    if (reconciliation.status === 'disputed' && reconciliation.classification) {
+      const retry = await extract(model, {
+        images: [fixture.imageBase64],
+        model: options.model,
+        type: reconciliation.classification.type,
+      });
+      reconciliation = applyCorrection(reconciliation, retry);
+    }
+
     rows.push({
       id: fixture.id,
       label: fixture.labels.type,
       vlm,
       classifier: classification ? classification.type : 'none',
       confidence: classification ? classification.confidence : null,
+      reconciled: reconciliation.effectiveType,
+      status: reconciliation.status,
     });
   }
 
   return tallyClassification(rows);
 }
 
-/** Reduce classification rows to per-type and overall accuracy for both labellers. Pure. */
+/** Reduce classification rows to per-type and overall accuracy for all labellers. Pure. */
 export function tallyClassification(rows: ClassifyRow[]): ClassifyReport {
-  const byType = new Map<string, { vlm: Accuracy; classifier: Accuracy }>();
-  const overall = { vlm: { k: 0, n: 0 }, classifier: { k: 0, n: 0 } };
+  const blank = () => ({
+    vlm: { k: 0, n: 0 },
+    classifier: { k: 0, n: 0 },
+    reconciled: { k: 0, n: 0 },
+  });
+  const byType = new Map<string, ReturnType<typeof blank>>();
+  const overall = blank();
   for (const row of rows) {
-    const acc = byType.get(row.label) ?? { vlm: { k: 0, n: 0 }, classifier: { k: 0, n: 0 } };
-    acc.vlm.n += 1;
-    acc.classifier.n += 1;
-    overall.vlm.n += 1;
-    overall.classifier.n += 1;
-    if (row.vlm === row.label) {
-      acc.vlm.k += 1;
-      overall.vlm.k += 1;
-    }
-    if (row.classifier === row.label) {
-      acc.classifier.k += 1;
-      overall.classifier.k += 1;
+    const acc = byType.get(row.label) ?? blank();
+    for (const [labeller, value] of [
+      ['vlm', row.vlm],
+      ['classifier', row.classifier],
+      ['reconciled', row.reconciled],
+    ] as const) {
+      acc[labeller].n += 1;
+      overall[labeller].n += 1;
+      if (value === row.label) {
+        acc[labeller].k += 1;
+        overall[labeller].k += 1;
+      }
     }
     byType.set(row.label, acc);
   }
 
   const perType = [...byType.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([type, acc]) => ({ type, vlm: acc.vlm, classifier: acc.classifier }));
+    .map(([type, acc]) => ({ type, ...acc }));
 
-  return { rows, vlm: overall.vlm, classifier: overall.classifier, perType };
+  return { rows, ...overall, perType };
 }

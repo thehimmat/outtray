@@ -52,6 +52,7 @@ export {
   type OllamaProviderOptions,
 } from './ollama-provider.js';
 export {
+  applyCorrection,
   CLASSIFIER_K,
   CONFIDENCE_THRESHOLD,
   type Reconciliation,
