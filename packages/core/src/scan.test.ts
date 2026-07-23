@@ -2,6 +2,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { TypeClassifier } from './classifier.js';
+import type { EmbeddingProvider } from './embedding-provider.js';
 import type { GenerateRequest, GenerateResult, ModelProvider } from './model-provider.js';
 import { scanDirectory } from './scan.js';
 
@@ -16,6 +18,41 @@ const BILL = {
   due_date: null,
   late_fee: null,
 };
+
+const STATEMENT = {
+  type: 'statement',
+  summary: 'monthly statement',
+  action_items: [],
+  institution: 'i',
+  account_number: 'a',
+  period_start: null,
+  period_end: null,
+  balance: null,
+};
+
+/** Embeds every text to the same fixed vector; axes are bill=[1,0,0], statement=[0,1,0]. */
+class FakeEmbedder implements EmbeddingProvider {
+  readonly name = 'fake-embed';
+  constructor(private readonly vector: number[]) {}
+  async embed(texts: string[]): Promise<number[][]> {
+    return texts.map(() => [...this.vector]);
+  }
+}
+
+class FailingEmbedder implements EmbeddingProvider {
+  readonly name = 'failing-embed';
+  async embed(_texts: string[]): Promise<number[][]> {
+    throw new Error('embedder unreachable');
+  }
+}
+
+/** Two labeled axes, so a doc vector picks its winner by direction. */
+function axisClassifier(): TypeClassifier {
+  return new TypeClassifier([
+    { type: 'bill', embedding: [1, 0, 0] },
+    { type: 'statement', embedding: [0, 1, 0] },
+  ]);
+}
 
 class FakeProvider implements ModelProvider {
   readonly name = 'fake';
@@ -74,5 +111,77 @@ describe('scanDirectory', () => {
     expect(report.scanned).toEqual([]);
     expect(report.skipped).toEqual(['readme.md']);
     expect(report.items).toEqual([]);
+  });
+
+  it('marks items unclassified when no classify stage is configured', async () => {
+    await writeFile(join(dir, 'doc.png'), Buffer.from([0x89]));
+    const report = await scanDirectory(new FakeProvider(BILL), dir);
+    const item = report.items[0];
+    expect(item?.reconciliation.status).toBe('unclassified');
+    expect(item?.reconciliation.effectiveType).toBe('bill');
+    expect(item?.reconciliation.review).toBe(false);
+    expect(report.classifierError).toBeNull();
+  });
+
+  it('confirms the VLM label when the classifier agrees', async () => {
+    await writeFile(join(dir, 'doc.png'), Buffer.from([0x89]));
+    const report = await scanDirectory(new FakeProvider(BILL), dir, {
+      classify: { embedder: new FakeEmbedder([1, 0, 0]), classifier: axisClassifier() },
+    });
+    const r = report.items[0]?.reconciliation;
+    expect(r?.status).toBe('confirmed');
+    expect(r?.effectiveType).toBe('bill');
+    expect(r?.review).toBe(false);
+    expect(r?.classification?.type).toBe('bill');
+    expect(report.classifierError).toBeNull();
+  });
+
+  it('disputes a confident disagreement and flags it for review', async () => {
+    await writeFile(join(dir, 'doc.png'), Buffer.from([0x89]));
+    const report = await scanDirectory(new FakeProvider(STATEMENT), dir, {
+      classify: { embedder: new FakeEmbedder([1, 0, 0]), classifier: axisClassifier() },
+    });
+    const r = report.items[0]?.reconciliation;
+    expect(r?.status).toBe('disputed');
+    expect(r?.effectiveType).toBe('statement');
+    expect(r?.review).toBe(true);
+    expect(r?.classification?.type).toBe('bill');
+  });
+
+  it('routes a low-confidence disagreement to unknown and review', async () => {
+    await writeFile(join(dir, 'doc.png'), Buffer.from([0x89]));
+    // cos(bill)=0.751, cos(statement)=0.661: bill wins with share 0.53, under 0.6.
+    const report = await scanDirectory(new FakeProvider(STATEMENT), dir, {
+      classify: { embedder: new FakeEmbedder([0.75, 0.66, 0]), classifier: axisClassifier() },
+    });
+    const r = report.items[0]?.reconciliation;
+    expect(r?.status).toBe('low_confidence');
+    expect(r?.effectiveType).toBe('unknown');
+    expect(r?.review).toBe(true);
+  });
+
+  it('degrades to single-stage labels when the embedder fails, without rejecting', async () => {
+    await writeFile(join(dir, 'doc.png'), Buffer.from([0x89]));
+    const report = await scanDirectory(new FakeProvider(BILL), dir, {
+      classify: { embedder: new FailingEmbedder(), classifier: axisClassifier() },
+    });
+    expect(report.classifierError).toContain('embedder unreachable');
+    const r = report.items[0]?.reconciliation;
+    expect(r?.status).toBe('unclassified');
+    expect(r?.effectiveType).toBe('bill');
+  });
+
+  it('routes invalid extractions to unknown and review, and does not classify them', async () => {
+    await writeFile(join(dir, 'doc.png'), Buffer.from([0x89]));
+    const provider = new FakeProvider({ type: 'bill' }); // missing required fields
+    const report = await scanDirectory(provider, dir, {
+      classify: { embedder: new FailingEmbedder(), classifier: axisClassifier() },
+    });
+    const r = report.items[0]?.reconciliation;
+    expect(r?.status).toBe('unclassified');
+    expect(r?.effectiveType).toBe('unknown');
+    expect(r?.review).toBe(true);
+    // The only document is invalid, so the failing embedder is never asked to embed.
+    expect(report.classifierError).toBeNull();
   });
 });

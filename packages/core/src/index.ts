@@ -30,8 +30,8 @@ export {
   documentJsonSchema,
   validateExtraction,
 } from './extraction-schema.js';
+export { extractionText } from './extraction-text.js';
 export {
-  extractionText,
   type FindOptions,
   type FindResult,
   findInDirectory,
@@ -49,6 +49,13 @@ export {
   type OllamaProviderOptions,
 } from './ollama-provider.js';
 export {
+  CLASSIFIER_K,
+  CONFIDENCE_THRESHOLD,
+  type Reconciliation,
+  type ReconciliationStatus,
+  reconcileType,
+} from './reconcile.js';
+export {
   type Citation,
   type DocumentText,
   type IndexedChunk,
@@ -58,6 +65,7 @@ export {
   VectorIndex,
 } from './retrieval.js';
 export {
+  type ClassifyStageOptions,
   type ScanItem,
   type ScanOptions,
   type ScanReport,

@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Two-stage `outtray scan` (ADR-0009): after extraction, the on-device k-NN
+  classifier votes on each document's type from its extraction text and the
+  report carries a reconciliation verdict per item. Agreement is confirmed
+  with its confidence; a confident disagreement is flagged "needs review"
+  (auto-correction awaits the ADR-0009 amendment sign-off, issue #54); a
+  low-confidence disagreement renders as `unknown` for human review; and an
+  unavailable embedder degrades scan to single-stage VLM labels with a
+  notice, never a failure.
+
 - Phase 2 retrieval plumbing: an `EmbeddingProvider` seam with a local
   `OllamaEmbeddingProvider`, document chunking, and a `VectorIndex` that ranks
   chunks by in-TypeScript brute-force cosine (ADR-0005) and returns cited
