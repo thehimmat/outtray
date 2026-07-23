@@ -67,3 +67,89 @@ a local embedding provider and an in-TypeScript cosine scan already exist.
   ADR-0005 (reused retrieval infra), and ADR-0008 (corrections as labels).
 - Cold-start quality depends on the seed examples; the synthetic-to-real gap
   applies (METHODOLOGY.md) and is measured before any claims.
+
+## Amendment (proposed 2026-07-22): live-pipeline order and reconciliation
+
+Status: **proposed**, awaiting owner sign-off (issue #54).
+
+Wiring the classifier into the live `outtray scan` pipeline (issue #30)
+surfaced two points the accepted text above does not settle.
+
+### 1. The pipeline order is inverted until an OCR arm exists
+
+The accepted decision says the classifier "runs first and routes each document
+to its type-specific extraction schema". That presumes document text to embed
+before the VLM runs. No such text exists yet: the OCR arm (Apple Vision
+sidecar, issue #8) is unbuilt, so the only text source is the VLM extraction
+itself.
+
+The live pipeline therefore runs, per scanned folder:
+
+1. VLM extracts every document (one model resident, ADR-0002).
+2. The embedder loads once, embeds each document's extraction text plus the
+   classifier seeds, and the k-NN classifier labels each document.
+3. Each document's VLM type and classifier type are reconciled (below).
+
+Stages are batched by model, not interleaved per document, so the VLM and the
+embedder are never resident together and the runtime swaps models twice per
+scan, not twice per document. The classifier is a verifier today; it becomes
+the router the accepted text describes once OCR text is available before
+extraction.
+
+### 2. Reconciliation when the labels disagree
+
+Measured basis (dev run, replayed `qwen3-vl:2b` + live `nomic-embed-text`,
+N=10 fixtures, seeds only): with k=3 neighbors, every correct classification
+scores confidence 0.67-0.73, including both bill fixtures the VLM mislabels
+as `statement`. With k=5 the winning share never exceeds 0.49, because only 2
+seeds per type exist and the vote share is capped by seed count. So the
+classifier runs at **k=3** with a **0.6 confidence threshold**, both
+provisional: N is small, no misclassification has been observed yet to
+calibrate the low side, and both constants are re-measured by the
+classification scoreboard as fixtures and user corrections grow.
+
+The proposed routing:
+
+| Classifier vs VLM | Confidence | Outcome |
+| --- | --- | --- |
+| agrees | any | type confirmed, no review needed |
+| disagrees | >= 0.6 | prefer the classifier: re-extract once (the decision below) |
+| disagrees | < 0.6 | effective type `unknown`, routed to human review (ADR-0008) |
+| classifier unavailable | - | single-stage VLM label, degradation noted in the report |
+
+### Options considered for the confident-disagreement branch
+
+1. **Re-extract once under the classifier's type-specific schema
+   (recommended).** The document goes back to the VLM with the constrained
+   `format` narrowed to the winning type's branch of the ADR-0004 union and a
+   prompt that names the type. Pros: the corrected document is contract-valid
+   with the right fields, so a bill mislabeled `statement` gains its
+   `amount_due` and `due_date`, which is what the action layer actually needs.
+   The cost lands only on disputed documents (2 of 10 fixtures today, ~3 s
+   each on the 8 GB Air). Cons: a second prompt variant enters the
+   record/replay contract and must be recorded; scan latency grows on
+   disputed documents. Guards: exactly one re-extraction, never a loop; if
+   the re-extraction fails validation, the item routes to human review with
+   both labels shown.
+2. **Relabel without re-extracting.** Pros: free. Cons: the extraction
+   contract is a discriminated union, so the old fields do not match the new
+   type; a statement-shaped extraction relabeled `bill` still has no amount
+   due or due date. The action list gains nothing, which defeats the purpose.
+   Strictly worse than routing to review.
+3. **Flag for human review, never auto-correct.** Pros: simplest, zero model
+   cost, safe under ADR-0008. Cons: the user does the correcting by hand, and
+   the measured 80% to 100% classification win stays theoretical. This is the
+   interim behavior of the wiring PR, so signing off option 1 upgrades one
+   branch of the routing rather than reworking the pipeline.
+
+### Consequences of the amendment
+
+- A second prompt version (typed re-extraction) joins the record/replay
+  contract; the classification scoreboard gains a reconciled-type column so
+  the end-to-end win is measured, not asserted (issue #52 covers CI replay).
+- Scan output grows a reconciliation verdict per document (confirmed,
+  disputed, low-confidence, unclassified) that the action layer (ADR-0010)
+  consumes as its trust signal.
+- When the OCR arm lands, the order question reopens: classify-first becomes
+  possible and cheaper, and this amendment's inverted order becomes the
+  fallback path for image-only flows.
