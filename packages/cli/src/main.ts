@@ -43,6 +43,8 @@ function typeTag(doc: { type: string }, reconciliation: ScanItem['reconciliation
   switch (reconciliation.status) {
     case 'confirmed':
       return `${doc.type}, confirmed ${c?.confidence.toFixed(2)}`;
+    case 'corrected':
+      return `${doc.type}, corrected from ${reconciliation.vlmType} ${c?.confidence.toFixed(2)}`;
     case 'disputed':
       return `${doc.type}, classifier says ${c?.type} ${c?.confidence.toFixed(2)}, needs review`;
     case 'low_confidence':

@@ -12,8 +12,11 @@
  * embedder loads once, embeds every valid document's extraction text, and the
  * ADR-0009 k-NN classifier votes on each type. Stages are batched by model,
  * not interleaved per document, so the VLM and the embedder are never resident
- * together. Each item then carries a `Reconciliation` verdict; disagreements
- * are flagged for human review, never silently corrected (pending issue #54).
+ * together. Each item then carries a `Reconciliation` verdict. Per the
+ * accepted ADR-0009 amendment, a third stage re-extracts each disputed
+ * document exactly once under the classifier's type-specific schema and
+ * upgrades it to `corrected` when the result validates as that type; anything
+ * else stays `disputed` for human review.
  *
  * Phase 1 handles image files only; PDF rendering and the OCR cross-arm land
  * later. Non-image files are reported as skipped, not errors.
@@ -93,7 +96,9 @@ export interface ScanOptions {
  * unreadable document does not abort the batch's report shape. The
  * classification stage never rejects: if the embedder or classifier fails,
  * items keep their single-stage VLM labels (`status: 'unclassified'`) and
- * `classifierError` records the reason.
+ * `classifierError` records the reason. A failed typed re-extraction (provider
+ * error, invalid output, or a type other than the target) leaves the item
+ * `disputed` with its original extraction and review flag intact.
  */
 export async function scanDirectory(
   provider: ModelProvider,
@@ -148,6 +153,35 @@ export async function scanDirectory(
         });
       } catch (error) {
         classifierError = error instanceof Error ? error.message : String(error);
+      }
+    }
+
+    // Third stage (accepted ADR-0009 amendment): one typed re-extraction per
+    // disputed item, upgrading to `corrected` only when the result validates
+    // as the classifier's type.
+    for (const item of items) {
+      if (item.reconciliation.status !== 'disputed') continue;
+      const target = item.reconciliation.classification?.type;
+      if (!target) continue;
+      try {
+        const bytes = await readFile(join(dir, item.file));
+        const retry = await extract(provider, {
+          images: [bytes.toString('base64')],
+          type: target,
+          ...(options.model ? { model: options.model } : {}),
+        });
+        if (retry.valid && retry.document?.type === target) {
+          item.result = retry;
+          item.reconciliation = {
+            effectiveType: target,
+            status: 'corrected',
+            review: false,
+            vlmType: item.reconciliation.vlmType,
+            classification: item.reconciliation.classification,
+          };
+        }
+      } catch {
+        // Leave the item disputed; its review flag already routes it to a human.
       }
     }
   }
