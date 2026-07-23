@@ -9,24 +9,15 @@
  * back to the thinking channel (issue #19).
  */
 
+import { assertLoopback } from './loopback.js';
 import type { GenerateRequest, GenerateResult, ModelProvider } from './model-provider.js';
 
-/** Hostnames Ollama is allowed to live on: loopback only (THREAT_MODEL.md). */
-const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
+// Re-exported for API stability; the guard now lives in loopback.ts, shared
+// with the embedding provider.
+export { NonLoopbackHostError } from './loopback.js';
 
 const DEFAULT_HOST = 'http://127.0.0.1:11434';
 const DEFAULT_MODEL = 'qwen3-vl:2b';
-
-/** Thrown when a provider is pointed at a non-loopback endpoint. */
-export class NonLoopbackHostError extends Error {
-  constructor(host: string) {
-    super(
-      `OllamaProvider refuses a non-loopback host: ${host}. Documents must never ` +
-        'leave the machine before the Phase 5 opt-in (ADR-0003, THREAT_MODEL.md).',
-    );
-    this.name = 'NonLoopbackHostError';
-  }
-}
 
 export interface OllamaProviderOptions {
   /** Base URL of the Ollama server. Must be loopback. Defaults to `http://127.0.0.1:11434`. */
@@ -161,18 +152,6 @@ function recoverJson(
     }
   }
   return { json: null, jsonChannel: null };
-}
-
-function assertLoopback(host: string): void {
-  let hostname: string;
-  try {
-    hostname = new URL(host).hostname;
-  } catch {
-    throw new NonLoopbackHostError(host);
-  }
-  if (!LOOPBACK_HOSTS.has(hostname)) {
-    throw new NonLoopbackHostError(host);
-  }
 }
 
 function nsToMs(ns: number | undefined): number {
