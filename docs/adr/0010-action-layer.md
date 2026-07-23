@@ -1,6 +1,11 @@
 # ADR-0010: Action layer v1, deterministic planning over typed extractions
 
-Status: **proposed**, awaiting owner sign-off (issue #58).
+Status: **accepted 2026-07-22** on owner sign-off (issue #58). Owner comment:
+
+> option 1 sounds like the right direction. go ahead
+
+The accepted design is option 1 below: a deterministic rule-based planner in
+core, no model call in the planning step.
 
 ## Context
 
