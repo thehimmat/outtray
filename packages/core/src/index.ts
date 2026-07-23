@@ -19,6 +19,12 @@ export {
   documentJsonSchema,
   validateExtraction,
 } from './extraction-schema.js';
+export {
+  extractionText,
+  type FindOptions,
+  type FindResult,
+  findInDirectory,
+} from './find.js';
 export type {
   GenerateOptions,
   GenerateRequest,
