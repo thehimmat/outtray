@@ -19,6 +19,7 @@ import {
   findInDirectory,
   OllamaEmbeddingProvider,
   OllamaProvider,
+  type ScanItem,
   type ScanReport,
   scanDirectory,
 } from '@outtray/core';
@@ -36,19 +37,34 @@ Usage:
   outtray --help              Show this help
 `;
 
+/** The bracketed type tag for one valid item, reflecting its reconciliation (ADR-0009). */
+function typeTag(doc: { type: string }, reconciliation: ScanItem['reconciliation']): string {
+  const c = reconciliation.classification;
+  switch (reconciliation.status) {
+    case 'confirmed':
+      return `${doc.type}, confirmed ${c?.confidence.toFixed(2)}`;
+    case 'disputed':
+      return `${doc.type}, classifier says ${c?.type} ${c?.confidence.toFixed(2)}, needs review`;
+    case 'low_confidence':
+      return `unknown, type unclear (vlm ${doc.type} vs classifier ${c?.type} ${c?.confidence.toFixed(2)}), needs review`;
+    case 'unclassified':
+      return doc.type;
+  }
+}
+
 /** Render a scan report as plain text for the terminal. Pure, so it is unit-tested. */
 export function formatReport(dir: string, report: ScanReport): string {
   const lines: string[] = [
     `Scanned ${dir}: ${report.scanned.length} document(s), ${report.skipped.length} skipped.`,
     '',
   ];
-  for (const { file, result } of report.items) {
+  for (const { file, result, reconciliation } of report.items) {
     if (!result.valid || !result.document) {
       lines.push(`${file}  [could not extract: ${result.error ?? 'unknown error'}]`, '');
       continue;
     }
     const doc = result.document;
-    lines.push(`${file}  [${doc.type}]`, `  ${doc.summary}`);
+    lines.push(`${file}  [${typeTag(doc, reconciliation)}]`, `  ${doc.summary}`);
     if (doc.action_items.length > 0) {
       lines.push('  Actions:');
       for (const item of doc.action_items) {
@@ -56,6 +72,14 @@ export function formatReport(dir: string, report: ScanReport): string {
       }
     }
     lines.push('');
+  }
+  if (report.classifierError !== null) {
+    lines.push(
+      `Classifier unavailable (${report.classifierError}); types are single-stage VLM labels.`,
+    );
+  } else if (report.items.some((i) => i.reconciliation.status !== 'unclassified')) {
+    const flagged = report.items.filter((i) => i.reconciliation.review).length;
+    lines.push(`Review: ${flagged} of ${report.items.length} item(s) flagged.`);
   }
   if (report.skipped.length > 0) {
     lines.push(`Skipped: ${report.skipped.join(', ')}`);
@@ -138,7 +162,9 @@ async function runScan(args: readonly string[]): Promise<number> {
 
   let report: ScanReport;
   try {
-    report = await scanDirectory(new OllamaProvider(), dir);
+    report = await scanDirectory(new OllamaProvider(), dir, {
+      classify: { embedder: new OllamaEmbeddingProvider({ model: EMBED_MODEL }) },
+    });
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     process.stderr.write(
@@ -148,6 +174,9 @@ async function runScan(args: readonly string[]): Promise<number> {
   }
 
   process.stdout.write(formatReport(dir, report));
+  if (report.classifierError !== null) {
+    process.stderr.write(`Hint: the classifier needs ${EMBED_MODEL} pulled in Ollama.\n`);
+  }
   return 0;
 }
 

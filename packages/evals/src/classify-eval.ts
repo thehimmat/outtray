@@ -12,6 +12,7 @@
 
 import {
   buildClassifier,
+  CLASSIFIER_K,
   classifyText,
   type EmbeddingProvider,
   extract,
@@ -65,7 +66,9 @@ export async function classifyEval(
     const doc = result.document;
     const vlm = doc ? doc.type : 'invalid';
     const text = doc ? extractionText(doc) : '';
-    const classification = text ? await classifyText(classifier, embedder, text, 5) : null;
+    const classification = text
+      ? await classifyText(classifier, embedder, text, CLASSIFIER_K)
+      : null;
     rows.push({
       id: fixture.id,
       label: fixture.labels.type,

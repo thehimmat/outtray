@@ -12,22 +12,10 @@
 
 import type { ChunkOptions } from './chunk.js';
 import type { EmbeddingProvider } from './embedding-provider.js';
-import type { DocumentExtraction } from './extraction-schema.js';
+import { extractionText } from './extraction-text.js';
 import type { ModelProvider } from './model-provider.js';
 import { type Citation, type DocumentText, indexDocuments, search } from './retrieval.js';
 import { type ScanOptions, type ScanReport, scanDirectory } from './scan.js';
-
-/** Flatten a structured extraction into text for retrieval. */
-export function extractionText(doc: DocumentExtraction): string {
-  const parts: string[] = [doc.summary];
-  for (const item of doc.action_items) parts.push(item.text);
-  for (const [key, value] of Object.entries(doc)) {
-    if (key !== 'type' && key !== 'summary' && typeof value === 'string') {
-      parts.push(`${key}: ${value}`);
-    }
-  }
-  return parts.filter((p) => p.trim() !== '').join('. ');
-}
 
 export interface FindOptions {
   /** Model tag for extraction (passed through to the scan). */
