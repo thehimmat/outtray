@@ -15,10 +15,12 @@
 import { stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
+  type ActionQueue,
   type FindResult,
   findInDirectory,
   OllamaEmbeddingProvider,
   OllamaProvider,
+  planActions,
   type ScanItem,
   type ScanReport,
   scanDirectory,
@@ -31,7 +33,8 @@ const EMBED_MODEL = 'nomic-embed-text';
 const USAGE = `outtray: point it at the pile, get an action list.
 
 Usage:
-  outtray scan <dir>          Extract an action list from a folder of document images
+  outtray scan <dir>          Extract every document in a folder of images
+  outtray actions <dir>       Scan, then propose an action queue with citations
   outtray find <dir> <query>  Retrieve the passages most relevant to a query, with citations
   outtray --version           Print version
   outtray --help              Show this help
@@ -86,6 +89,43 @@ export function formatReport(dir: string, report: ScanReport): string {
   if (report.skipped.length > 0) {
     lines.push(`Skipped: ${report.skipped.join(', ')}`);
   }
+  return `${lines.join('\n').trimEnd()}\n`;
+}
+
+const KIND_HEADINGS: Array<[string, string]> = [
+  ['attention_flag', 'Attention'],
+  ['todo', 'To do'],
+  ['expiry_alert', 'Expiring'],
+  ['retention_advice', 'Retention advice'],
+];
+
+/** Render the proposed action queue as plain text. Pure, so it is unit-tested. */
+export function formatActions(dir: string, queue: ActionQueue): string {
+  const lines: string[] = [`Proposed actions for ${dir}: ${queue.items.length} item(s).`];
+  lines.push(
+    `${queue.flagged} item(s) flagged for attention, ${queue.needsReview} not yet reviewed by you.`,
+    '',
+  );
+  if (queue.items.length === 0) {
+    lines.push('Nothing to propose; no documents were readable.');
+    return `${lines.join('\n')}\n`;
+  }
+  for (const [kind, heading] of KIND_HEADINGS) {
+    const items = queue.items.filter((i) => i.kind === kind);
+    if (items.length === 0) continue;
+    lines.push(`${heading}:`);
+    for (const item of items) {
+      const advice = item.advice ? `${item.advice}: ` : '';
+      const date = item.date ? ` (${item.date})` : '';
+      const review = item.needsReviewFirst ? '  [review first]' : '';
+      lines.push(`  - ${advice}${item.title}${date}${review}`);
+      for (const c of item.citations) {
+        lines.push(`      source: ${c.documentId}: "${c.snippet}"`);
+      }
+    }
+    lines.push('');
+  }
+  lines.push(queue.disclaimer);
   return `${lines.join('\n').trimEnd()}\n`;
 }
 
@@ -146,27 +186,35 @@ async function runFind(args: readonly string[]): Promise<number> {
   return 0;
 }
 
+/** Validate the directory argument shared by scan and actions; null when usable. */
+async function directoryError(command: string, dir: string | undefined): Promise<string | null> {
+  if (!dir) return `${command} needs a directory: outtray ${command} <dir>`;
+  try {
+    if (!(await stat(dir)).isDirectory()) return `Not a directory: ${dir}`;
+  } catch {
+    return `Cannot read directory: ${dir}`;
+  }
+  return null;
+}
+
+/** Run the two-stage scan shared by `scan` and `actions`. */
+async function scanWithClassifier(dir: string): Promise<ScanReport> {
+  return scanDirectory(new OllamaProvider(), dir, {
+    classify: { embedder: new OllamaEmbeddingProvider({ model: EMBED_MODEL }) },
+  });
+}
+
 async function runScan(args: readonly string[]): Promise<number> {
   const dir = args[0];
-  if (!dir) {
-    process.stderr.write('scan needs a directory: outtray scan <dir>\n');
-    return 1;
-  }
-  try {
-    if (!(await stat(dir)).isDirectory()) {
-      process.stderr.write(`Not a directory: ${dir}\n`);
-      return 1;
-    }
-  } catch {
-    process.stderr.write(`Cannot read directory: ${dir}\n`);
+  const argError = await directoryError('scan', dir);
+  if (argError !== null || !dir) {
+    process.stderr.write(`${argError}\n`);
     return 1;
   }
 
   let report: ScanReport;
   try {
-    report = await scanDirectory(new OllamaProvider(), dir, {
-      classify: { embedder: new OllamaEmbeddingProvider({ model: EMBED_MODEL }) },
-    });
+    report = await scanWithClassifier(dir);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     process.stderr.write(
@@ -178,6 +226,35 @@ async function runScan(args: readonly string[]): Promise<number> {
   process.stdout.write(formatReport(dir, report));
   if (report.classifierError !== null) {
     process.stderr.write(`Hint: the classifier needs ${EMBED_MODEL} pulled in Ollama.\n`);
+  }
+  return 0;
+}
+
+async function runActions(args: readonly string[]): Promise<number> {
+  const dir = args[0];
+  const argError = await directoryError('actions', dir);
+  if (argError !== null || !dir) {
+    process.stderr.write(`${argError}\n`);
+    return 1;
+  }
+
+  let report: ScanReport;
+  try {
+    report = await scanWithClassifier(dir);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    process.stderr.write(
+      `actions failed: ${detail}\nIs Ollama running (ollama serve) with qwen3-vl:2b pulled?\n`,
+    );
+    return 1;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  process.stdout.write(formatActions(dir, planActions(report, { today })));
+  if (report.classifierError !== null) {
+    process.stderr.write(
+      `Classifier unavailable (${report.classifierError}); type verdicts are single-stage.\n`,
+    );
   }
   return 0;
 }
@@ -196,6 +273,8 @@ export async function run(argv: readonly string[]): Promise<number> {
       return 0;
     case 'scan':
       return runScan(rest);
+    case 'actions':
+      return runActions(rest);
     case 'find':
       return runFind(rest);
     default:

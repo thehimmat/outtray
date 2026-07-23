@@ -1,3 +1,13 @@
+export {
+  type ActionCitation,
+  type ActionItem,
+  type ActionKind,
+  type ActionQueue,
+  DISCLAIMER,
+  type PlanOptions,
+  planActions,
+  type RetentionAdvice,
+} from './actions.js';
 export { type Chunk, type ChunkOptions, chunkText } from './chunk.js';
 export {
   type Classification,
