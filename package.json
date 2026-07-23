@@ -18,7 +18,8 @@
     "build": "tsc -b",
     "eval:record": "pnpm build && node packages/evals/scripts/eval.mjs record",
     "eval:live": "pnpm build && node packages/evals/scripts/eval.mjs live",
-    "eval:replay": "pnpm build && node packages/evals/scripts/eval.mjs replay"
+    "eval:replay": "pnpm build && node packages/evals/scripts/eval.mjs replay",
+    "eval:classify": "pnpm build && node packages/evals/scripts/classify.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.0",

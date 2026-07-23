@@ -1,3 +1,10 @@
+export {
+  type Accuracy,
+  type ClassifyReport,
+  type ClassifyRow,
+  classifyEval,
+  tallyClassification,
+} from './classify-eval.js';
 export { canonicalize, contractKey } from './contract.js';
 export { SCORED_FIELDS } from './field-kinds.js';
 export {
