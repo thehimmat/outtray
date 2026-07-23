@@ -1,4 +1,9 @@
 export {
+  type EmbeddingProvider,
+  OllamaEmbeddingProvider,
+  type OllamaEmbeddingProviderOptions,
+} from './embedding-provider.js';
+export {
   EXTRACTION_PROMPT,
   type ExtractInput,
   type ExtractResult,
