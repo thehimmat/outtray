@@ -21,6 +21,8 @@ export {
   type ExtractResult,
   extract,
   PROMPT_VERSION,
+  TYPED_PROMPT_VERSION,
+  typedExtractionPrompt,
 } from './extract.js';
 export {
   DOCUMENT_TYPES,
@@ -28,6 +30,7 @@ export {
   type DocumentType,
   documentExtractionSchema,
   documentJsonSchema,
+  documentJsonSchemaFor,
   validateExtraction,
 } from './extraction-schema.js';
 export { extractionText } from './extraction-text.js';

@@ -70,4 +70,15 @@ describe('extract', () => {
     expect(out.document).toBeNull();
     expect(out.error).toBeTruthy();
   });
+
+  it('narrows the prompt and format to one type for a typed re-extraction', async () => {
+    const provider = new FakeProvider(resultWith(BILL, 'content'));
+    const out = await extract(provider, { images: ['IMG'], type: 'bill' });
+
+    expect(out.valid).toBe(true);
+    expect(provider.lastRequest?.prompt).toContain('bill');
+    const format = JSON.stringify(provider.lastRequest?.format);
+    expect(format).toContain('"bill"');
+    expect(format).not.toContain('"statement"');
+  });
 });

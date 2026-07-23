@@ -138,6 +138,28 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number];
  */
 export const documentJsonSchema: unknown = z.toJSONSchema(documentExtractionSchema);
 
+const branchByType = {
+  letter,
+  bill,
+  receipt,
+  id_document: idDocument,
+  contract,
+  policy,
+  statement,
+  unknown,
+} as const;
+
+/**
+ * The JSON Schema for a single type's branch of the union, used as the
+ * constrained-decoding `format` of a typed re-extraction (ADR-0009 amendment):
+ * the grammar then forces the discriminant and that type's fields.
+ *
+ * Failure modes: none; every `DocumentType` has a branch.
+ */
+export function documentJsonSchemaFor(type: DocumentType): unknown {
+  return z.toJSONSchema(branchByType[type]);
+}
+
 /**
  * Validate a model's JSON output against the extraction contract.
  *

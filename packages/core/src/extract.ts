@@ -11,7 +11,9 @@
 
 import {
   type DocumentExtraction,
+  type DocumentType,
   documentJsonSchema,
+  documentJsonSchemaFor,
   validateExtraction,
 } from './extraction-schema.js';
 import type { GenerateUsage, ModelProvider } from './model-provider.js';
@@ -31,12 +33,36 @@ export const EXTRACTION_PROMPT = [
   'Respond only with JSON matching the schema.',
 ].join(' ');
 
+/**
+ * Prompt version of the typed re-extraction (ADR-0009 amendment). A separate
+ * version constant so its record/replay keys never collide with `extract-v1`;
+ * bump it whenever `typedExtractionPrompt` changes.
+ */
+export const TYPED_PROMPT_VERSION = 'extract-typed-v1';
+
+/** The typed re-extraction prompt: the type is known, only the fields are asked for. */
+export function typedExtractionPrompt(type: DocumentType): string {
+  return [
+    `You are a document triage assistant. This document's type is "${type}".`,
+    'Extract its fields.',
+    'Put every deadline, payment, or required action into action_items, each with',
+    'its due_date in ISO 8601 (YYYY-MM-DD) or null if none is stated.',
+    'Respond only with JSON matching the schema.',
+  ].join(' ');
+}
+
 /** Input to one extraction: the document's page images and an optional model override. */
 export interface ExtractInput {
   /** Page images as base64 strings (no `data:` prefix). */
   images: string[];
   /** Model tag override; defaults to the provider's default (`qwen3-vl:2b`). */
   model?: string;
+  /**
+   * Force a specific document type: the prompt names it and the constrained
+   * `format` narrows to that type's schema branch (the ADR-0009 amendment's
+   * typed re-extraction).
+   */
+  type?: DocumentType;
 }
 
 /** The outcome of one extraction. */
@@ -68,9 +94,9 @@ export async function extract(
   input: ExtractInput,
 ): Promise<ExtractResult> {
   const res = await provider.generate({
-    prompt: EXTRACTION_PROMPT,
+    prompt: input.type ? typedExtractionPrompt(input.type) : EXTRACTION_PROMPT,
     images: input.images,
-    format: documentJsonSchema,
+    format: input.type ? documentJsonSchemaFor(input.type) : documentJsonSchema,
     ...(input.model ? { model: input.model } : {}),
   });
 

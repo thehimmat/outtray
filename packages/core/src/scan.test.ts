@@ -54,12 +54,36 @@ function axisClassifier(): TypeClassifier {
   ]);
 }
 
+/** A provider that returns each canned response in turn, then repeats the last. */
+class SequenceProvider implements ModelProvider {
+  readonly name = 'sequence';
+  calls = 0;
+  requests: GenerateRequest[] = [];
+  constructor(private readonly responses: Array<unknown | Error>) {}
+  async generate(req: GenerateRequest): Promise<GenerateResult> {
+    const next = this.responses[Math.min(this.calls, this.responses.length - 1)];
+    this.calls += 1;
+    this.requests.push(req);
+    if (next instanceof Error) throw next;
+    return {
+      json: next,
+      jsonChannel: 'content',
+      content: '',
+      thinking: '',
+      doneReason: 'stop',
+      usage,
+    };
+  }
+}
+
 class FakeProvider implements ModelProvider {
   readonly name = 'fake';
   calls = 0;
+  requests: GenerateRequest[] = [];
   constructor(private readonly json: unknown) {}
-  async generate(_req: GenerateRequest): Promise<GenerateResult> {
+  async generate(req: GenerateRequest): Promise<GenerateResult> {
     this.calls += 1;
+    this.requests.push(req);
     return {
       json: this.json,
       jsonChannel: 'content',
@@ -136,16 +160,50 @@ describe('scanDirectory', () => {
     expect(report.classifierError).toBeNull();
   });
 
-  it('disputes a confident disagreement and flags it for review', async () => {
+  it('corrects a confident disagreement via one typed re-extraction', async () => {
     await writeFile(join(dir, 'doc.png'), Buffer.from([0x89]));
-    const report = await scanDirectory(new FakeProvider(STATEMENT), dir, {
+    const provider = new SequenceProvider([STATEMENT, BILL]);
+    const report = await scanDirectory(provider, dir, {
+      classify: { embedder: new FakeEmbedder([1, 0, 0]), classifier: axisClassifier() },
+    });
+    const item = report.items[0];
+    expect(provider.calls).toBe(2);
+    expect(provider.requests[1]?.prompt).toContain('bill');
+    expect(item?.result.document?.type).toBe('bill');
+    const r = item?.reconciliation;
+    expect(r?.status).toBe('corrected');
+    expect(r?.effectiveType).toBe('bill');
+    expect(r?.vlmType).toBe('statement');
+    expect(r?.review).toBe(false);
+    expect(r?.classification?.type).toBe('bill');
+  });
+
+  it('keeps a dispute for review when the re-extraction does not come back as the target type', async () => {
+    await writeFile(join(dir, 'doc.png'), Buffer.from([0x89]));
+    const provider = new SequenceProvider([STATEMENT, STATEMENT]);
+    const report = await scanDirectory(provider, dir, {
+      classify: { embedder: new FakeEmbedder([1, 0, 0]), classifier: axisClassifier() },
+    });
+    const item = report.items[0];
+    expect(provider.calls).toBe(2);
+    expect(item?.result.document?.type).toBe('statement');
+    const r = item?.reconciliation;
+    expect(r?.status).toBe('disputed');
+    expect(r?.effectiveType).toBe('statement');
+    expect(r?.vlmType).toBe('statement');
+    expect(r?.review).toBe(true);
+    expect(r?.classification?.type).toBe('bill');
+  });
+
+  it('keeps a dispute for review when the re-extraction call itself fails', async () => {
+    await writeFile(join(dir, 'doc.png'), Buffer.from([0x89]));
+    const provider = new SequenceProvider([STATEMENT, new Error('runtime gone')]);
+    const report = await scanDirectory(provider, dir, {
       classify: { embedder: new FakeEmbedder([1, 0, 0]), classifier: axisClassifier() },
     });
     const r = report.items[0]?.reconciliation;
     expect(r?.status).toBe('disputed');
-    expect(r?.effectiveType).toBe('statement');
     expect(r?.review).toBe(true);
-    expect(r?.classification?.type).toBe('bill');
   });
 
   it('routes a low-confidence disagreement to unknown and review', async () => {

@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Typed re-extraction closes the reconciliation loop (accepted ADR-0009
+  amendment): when the classifier confidently disagrees with the VLM's type,
+  scan re-extracts that document once under the classifier's type-specific
+  schema branch and reports it as `corrected from <type>`; a re-extraction
+  that fails or comes back off-type leaves the item flagged for review.
 - Two-stage `outtray scan` (ADR-0009): after extraction, the on-device k-NN
   classifier votes on each document's type from its extraction text and the
   report carries a reconciliation verdict per item. Agreement is confirmed

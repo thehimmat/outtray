@@ -1,13 +1,13 @@
 /**
  * Reconcile the VLM's one-shot document-type label with the on-device
- * classifier's vote (ADR-0009 amendment, issue #54).
+ * classifier's vote (ADR-0009 amendment, accepted in issue #54).
  *
- * The routing is deliberately conservative pending sign-off on the amendment:
- * agreement confirms the label; a confident disagreement is surfaced as
- * `disputed` and flagged for human review, never silently auto-corrected here
- * (the proposed upgrade is a single re-extraction under the corrected
- * type-specific schema); a low-confidence disagreement trusts neither label
- * and routes to review as `unknown` (ADR-0008).
+ * Agreement confirms the label. A confident disagreement starts as `disputed`;
+ * the scan pipeline then attempts exactly one typed re-extraction under the
+ * classifier's schema branch and upgrades the item to `corrected` when it
+ * validates as that type, leaving it `disputed` for human review otherwise.
+ * A low-confidence disagreement trusts neither label and routes to review as
+ * `unknown` (ADR-0008).
  */
 
 import type { Classification } from './classifier.js';
@@ -32,7 +32,9 @@ export const CONFIDENCE_THRESHOLD = 0.6;
 export type ReconciliationStatus =
   /** Classifier and VLM agree. */
   | 'confirmed'
-  /** Classifier confidently disagrees; a human decides (pending issue #54). */
+  /** Classifier confidently disagreed and a typed re-extraction validated. */
+  | 'corrected'
+  /** Classifier confidently disagrees and no correction validated; a human decides. */
   | 'disputed'
   /** Classifier disagrees without confidence; neither label is trusted. */
   | 'low_confidence'
@@ -46,6 +48,8 @@ export interface Reconciliation {
   status: ReconciliationStatus;
   /** True when a human should look before the item is trusted (ADR-0008). */
   review: boolean;
+  /** The VLM's original one-shot label (provenance), or null if extraction failed. */
+  vlmType: DocumentType | null;
   /** The classifier's raw verdict, or null when it produced none. */
   classification: Classification | null;
 }
@@ -54,8 +58,10 @@ export interface Reconciliation {
  * Route one document through the reconciliation table.
  *
  * `vlmType` is null when the extraction was invalid (no document to label);
- * `classification` is null when the classifier produced no verdict. Pure and
- * total: never throws, every input combination maps to a `Reconciliation`.
+ * `classification` is null when the classifier produced no verdict. Never
+ * returns `corrected`: that upgrade is applied by the scan pipeline after a
+ * typed re-extraction validates. Pure and total: never throws, every input
+ * combination maps to a `Reconciliation`.
  */
 export function reconcileType(
   vlmType: DocumentType | null,
@@ -63,16 +69,34 @@ export function reconcileType(
   threshold: number = CONFIDENCE_THRESHOLD,
 ): Reconciliation {
   if (vlmType === null) {
-    return { effectiveType: 'unknown', status: 'unclassified', review: true, classification: null };
+    return {
+      effectiveType: 'unknown',
+      status: 'unclassified',
+      review: true,
+      vlmType: null,
+      classification: null,
+    };
   }
   if (classification === null) {
-    return { effectiveType: vlmType, status: 'unclassified', review: false, classification: null };
+    return {
+      effectiveType: vlmType,
+      status: 'unclassified',
+      review: false,
+      vlmType,
+      classification: null,
+    };
   }
   if (classification.type === vlmType) {
-    return { effectiveType: vlmType, status: 'confirmed', review: false, classification };
+    return { effectiveType: vlmType, status: 'confirmed', review: false, vlmType, classification };
   }
   if (classification.confidence >= threshold) {
-    return { effectiveType: vlmType, status: 'disputed', review: true, classification };
+    return { effectiveType: vlmType, status: 'disputed', review: true, vlmType, classification };
   }
-  return { effectiveType: 'unknown', status: 'low_confidence', review: true, classification };
+  return {
+    effectiveType: 'unknown',
+    status: 'low_confidence',
+    review: true,
+    vlmType,
+    classification,
+  };
 }

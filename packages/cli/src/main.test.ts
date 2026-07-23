@@ -92,6 +92,7 @@ describe('formatReport', () => {
     effectiveType: 'bill',
     status: 'unclassified',
     review: false,
+    vlmType: 'bill',
     classification: null,
   };
 
@@ -119,6 +120,7 @@ describe('formatReport', () => {
           effectiveType: 'bill',
           status: 'confirmed',
           review: false,
+          vlmType: 'bill',
           classification: { type: 'bill', confidence: 0.69, votes: { bill: 1.2 } },
         }),
       ],
@@ -126,6 +128,26 @@ describe('formatReport', () => {
     };
     const text = formatReport('pile', report);
     expect(text).toContain('renewal.png  [bill, confirmed 0.69]');
+    expect(text).toContain('Review: 0 of 1 item(s) flagged.');
+  });
+
+  it('renders a corrected type with its provenance', () => {
+    const report: ScanReport = {
+      scanned: ['renewal.png'],
+      skipped: [],
+      items: [
+        billItem({
+          effectiveType: 'bill',
+          status: 'corrected',
+          review: false,
+          vlmType: 'statement',
+          classification: { type: 'bill', confidence: 0.68, votes: { bill: 1.3 } },
+        }),
+      ],
+      classifierError: null,
+    };
+    const text = formatReport('pile', report);
+    expect(text).toContain('renewal.png  [bill, corrected from statement 0.68]');
     expect(text).toContain('Review: 0 of 1 item(s) flagged.');
   });
 
@@ -139,6 +161,7 @@ describe('formatReport', () => {
             effectiveType: 'statement',
             status: 'disputed',
             review: true,
+            vlmType: 'statement',
             classification: { type: 'bill', confidence: 0.68, votes: { bill: 1.3 } },
           }),
           file: 'stmt.png',
@@ -177,6 +200,7 @@ describe('formatReport', () => {
           effectiveType: 'unknown',
           status: 'low_confidence',
           review: true,
+          vlmType: 'bill',
           classification: { type: 'statement', confidence: 0.53, votes: { statement: 0.7 } },
         }),
       ],
@@ -222,6 +246,7 @@ describe('formatReport', () => {
             effectiveType: 'unknown',
             status: 'unclassified',
             review: true,
+            vlmType: null,
             classification: null,
           },
         },
