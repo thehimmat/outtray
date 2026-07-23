@@ -1,5 +1,10 @@
 export { type Chunk, type ChunkOptions, chunkText } from './chunk.js';
 export {
+  type Classification,
+  type LabeledExample,
+  TypeClassifier,
+} from './classifier.js';
+export {
   type EmbeddingProvider,
   OllamaEmbeddingProvider,
   type OllamaEmbeddingProviderOptions,
