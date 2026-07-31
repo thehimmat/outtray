@@ -135,7 +135,7 @@ issue, containing:
 - TDD where outputs are verifiable: failing test first. Model-dependent
   tests use recorded fixtures only; CI never runs a model.
 - Every public function in core documents its failure modes in its docstring.
-- ADR for every consequential decision (next number: 0011). CHANGELOG (Keep a
+- ADR for every consequential decision (next number: 0012). CHANGELOG (Keep a
   Changelog) updated with user-visible changes.
 - Style: no em dashes, no emojis anywhere (docs, UI, commit messages). UI
   icons come from an icon library, never emoji. Never mention Claude in

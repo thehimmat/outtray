@@ -1,0 +1,249 @@
+{
+  "issue": 6,
+  "interop": {
+    "path": "final/interop.db",
+    "keyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "rows": 10
+  },
+  "rows": 5000,
+  "dims": 768,
+  "environment": {
+    "node": "v23.11.0",
+    "platform": "darwin-arm64",
+    "driver": "better-sqlite3-multiple-ciphers@12.11.1"
+  },
+  "baseline": {
+    "seedMs": 89.6,
+    "scanMs": 14.3,
+    "sizeBytes": 21155840,
+    "reopenMs": 0.3
+  },
+  "batteries": [
+    {
+      "label": "default-chacha20",
+      "cipher": "driver default",
+      "env": {
+        "cipher": "chacha20",
+        "cipherVersion": null,
+        "kdfIter": "64007",
+        "pageSize": 4096,
+        "sqliteVersion": "3.53.2",
+        "saltHex": "9b276253e1838f7378e4846cd5c663ad",
+        "headerFieldsHex": "1000010120402020",
+        "plaintextHeaderStruct": true
+      },
+      "timings": {
+        "seedMs": 147.7,
+        "scanMs": 38.1,
+        "reopenMs": 0.4,
+        "rekeyMs": 218.7,
+        "passphraseCreateMs": 23.9,
+        "passphraseReopenMs": 23.2
+      },
+      "checks": [
+        {
+          "name": "write then read back while keyed",
+          "pass": true,
+          "detail": "5000 chunks"
+        },
+        {
+          "name": "reopen with the same key",
+          "pass": true,
+          "detail": "0.4 ms"
+        },
+        {
+          "name": "on-disk header is not the plaintext SQLite magic",
+          "pass": true,
+          "detail": "header=\"'bSásxälÕÆc\""
+        },
+        {
+          "name": "bytes 16-23 are not a readable SQLite header struct",
+          "pass": false,
+          "detail": "bytes16_23=1000010120402020"
+        },
+        {
+          "name": "wrong key cannot read the database",
+          "pass": true,
+          "detail": "file is not a database"
+        },
+        {
+          "name": "unkeyed open cannot read the database",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "rekey rotates the key and data survives",
+          "pass": true,
+          "detail": "218.7 ms"
+        },
+        {
+          "name": "the old key stops working after rekey",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "passphrase-derived key works (KDF unlock path)",
+          "pass": true,
+          "detail": "create 23.9 ms, reopen 23.2 ms"
+        }
+      ],
+      "sizeBytes": 21159936,
+      "overheadVsPlainPct": {
+        "seed": 64.8,
+        "scan": 166.4,
+        "size": 0
+      }
+    },
+    {
+      "label": "sqlcipher-default",
+      "cipher": "sqlcipher",
+      "env": {
+        "cipher": "sqlcipher",
+        "cipherVersion": null,
+        "kdfIter": "256000",
+        "pageSize": 4096,
+        "sqliteVersion": "3.53.2",
+        "saltHex": "6df856f11c04eb8676603c0cfff298d2",
+        "headerFieldsHex": "1000010150402020",
+        "plaintextHeaderStruct": true
+      },
+      "timings": {
+        "seedMs": 210.4,
+        "scanMs": 87.5,
+        "reopenMs": 0.7,
+        "rekeyMs": 461.8,
+        "passphraseCreateMs": 134.9,
+        "passphraseReopenMs": 133.5
+      },
+      "checks": [
+        {
+          "name": "write then read back while keyed",
+          "pass": true,
+          "detail": "5000 chunks"
+        },
+        {
+          "name": "reopen with the same key",
+          "pass": true,
+          "detail": "0.7 ms"
+        },
+        {
+          "name": "on-disk header is not the plaintext SQLite magic",
+          "pass": true,
+          "detail": "header=\"møVñ\\u001c\\u0004ëv`<\\fÿò\""
+        },
+        {
+          "name": "bytes 16-23 are not a readable SQLite header struct",
+          "pass": false,
+          "detail": "bytes16_23=1000010150402020"
+        },
+        {
+          "name": "wrong key cannot read the database",
+          "pass": true,
+          "detail": "file is not a database"
+        },
+        {
+          "name": "unkeyed open cannot read the database",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "rekey rotates the key and data survives",
+          "pass": true,
+          "detail": "461.8 ms"
+        },
+        {
+          "name": "the old key stops working after rekey",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "passphrase-derived key works (KDF unlock path)",
+          "pass": true,
+          "detail": "create 134.9 ms, reopen 133.5 ms"
+        }
+      ],
+      "sizeBytes": 21176320,
+      "overheadVsPlainPct": {
+        "seed": 134.8,
+        "scan": 511.9,
+        "size": 0.1
+      }
+    },
+    {
+      "label": "sqlcipher-legacy4",
+      "cipher": "sqlcipher",
+      "env": {
+        "cipher": "sqlcipher",
+        "cipherVersion": null,
+        "kdfIter": "256000",
+        "pageSize": 4096,
+        "sqliteVersion": "3.53.2",
+        "saltHex": "531af7f36b60326d8a2b186e921f50c4",
+        "headerFieldsHex": "5045355be3a32cff",
+        "plaintextHeaderStruct": false
+      },
+      "timings": {
+        "seedMs": 212.6,
+        "scanMs": 76.9,
+        "reopenMs": 0.7,
+        "rekeyMs": 506,
+        "passphraseCreateMs": 138.6,
+        "passphraseReopenMs": 136.3
+      },
+      "checks": [
+        {
+          "name": "write then read back while keyed",
+          "pass": true,
+          "detail": "5000 chunks"
+        },
+        {
+          "name": "reopen with the same key",
+          "pass": true,
+          "detail": "0.7 ms"
+        },
+        {
+          "name": "on-disk header is not the plaintext SQLite magic",
+          "pass": true,
+          "detail": "header=\"S\\u001a÷ók`2m+\\u0018n\\u001fP\""
+        },
+        {
+          "name": "bytes 16-23 are not a readable SQLite header struct",
+          "pass": true,
+          "detail": "bytes16_23=5045355be3a32cff"
+        },
+        {
+          "name": "wrong key cannot read the database",
+          "pass": true,
+          "detail": "file is not a database"
+        },
+        {
+          "name": "unkeyed open cannot read the database",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "rekey rotates the key and data survives",
+          "pass": true,
+          "detail": "506 ms"
+        },
+        {
+          "name": "the old key stops working after rekey",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "passphrase-derived key works (KDF unlock path)",
+          "pass": true,
+          "detail": "create 138.6 ms, reopen 136.3 ms"
+        }
+      ],
+      "sizeBytes": 21176320,
+      "overheadVsPlainPct": {
+        "seed": 137.3,
+        "scan": 437.8,
+        "size": 0.1
+      }
+    }
+  ],
+  "passed": true
+}
