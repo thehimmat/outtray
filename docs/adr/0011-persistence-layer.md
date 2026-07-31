@@ -79,36 +79,61 @@ spike measured full rekey at 506 ms on a 21 MB database as the fallback.
 "Locked" as a distinct state (ciphertext on disk, key purged from memory) is
 adopted as a Phase 3 UI concern; v1 is a CLI whose process exits.
 
-### 3. Raw identifiers do not accumulate in structured columns
+### 3. Raw identifiers are stored deliberately, behind a narrow reveal path
 
-**Position on #71 direction 1: Outtray is not the durable home for the user's
-identifiers, and its structured store should not become an index of them.**
+**Position on #71 direction 1: Outtray does store the user's extracted
+identifiers, because "what is my passport number" is a real thing to want from
+a document assistant. It stores them in one known place with a deliberately
+narrow read path, rather than either scattering them or pretending not to have
+them.**
 
-The extraction contract (ADR-0004) already produces `id_document.id_number`,
-`policy.policy_number` and `statement.account_number` as required strings. The
-action layer does not need any of them: it needs "this passport expires
-2027-03-01", not the passport number. Persisting them as structured columns
-would build the single highest-value target in the product for no feature.
+The extraction contract (ADR-0004) produces `id_document.id_number`,
+`policy.policy_number` and `statement.account_number` as required strings. Two
+facts shape what to do with them.
+
+First, the action layer does not need them. It needs "this passport expires
+2027-03-01", not the number. So nothing in the queue, the CLI output, logs or
+exports has any reason to carry a full identifier.
+
+Second, and decisively: **the values are on disk either way.** The chunk table
+stores document text so retrieval works, and that text contains the identifier
+exactly as printed on the page. A rule that merely refused to write them into
+a labelled column would not keep them off disk. It would only ensure they live
+in an unlabelled text blob that receives no special handling, while also
+denying the user a feature they want. That is the worst of both.
 
 Concretely, at the persistence boundary:
 
-- Identifier-class fields are stored **redacted** (last four characters plus
-  length, enough to disambiguate two documents of the same type) together with
-  a citation to the source document. Anything needing the full value reads the
-  original document, which is on the user's disk already and which Outtray
-  indexes in place and never copies (ADR-0007).
-- Where a user genuinely wants a durable, retrievable identifier, the
-  destination is their own vault, not our database. That is #71 direction 1,
-  and this ADR takes no position on whether we integrate with it, only that
-  the gap is not filled by quietly persisting the values ourselves.
+- Full identifier values are stored in **their own table**, one row per
+  document and field, with a citation to the source document. One known,
+  auditable location, not an emergent property of text storage.
+- **Nothing renders them by default.** The action queue, `outtray scan` and
+  `outtray actions` output, any log line, and any export show the redacted
+  form only: last four characters plus length, which is enough to tell two
+  documents of the same type apart.
+- **Reading a full value is an explicit, per-item act.** On the CLI that is a
+  distinct command naming one document and one field; in the Phase 3 UI it is
+  a per-item reveal, and it should sit behind Touch ID or a re-unlock. This is
+  the Bitwarden lesson from the desk review applied directly: the boundary is
+  drawn at *decryption*, not at the process. Operations that do not need
+  plaintext never receive it.
+- Handing an identifier to the user's own vault (#71 direction 1) reads
+  through this same path. This table is what such an integration would hand
+  over, so the position here does not prejudge that decision either way.
 
-**The honest limit of this position**, stated plainly because it would
-otherwise read as stronger than it is: the chunk table stores document text
-for retrieval, and that text contains the identifiers. Redaction narrows what
-is *queryable and concentrated*, it does not make the store free of sensitive
-data. That is precisely why the whole file is encrypted rather than only
-selected columns. Redaction and encryption are doing different jobs here, and
-neither substitutes for the other.
+**The honest limits**, stated plainly because this is the part of the ADR most
+likely to be read as stronger than it is:
+
+- The reveal path narrows *casual and incidental* exposure: shoulder-surfing a
+  terminal, a log file, a screenshot of the action queue, an export shared with
+  someone. It does not defend against something running as the user on an
+  unlocked machine, because such code can call the reveal path itself.
+- Whole-file encryption, not the reveal path, is what protects a copied or
+  stolen database file. The two mechanisms do different jobs and neither
+  substitutes for the other.
+- The chunk table still contains identifiers as free text. The dedicated table
+  makes them *deliberate and revocable* (a purge can find and remove them);
+  it does not make the rest of the store free of sensitive data.
 
 ### 4. A `StorageProvider` interface, native code at the edge
 
@@ -171,6 +196,30 @@ touching planning, retrieval or classification.
    exists to prevent; it also leaves extracted document text in plaintext on
    disk in the interim, which is the worst posture of any option here.
 
+### Options considered for identifiers specifically
+
+This sub-decision is separable from the container choice, so it gets its own
+comparison.
+
+1. **Store full values in a dedicated table, redacted everywhere by default,
+   explicit per-item reveal (recommended).** Pros: the user can actually
+   retrieve their passport number, which is a reasonable thing to want from a
+   document assistant; the values sit in one auditable place a purge can find;
+   nothing incidental (queue, logs, exports, screenshots) carries them. Cons:
+   more moving parts than either extreme; the reveal path is a surface that
+   must be got right; it does not stop code running as the user.
+2. **Redact at the persistence boundary, never store full values.** Pros:
+   sounds strongest, and is the smallest structured target. Cons: mostly
+   theatre, because chunk text on disk already contains the identifiers, so it
+   moves them from a labelled column to an unlabelled blob rather than
+   removing them; and it denies a real feature to buy that. Rejected on the
+   owner's product call and on the inconsistency above.
+3. **Store full values as ordinary columns, no special handling.** Pros:
+   simplest, and the encryption arguably covers it. Cons: identifiers then
+   leak into list views, CLI output, logs and exports by default, which is
+   where casual exposure actually happens; it also makes any future export or
+   sharing feature a hazard by default rather than by mistake.
+
 ## Consequences
 
 - #43 and #67 unblock together against one interface, and the classification
@@ -186,10 +235,17 @@ touching planning, retrieval or classification.
 - ADR-0007 moves from "encryption targeted, mechanism pending a spike" to
   decided, and its fallback stays documented as the answer if the native
   dependency ever becomes untenable.
-- The redaction position creates a schema question this ADR does not settle:
-  extraction still produces full identifier strings in memory before the
-  store drops them. Whether extraction should stop asking for them at all is
-  an ADR-0004 question, filed separately.
-- Key loss means data loss, by design. The database is a derived cache whose
-  originals are untouched on disk, so recovery is a re-scan, and the UI must
-  say so plainly rather than implying the store is a backup.
+- The identifier position settles the ADR-0004 question it might otherwise
+  have raised: extraction keeps asking for full identifiers, because the
+  product now has a use for them. What it adds instead is a display rule that
+  every future output surface must honour, so redaction belongs in core next
+  to the store rather than in each command.
+- The reveal path is new user-facing surface with real failure modes: it must
+  not be reachable from the action queue by accident, must not be logged, and
+  needs its own tests. It also needs a decision in Phase 3 about whether Touch
+  ID gates it, which is UI work this ADR does not settle.
+- Key loss means data loss, by design, with one caveat this position adds. The
+  database is otherwise a derived cache whose originals are untouched on disk,
+  so recovery is a re-scan. The identifier table is derived too, so the same
+  holds, but the UI must not let users treat it as a vault backup. If they
+  want durable custody, that is #71 direction 1 and their own vault.
