@@ -1,6 +1,7 @@
 # ADR-0007: Data at rest and on-disk privacy posture
 
-Status: accepted (encryption mechanism pending a spike). Date: 2026-07-21.
+Status: accepted. Date: 2026-07-21. Encryption mechanism resolved 2026-07-31
+by ADR-0011, which supersedes the "pending a spike" caveat below.
 
 ## Context
 
@@ -24,6 +25,15 @@ accessed laptop (see THREAT_MODEL.md).
   SQLCipher build path before Phase 1 storage code lands. Fallback if the
   spike fails: plain SQLite in a chmod-700 Application Support directory with
   a documented, honest "FileVault required, here is how to check" stance.
+
+  **Resolved 2026-07-31 (#6, ADR-0011).** The spike passed
+  (`docs/evals/sqlcipher-spike.md`): SQLCipher via
+  `better-sqlite3-multiple-ciphers`, configured `cipher = 'sqlcipher'` then
+  `legacy = 4`, with a random 32-byte key in the Keychain. The fallback was
+  not needed and stays documented as the answer if the native dependency ever
+  becomes untenable. ADR-0011 additionally decides what may be stored: full
+  identifiers exist in one canonical row, tokenized out of derived text, and
+  only when the user opts in.
 - **Locations and side channels:** the DB and all derived data live in
   `~/Library/Application Support/` (outside iCloud Documents sync scope);
   folder selection detects paths under iCloud Drive or synced Desktop/

@@ -1,6 +1,22 @@
 # ADR-0011: One persistence layer for the index and the label store
 
-Status: **proposed** 2026-07-29. Awaiting owner sign-off (issue #70).
+Status: **accepted 2026-07-31** on owner sign-off (issue #74, PR #73 merged).
+
+The identifier position in section 3 was revised twice during review, both
+times on the owner's product judgment, and the reasoning is preserved in the
+options list because the discarded versions are instructive:
+
+1. As first proposed, identifiers were redacted everywhere and never stored.
+   The owner's point: "somewhere in the app it should store the full ID
+   numbers in case someone needs to access something later on, like their
+   passport number." That is a legitimate ask, and the original position also
+   sat badly with the chunk table, which already held the same values as free
+   text.
+2. The first revision stored them behind a reveal path but left the copy in
+   chunk text, which made the gate decorative. The owner proposed centralizing
+   to one copy and asked for a security assessment of storing at all. That
+   produced the current design and the assessment now in
+   `docs/THREAT_MODEL.md`.
 
 Supersedes nothing. Resolves the encryption-mechanism question left open by
 ADR-0007, and unblocks #43 (persist the vector index) and #67 (persist the
@@ -46,7 +62,7 @@ container (one encrypted blob, always loaded whole) is a poor fit for a 21 MB
 embedding index that must be scanned per query and updated per document. Their
 key management is a good fit and is independent of the container choice.
 
-## Decision (proposed)
+## Decision
 
 ### 1. One encrypted SQLite database, three tables
 

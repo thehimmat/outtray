@@ -8,6 +8,17 @@ When those conflict, favor the showcase.
 
 ## Current state
 
+- **Storage decided (ADR-0011, accepted 2026-07-31), not yet implemented**:
+  one encrypted SQLite file behind a `StorageProvider` interface, SQLCipher
+  via `better-sqlite3-multiple-ciphers` with `cipher = 'sqlcipher'` then
+  `legacy = 4` (both required; the spike proved upstream interop only with
+  `legacy = 4`, see `docs/evals/sqlcipher-spike.md`), random 32-byte key in
+  the macOS Keychain. Extracted identifiers get one canonical encrypted row,
+  are tokenized out of derived chunk text, are redacted to last-four in every
+  default output, need an explicit per-item act to reveal, and are **off by
+  default**. Threat-model assessment in `docs/THREAT_MODEL.md`. This unblocks
+  #43 (index persistence) and #67 (label store); #75 tracks proving the
+  Rust/Tauri read path before Phase 3 commits to it.
 - **Action layer v1 shipped (ADR-0010, accepted)**: `outtray actions <dir>`
   plans a deterministic, cited, proposed-only queue (to-dos, expiry alerts,
   keep/shred advice with rule ids + disclaimer, attention flags, review
