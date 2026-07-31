@@ -8,6 +8,17 @@ export {
   planActions,
   type RetentionAdvice,
 } from './actions.js';
+export {
+  APP_DIRECTORY,
+  APP_DIRECTORY_MODE,
+  type AppPathOptions,
+  appDataDir,
+  DATABASE_FILE,
+  DATABASE_FILE_MODE,
+  defaultDatabasePath,
+  ensureAppDataDir,
+  UnsupportedPlatformError,
+} from './app-paths.js';
 export { type Chunk, type ChunkOptions, chunkText } from './chunk.js';
 export {
   type Classification,
@@ -20,6 +31,20 @@ export {
   SEED_EXAMPLES,
   type SeedExample,
 } from './classifier-seeds.js';
+export {
+  DATABASE_KEY_BYTES,
+  type DatabaseKey,
+  DatabaseKeyError,
+  type DatabaseKeyProvider,
+  generateDatabaseKey,
+  KEYCHAIN_ACCOUNT,
+  KEYCHAIN_SERVICE,
+  KeychainKeyProvider,
+  type KeychainKeyProviderOptions,
+  type SecurityResult,
+  type SecurityRunner,
+  StaticKeyProvider,
+} from './db-key.js';
 export {
   type EmbeddingProvider,
   OllamaEmbeddingProvider,
@@ -85,4 +110,42 @@ export {
   type ScanReport,
   scanDirectory,
 } from './scan.js';
+export {
+  assertCipherPragmas,
+  assertEncryptedHeader,
+  CIPHER_PRAGMAS,
+  EXPECTED_CIPHER,
+  EXPECTED_LEGACY,
+  HEADER_BYTES,
+  hasCleartextSqliteHeader,
+  type PragmaReader,
+  readPragmaScalar,
+  StorageFormatError,
+} from './storage-format.js';
+export { MemoryStorage } from './storage-memory.js';
+export {
+  asLabelProvenance,
+  assertChunkBatch,
+  type LabelProvenance,
+  type NewLabel,
+  StorageError,
+  type StorageProvider,
+  type StoredChunk,
+  type StoredDocument,
+  type StoredLabel,
+} from './storage-provider.js';
+export {
+  decodeEmbedding,
+  encodeEmbedding,
+  MIGRATIONS,
+  type Migration,
+  pendingMigrations,
+  SCHEMA_VERSION,
+  StorageMigrationError,
+} from './storage-schema.js';
+export {
+  type OpenSqlcipherStorageOptions,
+  openSqlcipherStorage,
+  SqlcipherStorage,
+} from './storage-sqlcipher.js';
 export { cosineSimilarity, rankBySimilarity } from './vector.js';
