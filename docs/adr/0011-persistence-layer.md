@@ -79,61 +79,95 @@ spike measured full rekey at 506 ms on a 21 MB database as the fallback.
 "Locked" as a distinct state (ciphertext on disk, key purged from memory) is
 adopted as a Phase 3 UI concern; v1 is a CLI whose process exits.
 
-### 3. Raw identifiers are stored deliberately, behind a narrow reveal path
+### 3. Identifiers live in exactly one place, by the user's choice
 
-**Position on #71 direction 1: Outtray does store the user's extracted
-identifiers, because "what is my passport number" is a real thing to want from
-a document assistant. It stores them in one known place with a deliberately
-narrow read path, rather than either scattering them or pretending not to have
-them.**
+**Position on #71 direction 1: Outtray can be the place a user retrieves their
+passport number from, because that is a reasonable thing to want from a
+document assistant. If it is, the value exists in exactly one row of one
+encrypted table, is tokenized out of every derived copy, is redacted in every
+default output, and is only there because the user said yes.**
 
 The extraction contract (ADR-0004) produces `id_document.id_number`,
-`policy.policy_number` and `statement.account_number` as required strings. Two
-facts shape what to do with them.
+`policy.policy_number` and `statement.account_number` as required strings.
+Three facts shape what to do with them.
 
 First, the action layer does not need them. It needs "this passport expires
-2027-03-01", not the number. So nothing in the queue, the CLI output, logs or
-exports has any reason to carry a full identifier.
+2027-03-01", not the number. Nothing in the queue, CLI output, logs or exports
+has any reason to carry a full identifier.
 
-Second, and decisively: **the values are on disk either way.** The chunk table
-stores document text so retrieval works, and that text contains the identifier
-exactly as printed on the page. A rule that merely refused to write them into
-a labelled column would not keep them off disk. It would only ensure they live
-in an unlabelled text blob that receives no special handling, while also
-denying the user a feature they want. That is the worst of both.
+Second, **the values reach the derived store either way**. The chunk table
+holds document text so retrieval works, and that text contains the identifier
+as printed on the page. Refusing to write it into a labelled column never kept
+it off disk; it only moved it somewhere that receives no special handling.
+
+Third, and this is what settles the design: **a second copy in chunk text
+defeats a reveal gate entirely.** If `outtray find "passport"` returns a chunk
+that prints the number, then gating a separate `reveal` command accomplishes
+nothing. Single-copy storage is not a nice-to-have alongside the gate. It is
+the precondition for the gate meaning anything.
 
 Concretely, at the persistence boundary:
 
-- Full identifier values are stored in **their own table**, one row per
-  document and field, with a citation to the source document. One known,
-  auditable location, not an emergent property of text storage.
-- **Nothing renders them by default.** The action queue, `outtray scan` and
-  `outtray actions` output, any log line, and any export show the redacted
-  form only: last four characters plus length, which is enough to tell two
-  documents of the same type apart.
-- **Reading a full value is an explicit, per-item act.** On the CLI that is a
-  distinct command naming one document and one field; in the Phase 3 UI it is
-  a per-item reveal, and it should sit behind Touch ID or a re-unlock. This is
-  the Bitwarden lesson from the desk review applied directly: the boundary is
-  drawn at *decryption*, not at the process. Operations that do not need
-  plaintext never receive it.
-- Handing an identifier to the user's own vault (#71 direction 1) reads
-  through this same path. This table is what such an integration would hand
-  over, so the position here does not prejudge that decision either way.
+- **One canonical row.** Full identifier values live in their own table, keyed
+  by normalized value, with references from each document that mentions them.
+  If a passport number appears on the passport, an insurance form and a bank
+  letter, it is stored once and referenced three times, not stored three
+  times.
+- **Tokenized out of derived text.** Before chunk text is written, known
+  identifier values are replaced by an opaque reference to that row. Retrieval
+  and embeddings operate on tokenized text. This costs nothing in search
+  quality: ranking is semantic cosine over embeddings (ADR-0005), and a raw
+  digit string contributes approximately nothing to a semantic match.
+- **Never in originals.** The user's document files are not modified, ever.
+  Tokenization applies exclusively to text Outtray derives and stores.
+  Originals stay byte-identical and remain the source of truth, per ADR-0007
+  and ADR-0008.
+- **Redacted in every default output.** The queue, `outtray scan`,
+  `outtray actions`, logs and exports show last four characters plus length,
+  enough to tell two documents of the same type apart. This is a rule enforced
+  in core next to the store, not a habit each command has to remember.
+- **Reading a full value is an explicit, per-item act.** On the CLI, a
+  distinct command naming one document and one field. In the Phase 3 UI, a
+  per-item reveal that should sit behind Touch ID or a re-unlock. This is the
+  Bitwarden lesson applied directly: the boundary is drawn at *decryption*,
+  not at the process.
+- **The user decides whether any of this happens.** Identifier storage is a
+  disclosed choice, **off by default**. Off means last-four is all that is
+  ever computed or stored, and tokenization simply drops the value instead of
+  vaulting it. On means the single encrypted row plus the reveal path.
+  Switching from on to off purges the table, which is possible precisely
+  because there is one place to purge. The choice is presented in the user's
+  terms ("Outtray can remember your ID numbers so you can look them up here,
+  or it can forget them and only show the last four"), which is the same
+  decision a user makes when they choose to put a passport into a password
+  manager.
+- Handing an identifier to the user's own vault (#71 direction 1) would read
+  through this same path, so this position does not prejudge that decision.
 
 **The honest limits**, stated plainly because this is the part of the ADR most
 likely to be read as stronger than it is:
 
-- The reveal path narrows *casual and incidental* exposure: shoulder-surfing a
-  terminal, a log file, a screenshot of the action queue, an export shared with
-  someone. It does not defend against something running as the user on an
-  unlocked machine, because such code can call the reveal path itself.
-- Whole-file encryption, not the reveal path, is what protects a copied or
-  stolen database file. The two mechanisms do different jobs and neither
-  substitutes for the other.
-- The chunk table still contains identifiers as free text. The dedicated table
-  makes them *deliberate and revocable* (a purge can find and remove them);
-  it does not make the rest of the store free of sensitive data.
+- **Tokenization is best-effort, not a guarantee.** Removing a value from
+  derived text requires finding it there. If the model normalizes what it read
+  (strips spaces, corrects an OCR character, reformats `AB 123456` to
+  `AB123456`), a literal match misses and the value stays in the text.
+  Matching can be made good (normalize both sides, match variants, verify
+  post-write) and it cannot be made certain. Documentation must therefore say
+  "reduces copies", never "guarantees one copy", and the implementation should
+  report when it could not find a value it expected to tokenize.
+- **This covers four extracted fields, not personal data in general.** Names,
+  addresses, dates of birth and account holders remain in chunk text. The
+  chunk table does not become safe to leak; the four highest-value fields
+  become non-duplicated. Whole-file encryption remains what protects the store.
+- **Both the row and the chunks live in the same encrypted file.** Against an
+  adversary holding the decrypted database, one copy versus three changes
+  little. The gain is in every other scenario: terminal output, log files,
+  exports, screenshots, and a purge that can actually complete.
+- **The reveal path does not stop code running as the user** on an unlocked
+  machine, since such code can call the reveal path itself.
+
+A per-scenario assessment of what this does and does not buy is in
+`docs/THREAT_MODEL.md`.
 
 ### 4. A `StorageProvider` interface, native code at the edge
 
@@ -201,24 +235,39 @@ touching planning, retrieval or classification.
 This sub-decision is separable from the container choice, so it gets its own
 comparison.
 
-1. **Store full values in a dedicated table, redacted everywhere by default,
-   explicit per-item reveal (recommended).** Pros: the user can actually
-   retrieve their passport number, which is a reasonable thing to want from a
-   document assistant; the values sit in one auditable place a purge can find;
-   nothing incidental (queue, logs, exports, screenshots) carries them. Cons:
-   more moving parts than either extreme; the reveal path is a surface that
-   must be got right; it does not stop code running as the user.
-2. **Redact at the persistence boundary, never store full values.** Pros:
-   sounds strongest, and is the smallest structured target. Cons: mostly
-   theatre, because chunk text on disk already contains the identifiers, so it
-   moves them from a labelled column to an unlabelled blob rather than
-   removing them; and it denies a real feature to buy that. Rejected on the
-   owner's product call and on the inconsistency above.
-3. **Store full values as ordinary columns, no special handling.** Pros:
-   simplest, and the encryption arguably covers it. Cons: identifiers then
-   leak into list views, CLI output, logs and exports by default, which is
-   where casual exposure actually happens; it also makes any future export or
-   sharing feature a hazard by default rather than by mistake.
+1. **One canonical encrypted row, tokenized out of derived text, redacted in
+   all output, explicit reveal, user-chosen (recommended).** Pros: the user can
+   retrieve their passport number; the value exists once, so a purge is
+   complete and a reveal gate is meaningful; nothing incidental (queue, logs,
+   exports, screenshots) carries it; the user makes the storage decision
+   knowingly, as they would with a password manager. Cons: the most moving
+   parts of any option; tokenization is best-effort and its failure mode is
+   silent unless explicitly reported; the reveal path is new surface that must
+   be got right; none of it stops code running as the user.
+2. **Store full values in a dedicated table, but leave derived text alone.**
+   Pros: simpler; still gets the values out of the action queue and logs.
+   Cons: the reveal gate is decorative, because a retrieval query returns a
+   chunk that prints the number anyway; a purge cannot honestly claim to have
+   removed the value. Rejected once the interaction between the two tables was
+   noticed.
+3. **Never store full values; redact at the persistence boundary.** Pros:
+   sounds strongest, smallest structured target. Cons: mostly theatre, because
+   chunk text already contains the identifiers, so it relocates them from a
+   labelled column to an unlabelled blob rather than removing them; and it
+   denies a real feature to buy that. Available to any user who wants it, as
+   the off setting in option 1.
+4. **Store full values as ordinary columns, no special handling.** Pros:
+   simplest; the encryption arguably covers it. Cons: identifiers leak into
+   list views, CLI output, logs and exports by default, which is where casual
+   exposure actually happens; it makes any future export or sharing feature a
+   hazard by default rather than by mistake.
+5. **Redact the user's original document files.** Rejected outright, recorded
+   because it is the intuitive reading of "redact everywhere". It destroys the
+   user's source of truth on the strength of a 2B model's extraction, is
+   irreversible, and contradicts ADR-0007 (index in place, never modify
+   originals) and ADR-0008 (propose, do not act). If a user wants a redacted
+   passport scan, that is their deliberate act on a copy, and at most something
+   Outtray could one day propose.
 
 ## Consequences
 
@@ -240,6 +289,22 @@ comparison.
   product now has a use for them. What it adds instead is a display rule that
   every future output surface must honour, so redaction belongs in core next
   to the store rather than in each command.
+- **Tokenization sits on the write path of the chunk table**, which makes it
+  load-bearing for retrieval correctness as well as privacy. It needs its own
+  tests (values in several formats, values appearing more than once in a
+  document, values that fail to match), and a failure to tokenize an expected
+  value must surface rather than pass silently. It also means the tokenizer
+  runs before embedding, so a change to it invalidates stored embeddings.
+- **The feature is off by default**, so the default install stores no full
+  identifiers at all, and everything above describes what happens when a user
+  opts in. The first-run disclosure is UX work with a real honesty
+  requirement: it has to state the best-effort limit without becoming a wall
+  of caveats nobody reads.
+- The threat-model assessment behind this (`docs/THREAT_MODEL.md`) concluded
+  that centralizing identifiers does **not** improve the file-theft picture,
+  which encryption already covers, and does substantially improve incidental
+  exposure and revocability. Anyone tempted to sell this as a security feature
+  should read that table first.
 - The reveal path is new user-facing surface with real failure modes: it must
   not be reachable from the action queue by accident, must not be logged, and
   needs its own tests. It also needs a decision in Phase 3 about whether Touch
