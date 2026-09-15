@@ -2,3 +2,7 @@ packages:
   - packages/*
 allowBuilds:
   esbuild: true
+  # ADR-0011: the SQLCipher adapter's native module. Compiles from source when
+  # no prebuilt binary matches the Node ABI (39 s cold, see
+  # docs/evals/sqlcipher-spike.md).
+  better-sqlite3-multiple-ciphers: true

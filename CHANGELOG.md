@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Storage foundation (ADR-0011): a `StorageProvider` seam in `packages/core`
+  alongside `ModelProvider` and `EmbeddingProvider`, with an in-memory
+  implementation and an encrypted-SQLite adapter over
+  `better-sqlite3-multiple-ciphers`, the workspace's first native dependency.
+  One file at `~/Library/Application Support/outtray/outtray.db` in a
+  directory created owner-only, holding documents, chunks, labels and the
+  identifier tables, migrated by `PRAGMA user_version`. The key is 32 random
+  bytes in the macOS Keychain, passed raw so no KDF runs at unlock. Opening
+  asserts the upstream-compatible SQLCipher format twice, from the pragmas the
+  driver reports and from the bytes on disk, so a dependency bump cannot
+  silently change the on-disk format. Nothing consumes the store yet: `scan`,
+  `find` and the classifier are unchanged.
 - Action layer v1 (ADR-0010): `outtray actions <dir>` scans a folder and
   proposes a deterministic action queue: to-dos from extracted action items
   (deduplicated, past-due ones flagged), expiry alerts inside a 60-day window
