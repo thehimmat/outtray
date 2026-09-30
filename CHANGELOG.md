@@ -72,3 +72,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`docs/evals/METHODOLOGY.md`).
 - Fixture privacy policy enforced via `.gitignore` and documented in
   `packages/evals/fixtures/README.md`.
+
+### Changed
+
+- `better-sqlite3-multiple-ciphers` 12.11.1 to 13.0.3 (SQLite3 Multiple
+  Ciphers 2.3.5 to 2.4.0, SQLite 3.53.2 to 3.53.4). The package now ships
+  Node-API prebuilds for every supported platform, so `pnpm install` no longer
+  compiles it from source (about 39 s saved on a cold install). The on-disk
+  format assertions pass unchanged.
