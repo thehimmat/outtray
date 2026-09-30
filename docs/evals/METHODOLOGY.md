@@ -27,8 +27,9 @@ Status: design written Phase 0; implementation lands with Phase 1.
   remains: a salted-hash denylist of the owner's real identifiers, stored as
   a CI secret, matched against fixture n-grams. A secrets scanner
   (gitleaks-class) runs for real credentials.
-- **Bilingual coverage**: the beachhead is international relocation, so the
-  set includes bilingual documents from Phase 1.
+- **Bilingual coverage**: multilingual paperwork is the hardest case the
+  extractor has to handle, and the one the project started from, so the set
+  includes bilingual documents from Phase 1.
 
 ## Scoring
 
