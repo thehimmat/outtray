@@ -21,6 +21,7 @@ import {
   OllamaEmbeddingProvider,
   OllamaProvider,
   planActions,
+  redactExtraction,
   type ScanItem,
   type ScanReport,
   scanDirectory,
@@ -68,7 +69,7 @@ export function formatReport(dir: string, report: ScanReport): string {
       lines.push(`${file}  [could not extract: ${result.error ?? 'unknown error'}]`, '');
       continue;
     }
-    const doc = result.document;
+    const doc = redactExtraction(result.document);
     lines.push(`${file}  [${typeTag(doc, reconciliation)}]`, `  ${doc.summary}`);
     if (doc.action_items.length > 0) {
       lines.push('  Actions:');

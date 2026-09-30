@@ -201,3 +201,24 @@ describe('planActions', () => {
     expect(queue.disclaimer).toBe(DISCLAIMER);
   });
 });
+
+describe('planActions identifier redaction', () => {
+  it('redacts identifiers in to-do titles and citation snippets', () => {
+    const statement: DocumentExtraction = {
+      type: 'statement',
+      summary: 'Checking statement.',
+      action_items: [{ text: 'Call bank about account 0042-1177-89', due_date: '2099-01-01' }],
+      institution: 'First Bank',
+      account_number: '0042-1177-89',
+      period_start: null,
+      period_end: '2026-06-30',
+      balance: null,
+    };
+    const queue = planActions(report([item('stmt.png', statement)]), { today: TODAY });
+    const todo = queue.items.find((i) => i.ruleId === 'todo-extracted');
+    expect(todo?.title).toBe('Call bank about account [account_number ending 7789, 10 chars]');
+    expect(todo?.citations[0]?.snippet).toBe(todo?.title);
+    const everything = JSON.stringify(queue).replace(/[^0-9]/g, '');
+    expect(everything).not.toContain('0042117789');
+  });
+});

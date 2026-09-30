@@ -75,6 +75,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Identifiers (passport and ID numbers, policy numbers, account numbers) no
+  longer appear in full in any output (ADR-0011 amendment, #79 slice 1).
+  `outtray scan` and `outtray actions` show them as last four plus length,
+  e.g. `[id_number ending 4567, 9 chars]`, or length only for values under 8
+  characters. `outtray find` indexes and cites `[id_number]` instead of the
+  value. Matching ignores spacing, dashes and case and tolerates common OCR
+  confusions (O/0, I/L/1, S/5, B/8, Z/2); a number the model rewrote beyond
+  those variants can still slip through, so this reduces exposure rather
+  than guaranteeing it.
 - `better-sqlite3-multiple-ciphers` 12.11.1 to 13.0.3 (SQLite3 Multiple
   Ciphers 2.3.5 to 2.4.0, SQLite 3.53.2 to 3.53.4). The package now ships
   Node-API prebuilds for every supported platform, so `pnpm install` no longer

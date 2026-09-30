@@ -119,6 +119,29 @@ describe('formatReport', () => {
     expect(text).not.toContain('Review:');
   });
 
+  it('redacts identifiers in the summary and action items', () => {
+    const passport = {
+      type: 'id_document' as const,
+      summary: 'Passport AB1234567 for Jane Doe.',
+      action_items: [{ text: 'Renew AB 123 4567', due_date: '2027-01-01' }],
+      holder_name: 'Jane Doe',
+      id_number: 'AB1234567',
+      issuer: 'US Department of State',
+      expiry_date: '2027-03-01',
+    };
+    const item = billItem(unclassified);
+    const report: ScanReport = {
+      scanned: ['passport.png'],
+      skipped: [],
+      items: [{ ...item, result: { ...item.result, document: passport } }],
+      classifierError: null,
+    };
+    const text = formatReport('pile', report);
+    expect(text).toContain('Passport [id_number ending 4567, 9 chars] for Jane Doe.');
+    expect(text).toContain('- Renew [id_number ending 4567, 9 chars] (due 2027-01-01)');
+    expect(text).not.toMatch(/AB ?123/);
+  });
+
   it('renders a confirmed type with its confidence and the review tally', () => {
     const report: ScanReport = {
       scanned: ['renewal.png'],
