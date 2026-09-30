@@ -4,7 +4,15 @@
     "composite": true,
     "rootDir": "src",
     "outDir": "dist",
-    "types": ["node"]
+    "types": ["node"],
+    // better-sqlite3-multiple-ciphers 13 added an "exports" map without a
+    // "types" condition, so NodeNext resolution cannot find the index.d.ts it
+    // still ships. Point at it directly; drop this once upstream fixes exports.
+    "paths": {
+      "better-sqlite3-multiple-ciphers": [
+        "./node_modules/better-sqlite3-multiple-ciphers/index.d.ts"
+      ]
+    }
   },
   "include": ["src"]
 }
