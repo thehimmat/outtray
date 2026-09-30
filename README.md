@@ -19,8 +19,8 @@ Every proposed item shows its reasoning, a verbatim snippet, and a link to the
 exact source page. Nothing acts without your approval, and in v1 the app
 cannot delete anything at all: it advises, you act.
 
-First audience: people relocating internationally, whose paperwork arrives in
-two languages, on deadlines, with real consequences.
+Built for anyone with a pile: the drawer of unopened mail, the folder of
+scans, the box that has moved house twice without being opened.
 
 ## Why local
 
@@ -64,6 +64,15 @@ flowchart LR
 - `packages/app`: Tauri v2 + React shell (lands in Phase 3).
 
 All consequential decisions are recorded as [ADRs](docs/adr/).
+
+## Where it started
+
+The first pile was an international move: paperwork in two languages, on
+deadlines, with real consequences for missing one. That case is still the
+sharpest test of whether the extraction actually works, which is why bilingual
+documents are in the fixture set from Phase 1
+([methodology](docs/evals/METHODOLOGY.md)). It is the hard case, not the only
+one — most piles are ordinary, and ordinary piles are the point.
 
 ## Roadmap
 
