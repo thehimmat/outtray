@@ -64,7 +64,8 @@ Conclusions:
    off by default and disclosed in plain terms. Keeping a passport number in a
    local encrypted store is the same class of decision as keeping one in a
    password manager: reasonable, widely made, and not ours to make silently.
-5. **Scope limit:** this covers the four extracted identifier fields only.
+5. **Scope limit:** this covers the three extracted identifier fields only
+   (`id_number`, `policy_number`, `account_number`).
    Names, addresses and dates of birth remain in derived text. The chunk table
    is not PII-free and must not be described as such.
 
