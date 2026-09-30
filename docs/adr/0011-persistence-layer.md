@@ -330,3 +330,142 @@ comparison.
   so recovery is a re-scan. The identifier table is derived too, so the same
   holds, but the UI must not let users treat it as a vault backup. If they
   want durable custody, that is #71 direction 1 and their own vault.
+
+## Amendment (2026-09-30): what "tokenized" means at the write path
+
+Status: **proposed**, awaiting owner sign-off (issue #94). Implementation of
+#79 does not start until this is accepted.
+
+Planning #79 against the shipped schema surfaced two places where section 3
+cannot be built exactly as written, plus one factual error. Nothing here
+changes the position of section 3 (one copy, tokenized out of derived text,
+redacted by default, explicit reveal, off by default). It changes how the
+write path achieves it.
+
+### 1. The placeholder in derived text does not depend on the setting
+
+Section 3 says known identifier values are "replaced by an opaque reference to
+that row". Taken literally, that makes derived text depend on the opt-in:
+
+- With the setting **off** there is no row, so there is nothing to reference,
+  and off-mode text would need a second placeholder format anyway.
+- Switching **on to off** purges the rows, which leaves every chunk pointing at
+  a row that no longer exists.
+- Switching in **either direction** changes the text that was embedded, and
+  the Consequences section above already notes that any change to tokenized
+  text invalidates stored embeddings. A privacy toggle would silently cost a
+  full re-embed of the corpus, which on the 8 GB Air is a model load and
+  seconds per document.
+
+**Decision:** the placeholder is a fixed marker naming the field, for example
+`[id_number]`, identical in both modes. The link from a document to its
+identifier is the existing `identifier_mentions` row (document hash, field),
+not anything in the text. Derived text and embeddings are therefore the same
+whether the user opted in or not, and flipping the setting never touches them.
+
+#### Options considered for the placeholder
+
+1. **A reference to the row, e.g. `[identifier:7]` (the text as accepted).**
+   Pros: the text itself says which value was removed, so a reader of a chunk
+   can follow it. Cons: there is no row when the setting is off, so it needs a
+   second format; a purge leaves dangling references; every toggle forces a
+   full re-embed; row ids are sequential, so they leak how many identifiers
+   exist and in what order they were seen. The "follow it" benefit is already
+   provided by `identifier_mentions`.
+2. **A fixed marker naming the field, e.g. `[id_number]` (recommended).**
+   Pros: identical in both modes, so toggling and purging never touch derived
+   text or embeddings; carries nothing about the value; the embedder still
+   sees that the document has an ID number, which is the only part of that
+   sentence with semantic weight (section 3 already notes raw digits
+   contribute approximately nothing to cosine ranking). Cons: two identifiers
+   of the same field in one document produce the same marker, so the text
+   alone cannot say which is which. `identifier_mentions` records both, and
+   nothing downstream needs to tell them apart inside chunk text.
+3. **The marker plus last four, e.g. `[id_number ending 1234]`.** Pros: still
+   mode-independent; a query like "account ending 1234" could match. Cons:
+   copies the last four into every chunk and every embedding, which is more
+   partial copies for a search benefit that semantic ranking does not
+   deliver. The last four are already available from the stored extraction
+   (below) when a result is displayed.
+4. **Delete the value with no marker.** Pros: simplest possible thing. Cons:
+   leaves text like "passport number: ." and removes the signal that the
+   document carries an identifier at all, which hurts retrieval for queries
+   such as "where is my passport number" for no privacy gain over option 2.
+
+### 2. The stored extraction is derived text too
+
+Section 3 names chunk text as the second copy to remove. There is a third:
+`documents.extraction_json`, shipped in #78, stores the whole extraction, and
+the extraction contains each identifier field in full. Left alone, every
+opted-in identifier would exist twice (vault row and extraction JSON), and
+every opted-out identifier would be stored in full despite the setting.
+
+**Decision:** before a document row is written, each identifier field in the
+extraction is replaced by its redacted display form (last four plus length,
+see 4 below), **in both modes**. This is also the answer to where last-four
+lives when the setting is off, which section 3 requires ("last-four is all
+that is ever computed or stored") without saying where. The exact encoding is
+an implementation detail of #79, fixed by tests.
+
+The same rule covers any other text Outtray derives from an extraction and
+keeps: chunk text today, and the classifier label store's embeddings once #67
+persists them, since both are built from the same flattened extraction text.
+
+Matching quality differs by location, and the docs should say so. Replacing
+the named field in the extraction is exact, because the field is known.
+Removing the same value from free text (the model's summary and action items,
+which can restate a number in a different format) is the best-effort part
+that section 3's honest limits describe, and a miss must be reported.
+
+### 3. Consequence: the vault table is the only setting-dependent data
+
+With 1 and 2 together, the only difference between an opted-in and an
+opted-out store is the contents of `identifiers` (and `identifier_mentions`,
+which cascades). Switching off is a single delete that is complete by
+construction, with no rewrite of documents, chunks or embeddings. Switching on
+does not retroactively fill the vault: values already redacted are gone, so
+an identifier reaches the vault only when its document is next extracted.
+Once #43 lets `scan` skip unchanged documents, switching the setting on must
+force re-extraction of documents with identifier fields, or the vault never
+fills. The disclosure should say this in one line rather than surprise the
+user.
+
+### 4. Redaction rules
+
+- **Redaction is a display and persistence rule, not an extraction change.**
+  The extraction contract (ADR-0004) keeps asking for full values, as the
+  Consequences above already state, and the full value exists in memory
+  between the model and the write path. Record/replay recordings are
+  unchanged: they hold synthetic fixtures only (fixture policy), and changing
+  them would force a re-record for no privacy gain, the fragility #88
+  documents.
+- **Short values show length only.** "Last four plus length" is too revealing
+  for short values: four characters of a five-character value is most of it.
+  Values shorter than 8 characters display as length only. The threshold is
+  provisional and lives beside the redaction rule so it is changed in one
+  place.
+
+### 5. Correction and sequencing
+
+- **Three fields, not four.** Section 3 and `docs/THREAT_MODEL.md` refer to
+  "four extracted identifier fields". The contract has three:
+  `id_document.id_number`, `policy.policy_number` and
+  `statement.account_number`, as section 3 itself lists. The threat model is
+  corrected alongside this amendment; the accepted text above is left as
+  written and this note stands as the correction.
+- **#79 wires `outtray scan` to persist documents and identifiers** (not
+  chunks or embeddings, which remain #43), so `outtray reveal` has something
+  to read and the feature can be demonstrated end to end. This makes `scan`
+  the store's first consumer: it creates the database and, on first run, the
+  Keychain key.
+
+### Consequences of the amendment
+
+- A privacy toggle costs nothing in re-indexing, in either direction, and a
+  purge is a single statement whose completeness is testable.
+- #79 gains a write-path step for `documents.extraction_json`, with tests that
+  a stored extraction never contains a full identifier in either mode.
+- #43 and #67 inherit one rule: anything derived from an extraction is built
+  from the tokenized form, never the in-memory full form.
+- Switching the setting on is forward-only until the next scan, which the
+  first-run disclosure must state.

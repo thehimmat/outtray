@@ -22,8 +22,10 @@ When those conflict, favor the showcase.
   refuses to open rather than stranding it, and nothing ever falls back to an
   unencrypted store. **The native module is the workspace's first, and lives
   only in `storage-sqlcipher.ts`.** `scan`, `find` and the classifier are
-  untouched. Next: **#79 (identifier vault and tokenizer) must land before
-  #43**, because the tokenizer sits on the chunk write path and re-tokenizing
+  untouched. An ADR-0011 amendment (mode-independent `[field]` placeholders,
+  redacted `extraction_json`, `scan` persists documents) is **proposed and
+  awaiting sign-off in #94; do not start #79 until it is accepted**. Next:
+  **#79 (identifier vault and tokenizer) must land before #43**, because the tokenizer sits on the chunk write path and re-tokenizing
   later invalidates stored embeddings. Then #43 (index persistence) and #67
   (label store). Extracted identifiers get one canonical encrypted row, are
   tokenized out of derived chunk text, are redacted to last-four in every
