@@ -333,8 +333,7 @@ comparison.
 
 ## Amendment (2026-09-30): what "tokenized" means at the write path
 
-Status: **proposed**, awaiting owner sign-off (issue #94). Implementation of
-#79 does not start until this is accepted.
+Status: **accepted 2026-09-30** on owner sign-off (issue #94, PR #95 merged).
 
 Planning #79 against the shipped schema surfaced two places where section 3
 cannot be built exactly as written, plus one factual error. Nothing here
