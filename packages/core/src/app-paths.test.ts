@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   APP_DIRECTORY_MODE,
   appDataDir,
+  defaultConfigPath,
   defaultDatabasePath,
   ensureAppDataDir,
   UnsupportedPlatformError,
@@ -35,6 +36,14 @@ describe('appDataDir', () => {
     );
     expect(() => appDataDir({ platform: 'win32', home: 'C:\\Users\\x' })).toThrow(
       UnsupportedPlatformError,
+    );
+  });
+});
+
+describe('defaultConfigPath', () => {
+  it('sits beside the database, outside it, so deleting the store keeps settings', () => {
+    expect(defaultConfigPath({ platform: 'darwin', home: '/Users/x' })).toBe(
+      '/Users/x/Library/Application Support/outtray/config.json',
     );
   });
 });

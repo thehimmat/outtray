@@ -62,8 +62,9 @@ describe('identifierOf', () => {
     expect(identifierOf(BILL)).toBeNull();
   });
 
-  it('returns null when the extracted value is blank', () => {
+  it('returns null when the extracted value has no letters or digits', () => {
     expect(identifierOf({ ...PASSPORT, id_number: '  ' })).toBeNull();
+    expect(identifierOf({ ...PASSPORT, id_number: '-/-' })).toBeNull();
   });
 });
 

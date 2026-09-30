@@ -8,8 +8,8 @@ When those conflict, favor the showcase.
 
 ## Current state
 
-- **Storage foundation shipped (ADR-0011, accepted 2026-07-31; issue #78),
-  no consumers yet**: `StorageProvider` seam in core with `MemoryStorage` and
+- **Storage foundation shipped (ADR-0011, accepted 2026-07-31; issue #78);
+  `scan` is its first consumer (#79 slice 2)**: `StorageProvider` seam in core with `MemoryStorage` and
   `SqlcipherStorage`, one encrypted file at `~/Library/Application
   Support/outtray/outtray.db` (dir chmod 700), tables `documents`, `chunks`,
   `labels`, `identifiers`, `identifier_mentions`, migrated by `PRAGMA
@@ -21,13 +21,16 @@ When those conflict, favor the showcase.
   Keychain, raw so no KDF runs at unlock; missing key plus existing database
   refuses to open rather than stranding it, and nothing ever falls back to an
   unencrypted store. **The native module is the workspace's first, and lives
-  only in `storage-sqlcipher.ts`.** `scan`, `find` and the classifier are
-  untouched. The ADR-0011 amendment (accepted 2026-09-30, #94) fixes the
+  only in `storage-sqlcipher.ts`.** `outtray scan` persists documents via
+  `persistScan` (redacted extraction always; vault only when
+  `config.json` has `identifierStorage: true`; off purges on every persist).
+  `find` and the classifier do not read the store yet. The ADR-0011 amendment (accepted 2026-09-30, #94) fixes the
   write path: derived text gets a mode-independent `[field]` placeholder,
   `extraction_json` stores the redacted form in both modes, and `scan`
   persists documents in #79. Next: **#79 (identifier vault and tokenizer)
-  must land before #43**, in three slices (pure matcher and redaction wired
-  into output; vault and opt-in; reveal and disclosure), because the tokenizer sits on the chunk write path and re-tokenizing
+  must land before #43**, in three slices (1 and 2 done: matcher and
+  redaction in every output; vault, opt-in and scan persistence. Remaining:
+  `outtray reveal`, the settings command and first-run disclosure), because the tokenizer sits on the chunk write path and re-tokenizing
   later invalidates stored embeddings. Then #43 (index persistence) and #67
   (label store). Extracted identifiers get one canonical encrypted row, are
   tokenized out of derived chunk text, are redacted to last-four in every

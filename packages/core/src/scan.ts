@@ -22,6 +22,7 @@
  * later. Non-image files are reported as skipped, not errors.
  */
 
+import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import type { TypeClassifier } from './classifier.js';
@@ -44,6 +45,11 @@ const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp']);
 export interface ScanItem {
   /** File name relative to the scanned directory. */
   file: string;
+  /**
+   * SHA-256 of the file's bytes, hex. The store's document key (ADR-0011): a
+   * moved or renamed file is the same document, an edited one is a new one.
+   */
+  contentHash: string;
   /** The extraction outcome (may be invalid; see `ExtractResult`). */
   result: ExtractResult;
   /** The type verdict after the classification stage (ADR-0009). */
@@ -131,6 +137,7 @@ export async function scanDirectory(
     });
     items.push({
       file,
+      contentHash: createHash('sha256').update(bytes).digest('hex'),
       result,
       reconciliation: reconcileType(result.document?.type ?? null, null),
     });

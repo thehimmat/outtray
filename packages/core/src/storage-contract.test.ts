@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { generateDatabaseKey, StaticKeyProvider } from './db-key.js';
+import type { IdentifierField } from './identifiers.js';
 import { MemoryStorage } from './storage-memory.js';
 import {
   type NewLabel,
@@ -258,6 +259,135 @@ describe.each([
     await store.close();
   });
 
+  it('vaults an identifier and reveals it by document and field', async () => {
+    const store = await create();
+    await store.putDocument(document());
+    await store.putIdentifiers('hash-b', [{ field: 'id_number', value: 'X1234567' }]);
+    expect(await store.getIdentifier('hash-b', 'id_number')).toBe('X1234567');
+    expect(await store.countIdentifiers()).toBe(1);
+    await store.close();
+  });
+
+  it('resolves null for a document or field with no vaulted identifier', async () => {
+    const store = await create();
+    await store.putDocument(document());
+    expect(await store.getIdentifier('hash-b', 'id_number')).toBeNull();
+    expect(await store.getIdentifier('missing', 'account_number')).toBeNull();
+    await store.close();
+  });
+
+  it('stores a number mentioned by several documents once, whatever its formatting', async () => {
+    const store = await create();
+    await store.putDocument(document({ contentHash: 'hash-a' }));
+    await store.putDocument(document({ contentHash: 'hash-b' }));
+    await store.putDocument(document({ contentHash: 'hash-c' }));
+    await store.putIdentifiers('hash-a', [{ field: 'id_number', value: 'X1234567' }]);
+    await store.putIdentifiers('hash-b', [{ field: 'id_number', value: 'x-123 4567' }]);
+    await store.putIdentifiers('hash-c', [{ field: 'account_number', value: 'X1234567' }]);
+    expect(await store.countIdentifiers()).toBe(1);
+    expect(await store.getIdentifier('hash-b', 'id_number')).toBe('X1234567');
+    expect(await store.getIdentifier('hash-c', 'account_number')).toBe('X1234567');
+    await store.close();
+  });
+
+  it('keeps an identifier while any document still mentions it', async () => {
+    const store = await create();
+    await store.putDocument(document({ contentHash: 'hash-a' }));
+    await store.putDocument(document({ contentHash: 'hash-b' }));
+    await store.putIdentifiers('hash-a', [{ field: 'id_number', value: 'X1234567' }]);
+    await store.putIdentifiers('hash-b', [{ field: 'id_number', value: 'X1234567' }]);
+    await store.deleteDocument('hash-a');
+    expect(await store.countIdentifiers()).toBe(1);
+    await store.deleteDocument('hash-b');
+    expect(await store.countIdentifiers()).toBe(0);
+    await store.close();
+  });
+
+  it('replaces a document identifier and drops the one no longer mentioned', async () => {
+    const store = await create();
+    await store.putDocument(document());
+    await store.putIdentifiers('hash-b', [{ field: 'id_number', value: 'X1234567' }]);
+    await store.putIdentifiers('hash-b', [{ field: 'id_number', value: 'Y7654321' }]);
+    expect(await store.getIdentifier('hash-b', 'id_number')).toBe('Y7654321');
+    expect(await store.countIdentifiers()).toBe(1);
+    await store.close();
+  });
+
+  it('clears a document identifiers with an empty batch', async () => {
+    const store = await create();
+    await store.putDocument(document());
+    await store.putIdentifiers('hash-b', [{ field: 'id_number', value: 'X1234567' }]);
+    await store.putIdentifiers('hash-b', []);
+    expect(await store.getIdentifier('hash-b', 'id_number')).toBeNull();
+    expect(await store.countIdentifiers()).toBe(0);
+    await store.close();
+  });
+
+  it('drops a field the document no longer has when its identifiers are replaced', async () => {
+    const store = await create();
+    await store.putDocument(document());
+    await store.putIdentifiers('hash-b', [{ field: 'policy_number', value: 'P99887766' }]);
+    await store.putIdentifiers('hash-b', [{ field: 'account_number', value: 'A55443322' }]);
+    expect(await store.getIdentifier('hash-b', 'policy_number')).toBeNull();
+    expect(await store.getIdentifier('hash-b', 'account_number')).toBe('A55443322');
+    expect(await store.countIdentifiers()).toBe(1);
+    await store.close();
+  });
+
+  it('refuses a batch naming one field twice, writing nothing', async () => {
+    const store = await create();
+    await store.putDocument(document());
+    await expect(
+      store.putIdentifiers('hash-b', [
+        { field: 'id_number', value: 'X1234567' },
+        { field: 'id_number', value: 'Y7654321' },
+      ]),
+    ).rejects.toThrow(StorageError);
+    expect(await store.countIdentifiers()).toBe(0);
+    await store.close();
+  });
+
+  it('keeps identifiers when a document row is replaced by a re-scan', async () => {
+    const store = await create();
+    await store.putDocument(document());
+    await store.putIdentifiers('hash-b', [{ field: 'id_number', value: 'X1234567' }]);
+    await store.putDocument(document({ path: '/moved/passport.png' }));
+    expect(await store.getIdentifier('hash-b', 'id_number')).toBe('X1234567');
+    await store.close();
+  });
+
+  it('purges every identifier and leaves documents alone', async () => {
+    const store = await create();
+    await store.putDocument(document({ contentHash: 'hash-a' }));
+    await store.putDocument(document({ contentHash: 'hash-b' }));
+    await store.putIdentifiers('hash-a', [{ field: 'id_number', value: 'X1234567' }]);
+    await store.putIdentifiers('hash-b', [{ field: 'policy_number', value: 'P99887766' }]);
+    expect(await store.purgeIdentifiers()).toBe(2);
+    expect(await store.countIdentifiers()).toBe(0);
+    expect(await store.getIdentifier('hash-a', 'id_number')).toBeNull();
+    expect(await store.listDocuments()).toHaveLength(2);
+    expect(await store.purgeIdentifiers()).toBe(0);
+    await store.close();
+  });
+
+  it('refuses to vault for a missing document, a blank value, or an unknown field', async () => {
+    const store = await create();
+    await store.putDocument(document());
+    await expect(
+      store.putIdentifiers('missing', [{ field: 'id_number', value: 'X1234567' }]),
+    ).rejects.toThrow(StorageError);
+    await expect(
+      store.putIdentifiers('hash-b', [{ field: 'id_number', value: ' - ' }]),
+    ).rejects.toThrow(StorageError);
+    await expect(
+      store.putIdentifiers('hash-b', [
+        { field: 'holder_name' as IdentifierField, value: 'X1234567' },
+      ]),
+    ).rejects.toThrow(StorageError);
+    expect(await store.countIdentifiers()).toBe(0);
+    await store.close();
+  });
+
   it('reports empty collections for a fresh store', async () => {
     const store = await create();
     expect(await store.listDocuments()).toEqual([]);
@@ -275,5 +405,11 @@ describe.each([
     await expect(store.putDocument(document())).rejects.toThrow(StorageError);
     await expect(store.listChunks()).rejects.toThrow(StorageError);
     await expect(store.listLabels()).rejects.toThrow(StorageError);
+    await expect(
+      store.putIdentifiers('hash-b', [{ field: 'id_number', value: 'X1234567' }]),
+    ).rejects.toThrow(StorageError);
+    await expect(store.getIdentifier('hash-b', 'id_number')).rejects.toThrow(StorageError);
+    await expect(store.purgeIdentifiers()).rejects.toThrow(StorageError);
+    await expect(store.countIdentifiers()).rejects.toThrow(StorageError);
   });
 });

@@ -22,6 +22,9 @@ export const APP_DIRECTORY = 'outtray';
 /** File name of the encrypted store. */
 export const DATABASE_FILE = 'outtray.db';
 
+/** The settings file inside `appDataDir` (issue #83). */
+export const CONFIG_FILE = 'config.json';
+
 /** Owner-only, per ADR-0011: nothing outside this account has business reading it. */
 export const APP_DIRECTORY_MODE = 0o700;
 
@@ -67,6 +70,15 @@ export function appDataDir(options: AppPathOptions = {}): string {
  */
 export function defaultDatabasePath(options: AppPathOptions = {}): string {
   return join(appDataDir(options), DATABASE_FILE);
+}
+
+/**
+ * The default path of the settings file, beside the database.
+ *
+ * Failure modes: as `appDataDir`.
+ */
+export function defaultConfigPath(options: AppPathOptions = {}): string {
+  return join(appDataDir(options), CONFIG_FILE);
 }
 
 /**

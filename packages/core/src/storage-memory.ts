@@ -12,9 +12,11 @@
  * the whole point.
  */
 
+import type { DocumentIdentifier, IdentifierField } from './identifiers.js';
 import {
   asLabelProvenance,
   assertChunkBatch,
+  keyIdentifierBatch,
   type NewLabel,
   StorageError,
   type StorageProvider,
@@ -34,6 +36,10 @@ export class MemoryStorage implements StorageProvider {
   readonly #chunks = new Map<string, StoredChunk[]>();
   readonly #labels: StoredLabel[] = [];
   #nextLabelId = 1;
+  /** Canonical key to the value as first vaulted. */
+  readonly #identifiers = new Map<string, string>();
+  /** `documentHash + NUL + field` to canonical key. */
+  readonly #mentions = new Map<string, string>();
   #closed = false;
 
   #assertOpen(): void {
@@ -64,6 +70,23 @@ export class MemoryStorage implements StorageProvider {
     this.#assertOpen();
     this.#documents.delete(contentHash);
     this.#chunks.delete(contentHash);
+    this.#dropMentions(contentHash);
+    this.#dropOrphans();
+  }
+
+  /** Delete every identifier mention belonging to one document. */
+  #dropMentions(documentHash: string): void {
+    for (const mention of [...this.#mentions.keys()]) {
+      if (mention.startsWith(`${documentHash}\u0000`)) this.#mentions.delete(mention);
+    }
+  }
+
+  /** Delete identifiers no document mentions any more. */
+  #dropOrphans(): void {
+    const referenced = new Set(this.#mentions.values());
+    for (const key of [...this.#identifiers.keys()]) {
+      if (!referenced.has(key)) this.#identifiers.delete(key);
+    }
   }
 
   async putChunks(contentHash: string, chunks: StoredChunk[]): Promise<void> {
@@ -98,6 +121,42 @@ export class MemoryStorage implements StorageProvider {
   async listLabels(): Promise<StoredLabel[]> {
     this.#assertOpen();
     return [...this.#labels].sort((a, b) => a.id - b.id).map(clone);
+  }
+
+  async putIdentifiers(
+    documentHash: string,
+    identifiers: readonly DocumentIdentifier[],
+  ): Promise<void> {
+    this.#assertOpen();
+    const keyed = keyIdentifierBatch(identifiers);
+    if (!this.#documents.has(documentHash)) {
+      throw new StorageError(`No document ${documentHash} to attach identifiers to.`);
+    }
+    this.#dropMentions(documentHash);
+    for (const { field, value, key } of keyed) {
+      if (!this.#identifiers.has(key)) this.#identifiers.set(key, value);
+      this.#mentions.set(`${documentHash}\u0000${field}`, key);
+    }
+    this.#dropOrphans();
+  }
+
+  async getIdentifier(documentHash: string, field: IdentifierField): Promise<string | null> {
+    this.#assertOpen();
+    const key = this.#mentions.get(`${documentHash}\u0000${field}`);
+    return key === undefined ? null : (this.#identifiers.get(key) ?? null);
+  }
+
+  async purgeIdentifiers(): Promise<number> {
+    this.#assertOpen();
+    const count = this.#identifiers.size;
+    this.#identifiers.clear();
+    this.#mentions.clear();
+    return count;
+  }
+
+  async countIdentifiers(): Promise<number> {
+    this.#assertOpen();
+    return this.#identifiers.size;
   }
 
   async close(): Promise<void> {
