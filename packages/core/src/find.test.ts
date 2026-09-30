@@ -80,6 +80,31 @@ describe('findInDirectory', () => {
     expect(citations[0]?.text.toLowerCase()).toContain('metro');
   });
 
+  it('indexes tokenized text, so citations never carry a full identifier', async () => {
+    const statement = {
+      type: 'statement',
+      summary: 'Metro Electric account 0042-1177-89 statement.',
+      action_items: [],
+      institution: 'Metro Electric',
+      account_number: '0042-1177-89',
+      period_start: null,
+      period_end: '2026-06-30',
+      balance: null,
+    };
+    await writeFile(join(dir, 'statement.png'), Buffer.from([0x89]));
+    const { citations } = await findInDirectory(
+      new StubModel(statement),
+      new FakeEmbedder(),
+      dir,
+      'metro electric',
+      3,
+      { model: 'qwen3-vl:2b' },
+    );
+    const text = citations.map((c) => c.text).join(' ');
+    expect(text).toContain('[account_number]');
+    expect(text.replace(/[^0-9]/g, '')).not.toContain('0042117789');
+  });
+
   it('returns no citations when no document could be extracted', async () => {
     await writeFile(join(dir, 'bad.png'), Buffer.from([0x89]));
     const { citations } = await findInDirectory(

@@ -6,7 +6,8 @@
  * ADR-0009 reconciliation verdicts; there is no model call and no prompt, so
  * document text cannot reach instruction position (ADR-0008 point 1 holds by
  * construction) and CI tests the whole layer hermetically. Every item carries
- * verbatim citations of the extracted evidence (point 2), is only ever
+ * verbatim citations of the extracted evidence (point 2), with identifiers
+ * redacted to last four (ADR-0011), is only ever
  * `proposed` (point 3: the agent proposes, the human acts, and no destructive
  * tool exists), and the queue never renders an all-clear (point 5). Retention
  * advice cites the rule that produced it and carries the non-advice
@@ -14,6 +15,7 @@
  */
 
 import type { DocumentExtraction, DocumentType } from './extraction-schema.js';
+import { redactExtraction } from './identifiers.js';
 import type { ScanReport } from './scan.js';
 
 /** What kind of proposed action an item is. */
@@ -160,7 +162,9 @@ export function planActions(report: ScanReport, options: PlanOptions): ActionQue
   for (const scanItem of report.items) {
     const { file, result, reconciliation } = scanItem;
     const review = reconciliation.review;
-    const doc = result.document;
+    // The queue is an output surface: plan from the redacted extraction so no
+    // title or snippet can carry a full identifier (ADR-0011).
+    const doc = result.document ? redactExtraction(result.document) : result.document;
 
     if (!result.valid || !doc) {
       add(

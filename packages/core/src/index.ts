@@ -74,6 +74,20 @@ export {
   type FindResult,
   findInDirectory,
 } from './find.js';
+export {
+  canonicalIdentifier,
+  type DocumentIdentifier,
+  IDENTIFIER_FIELDS,
+  type IdentifierField,
+  identifierOf,
+  MIN_LAST_FOUR_LENGTH,
+  MIN_MATCH_LENGTH,
+  placeholderFor,
+  redactExtraction,
+  redactedForm,
+  replaceIdentifier,
+  tokenizeExtraction,
+} from './identifiers.js';
 export type {
   GenerateOptions,
   GenerateRequest,
