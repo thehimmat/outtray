@@ -16,14 +16,21 @@ import { stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
   type ActionQueue,
+  defaultConfigPath,
+  defaultDatabasePath,
   type FindResult,
   findInDirectory,
+  KeychainKeyProvider,
   OllamaEmbeddingProvider,
   OllamaProvider,
+  openSqlcipherStorage,
+  persistScan,
   planActions,
+  readSettings,
   redactExtraction,
   type ScanItem,
   type ScanReport,
+  type StorageProvider,
   scanDirectory,
 } from '@outtray/core';
 
@@ -205,6 +212,58 @@ async function scanWithClassifier(dir: string): Promise<ScanReport> {
   });
 }
 
+/** Where `saveScan` finds the settings and the store. Injected by tests. */
+export interface SaveScanDeps {
+  configPath: string;
+  openStorage: () => Promise<StorageProvider>;
+}
+
+/** The real settings file and the Keychain-keyed encrypted store (ADR-0011). */
+function defaultSaveDeps(): SaveScanDeps {
+  return {
+    configPath: defaultConfigPath(),
+    openStorage: () =>
+      openSqlcipherStorage({ path: defaultDatabasePath(), keyProvider: new KeychainKeyProvider() }),
+  };
+}
+
+/**
+ * Save a scan to the encrypted store and return the line to show on stderr.
+ * The stored extraction is always redacted; full identifiers are vaulted only
+ * when the user opted in via `config.json` (ADR-0011 and its amendment).
+ *
+ * Failure modes: never rejects. A store that cannot be opened or written (no
+ * Keychain, not macOS, a key mismatch) is reported in the returned line, and
+ * the scan output already printed stands; the store is a cache and a re-scan
+ * rebuilds it. The store is closed whether or not the write succeeded.
+ */
+export async function saveScan(
+  dir: string,
+  report: ScanReport,
+  deps: SaveScanDeps | (() => SaveScanDeps) = defaultSaveDeps,
+): Promise<string> {
+  let storage: StorageProvider | null = null;
+  try {
+    const { configPath, openStorage } = typeof deps === 'function' ? deps() : deps;
+    const { settings, warning } = await readSettings(configPath);
+    storage = await openStorage();
+    const summary = await persistScan(storage, report, {
+      dir,
+      identifierStorage: settings.identifierStorage,
+    });
+    const ids = settings.identifierStorage
+      ? `${summary.identifiersVaulted} stored in full (identifier storage is on)`
+      : 'last four only (identifier storage is off)';
+    const saved = `Saved ${summary.documents} document(s) to the encrypted store. ID numbers: ${ids}.\n`;
+    return warning === null ? saved : `${warning}\n${saved}`;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return `Not saved to the encrypted store: ${detail}\n`;
+  } finally {
+    await storage?.close();
+  }
+}
+
 async function runScan(args: readonly string[]): Promise<number> {
   const dir = args[0];
   const argError = await directoryError('scan', dir);
@@ -228,6 +287,7 @@ async function runScan(args: readonly string[]): Promise<number> {
   if (report.classifierError !== null) {
     process.stderr.write(`Hint: the classifier needs ${EMBED_MODEL} pulled in Ollama.\n`);
   }
+  process.stderr.write(await saveScan(dir, report));
   return 0;
 }
 

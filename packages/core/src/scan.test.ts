@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -117,6 +118,15 @@ describe('scanDirectory', () => {
     expect(report.items).toHaveLength(2);
     expect(report.items[0]?.result.valid).toBe(true);
     expect(provider.calls).toBe(2);
+  });
+
+  it('keys each item by the SHA-256 of its bytes, so a moved file is the same document', async () => {
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+    await writeFile(join(dir, 'a.png'), bytes);
+    await writeFile(join(dir, 'b.png'), bytes);
+    const report = await scanDirectory(new FakeProvider(BILL), dir);
+    const expected = createHash('sha256').update(bytes).digest('hex');
+    expect(report.items.map((i) => i.contentHash)).toEqual([expected, expected]);
   });
 
   it('carries per-file validity through (invalid extraction is not an error)', async () => {

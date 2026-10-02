@@ -25,6 +25,7 @@ import { DATABASE_FILE_MODE, ensureAppDataDir } from './app-paths.js';
 import type { DatabaseKeyProvider } from './db-key.js';
 import { DatabaseKeyError } from './db-key.js';
 import { DOCUMENT_TYPES, type DocumentExtraction, type DocumentType } from './extraction-schema.js';
+import type { DocumentIdentifier, IdentifierField } from './identifiers.js';
 import type { Reconciliation } from './reconcile.js';
 import {
   assertCipherPragmas,
@@ -36,6 +37,7 @@ import {
 import {
   asLabelProvenance,
   assertChunkBatch,
+  keyIdentifierBatch,
   type NewLabel,
   StorageError,
   type StorageProvider,
@@ -260,7 +262,11 @@ export class SqlcipherStorage implements StorageProvider {
 
   async deleteDocument(contentHash: string): Promise<void> {
     const db = this.#open();
-    db.prepare('DELETE FROM documents WHERE content_hash = ?').run(contentHash);
+    // Chunks and identifier mentions cascade; orphaned identifiers do not.
+    db.transaction(() => {
+      db.prepare('DELETE FROM documents WHERE content_hash = ?').run(contentHash);
+      deleteOrphanIdentifiers(db);
+    })();
   }
 
   async putChunks(contentHash: string, chunks: StoredChunk[]): Promise<void> {
@@ -331,11 +337,73 @@ export class SqlcipherStorage implements StorageProvider {
     }));
   }
 
+  async putIdentifiers(
+    documentHash: string,
+    identifiers: readonly DocumentIdentifier[],
+  ): Promise<void> {
+    const db = this.#open();
+    const keyed = keyIdentifierBatch(identifiers);
+    const exists = db
+      .prepare('SELECT 1 AS present FROM documents WHERE content_hash = ?')
+      .get(documentHash);
+    if (!exists) {
+      throw new StorageError(`No document ${documentHash} to attach identifiers to.`);
+    }
+    const upsert = db.prepare(
+      `INSERT INTO identifiers (normalized_value, value, last_four, value_length, created_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(normalized_value) DO NOTHING`,
+    );
+    const idOf = db.prepare('SELECT id FROM identifiers WHERE normalized_value = ?');
+    const mention = db.prepare(
+      'INSERT INTO identifier_mentions (identifier_id, document_hash, field) VALUES (?, ?, ?)',
+    );
+    db.transaction(() => {
+      db.prepare('DELETE FROM identifier_mentions WHERE document_hash = ?').run(documentHash);
+      for (const { field, value, key } of keyed) {
+        upsert.run(key, value, key.slice(-4), key.length, Date.now());
+        const { id } = idOf.get(key) as { id: number };
+        mention.run(id, documentHash, field);
+      }
+      deleteOrphanIdentifiers(db);
+    })();
+  }
+
+  async getIdentifier(documentHash: string, field: IdentifierField): Promise<string | null> {
+    const db = this.#open();
+    const row = db
+      .prepare(
+        `SELECT i.value AS value FROM identifier_mentions m
+           JOIN identifiers i ON i.id = m.identifier_id
+          WHERE m.document_hash = ? AND m.field = ?`,
+      )
+      .get(documentHash, field) as { value: string } | undefined;
+    return row ? row.value : null;
+  }
+
+  async purgeIdentifiers(): Promise<number> {
+    const db = this.#open();
+    // Mentions cascade through the foreign key.
+    return db.prepare('DELETE FROM identifiers').run().changes;
+  }
+
+  async countIdentifiers(): Promise<number> {
+    const db = this.#open();
+    return (db.prepare('SELECT count(*) AS n FROM identifiers').get() as { n: number }).n;
+  }
+
   async close(): Promise<void> {
     if (this.#closed) return;
     this.#closed = true;
     this.#db.close();
   }
+}
+
+/** Delete identifiers no document mentions any more, so no copy outlives its last reference. */
+function deleteOrphanIdentifiers(db: Db): void {
+  db.prepare(
+    'DELETE FROM identifiers WHERE id NOT IN (SELECT identifier_id FROM identifier_mentions)',
+  ).run();
 }
 
 /** Map a `documents` row to the domain record. */

@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `outtray scan` now saves what it found to the encrypted store (ADR-0011,
+  #79 slice 2), the store's first consumer. The first scan on a Mac creates
+  the database and its Keychain key. Stored extractions always carry the
+  redacted form of an identifier, never the full value. A store that cannot
+  be opened is reported on stderr and the scan output still stands.
+- Identifier vault, off by default. With `"identifierStorage": true` in
+  `~/Library/Application Support/outtray/config.json`, scan also stores each
+  passport, policy or account number once, in full, in its own encrypted
+  table, however many documents mention it. With it off (the default, or a
+  missing or unreadable file), nothing but the last four is kept, and any
+  previously stored values are purged on the next scan. The command to
+  switch it, the disclosure, and `outtray reveal` arrive in slice 3; until
+  then the file is edited by hand.
+
 - Storage foundation (ADR-0011): a `StorageProvider` seam in `packages/core`
   alongside `ModelProvider` and `EmbeddingProvider`, with an in-memory
   implementation and an encrypted-SQLite adapter over

@@ -1,6 +1,16 @@
-import type { ActionQueue, FindResult, ScanItem, ScanReport } from '@outtray/core';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  type ActionQueue,
+  type FindResult,
+  MemoryStorage,
+  type ScanItem,
+  type ScanReport,
+  writeSettings,
+} from '@outtray/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { formatActions, formatCitations, formatReport, run } from './main.js';
+import { formatActions, formatCitations, formatReport, run, saveScan } from './main.js';
 
 function captureStdout() {
   return vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
@@ -84,6 +94,7 @@ describe('formatReport', () => {
   function billItem(reconciliation: ScanItem['reconciliation']): ScanItem {
     return {
       file: 'renewal.png',
+      contentHash: 'hash-renewal',
       result: {
         valid: true,
         jsonChannel: 'thinking',
@@ -265,6 +276,7 @@ describe('formatReport', () => {
       items: [
         {
           file: 'x.png',
+          contentHash: 'hash-x',
           result: {
             valid: false,
             jsonChannel: null,
@@ -285,6 +297,116 @@ describe('formatReport', () => {
       classifierError: null,
     };
     expect(formatReport('pile', report)).toContain('could not extract: no JSON');
+  });
+});
+
+describe('saveScan', () => {
+  const usage = { loadMs: 0, promptTokens: 1, genTokens: 1, genTokPerSec: 1, totalMs: 1 };
+  const passport = {
+    type: 'id_document' as const,
+    summary: 'Passport.',
+    action_items: [],
+    holder_name: 'Jane Doe',
+    id_number: 'AB1234567',
+    issuer: 'US Department of State',
+    expiry_date: '2027-03-01',
+  };
+  const report: ScanReport = {
+    scanned: ['passport.png'],
+    skipped: [],
+    items: [
+      {
+        file: 'passport.png',
+        contentHash: 'hash-passport',
+        result: {
+          valid: true,
+          jsonChannel: 'content',
+          raw: passport,
+          usage,
+          error: null,
+          document: passport,
+        },
+        reconciliation: {
+          effectiveType: 'id_document',
+          status: 'unclassified',
+          review: false,
+          vlmType: 'id_document',
+          classification: null,
+        },
+      },
+    ],
+    classifierError: null,
+  };
+
+  let dir = '';
+  afterEach(async () => {
+    if (dir) await rm(dir, { recursive: true, force: true });
+  });
+
+  async function setup(config?: string) {
+    dir = await mkdtemp(join(tmpdir(), 'outtray-cli-'));
+    const configPath = join(dir, 'outtray', 'config.json');
+    if (config !== undefined) {
+      await writeSettings(configPath, { identifierStorage: false });
+      await writeFile(configPath, config);
+    }
+    const store = new MemoryStorage();
+    // saveScan closes what it opens; keep this store readable for assertions.
+    const closed = vi.spyOn(store, 'close').mockResolvedValue();
+    return { configPath, store, closed, openStorage: async () => store };
+  }
+
+  it('saves documents without identifiers by default and says so', async () => {
+    const { configPath, store, openStorage } = await setup();
+    const message = await saveScan('pile', report, { configPath, openStorage });
+    expect(message).toBe(
+      'Saved 1 document(s) to the encrypted store. ID numbers: last four only (identifier storage is off).\n',
+    );
+    expect(await store.listDocuments()).toHaveLength(1);
+    expect(await store.countIdentifiers()).toBe(0);
+  });
+
+  it('vaults identifiers when the setting is on and says how many', async () => {
+    const { configPath, store, openStorage } = await setup('{"identifierStorage": true}');
+    const message = await saveScan('pile', report, { configPath, openStorage });
+    expect(message).toBe(
+      'Saved 1 document(s) to the encrypted store. ID numbers: 1 stored in full (identifier storage is on).\n',
+    );
+    expect(await store.getIdentifier('hash-passport', 'id_number')).toBe('AB1234567');
+  });
+
+  it('passes on a settings warning rather than hiding why the setting is off', async () => {
+    const { configPath, openStorage } = await setup('not json');
+    const message = await saveScan('pile', report, { configPath, openStorage });
+    expect(message).toMatch(/not valid JSON; using defaults\.\n/);
+    expect(message).toMatch(/identifier storage is off/);
+  });
+
+  it('reports a store that cannot be opened instead of failing the scan', async () => {
+    const { configPath } = await setup();
+    const message = await saveScan('pile', report, {
+      configPath,
+      openStorage: async () => {
+        throw new Error('Keychain locked');
+      },
+    });
+    expect(message).toBe('Not saved to the encrypted store: Keychain locked\n');
+  });
+
+  it('closes the store after saving, and after a failed write', async () => {
+    const { configPath, closed, openStorage } = await setup();
+    await saveScan('pile', report, { configPath, openStorage });
+    expect(closed).toHaveBeenCalledTimes(1);
+
+    const broken = new MemoryStorage();
+    vi.spyOn(broken, 'putDocument').mockRejectedValue(new Error('disk full'));
+    const closing = vi.spyOn(broken, 'close');
+    const message = await saveScan('pile', report, {
+      configPath,
+      openStorage: async () => broken,
+    });
+    expect(message).toBe('Not saved to the encrypted store: disk full\n');
+    expect(closing).toHaveBeenCalledTimes(1);
   });
 });
 

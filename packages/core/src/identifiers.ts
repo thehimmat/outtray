@@ -70,7 +70,8 @@ const ALNUM = /[A-Za-z0-9]/;
 
 /**
  * The document's identifier field and value, or null when its type has none or
- * the extracted value is blank.
+ * the extracted value has no letters or digits (blank, or a placeholder like
+ * `-`).
  *
  * Failure modes: none; pure.
  */
@@ -78,7 +79,7 @@ export function identifierOf(doc: DocumentExtraction): DocumentIdentifier | null
   const field = IDENTIFIER_FIELDS[doc.type];
   if (!field) return null;
   const value = (doc as Record<string, unknown>)[field];
-  if (typeof value !== 'string' || value.trim() === '') return null;
+  if (typeof value !== 'string' || canonicalIdentifier(value) === '') return null;
   return { field, value };
 }
 

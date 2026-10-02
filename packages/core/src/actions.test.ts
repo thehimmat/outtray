@@ -20,6 +20,7 @@ function confirmed(type: DocumentExtraction['type']): Reconciliation {
 function item(file: string, doc: DocumentExtraction, reconciliation?: Reconciliation): ScanItem {
   return {
     file,
+    contentHash: `hash-${file}`,
     result: { valid: true, jsonChannel: 'content', raw: doc, usage, error: null, document: doc },
     reconciliation: reconciliation ?? confirmed(doc.type),
   };
@@ -156,6 +157,7 @@ describe('planActions', () => {
   it('flags invalid extractions instead of dropping them', () => {
     const broken: ScanItem = {
       file: 'x.png',
+      contentHash: 'hash-x',
       result: {
         valid: false,
         jsonChannel: null,

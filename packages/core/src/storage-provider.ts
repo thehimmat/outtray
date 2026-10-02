@@ -19,6 +19,12 @@
  */
 
 import type { DocumentExtraction, DocumentType } from './extraction-schema.js';
+import {
+  canonicalIdentifier,
+  type DocumentIdentifier,
+  IDENTIFIER_FIELDS,
+  type IdentifierField,
+} from './identifiers.js';
 import type { Reconciliation } from './reconcile.js';
 
 /** Where a label came from: a shipped seed, or the user correcting the app. */
@@ -43,10 +49,10 @@ export interface StoredDocument {
 /**
  * One chunk of a document's derived text with its embedding.
  *
- * `text` is derived text, so it is the tokenized form: known identifier values
- * are replaced before the chunk is written (ADR-0011 section 3). The tokenizer
- * lands with the identifier vault; until then the store persists whatever text
- * it is handed, and callers are not yet wired up.
+ * `text` is derived text, so it is the tokenized form: callers build it from
+ * `tokenizeExtraction` (identifiers.ts), which replaces identifier values with
+ * a `[field]` placeholder (ADR-0011 section 3 and amendment). The store
+ * persists whatever text it is handed; nothing writes chunks until #43.
  */
 export interface StoredChunk {
   /** Content hash of the document this chunk came from. */
@@ -107,7 +113,8 @@ export interface StorageProvider {
   listDocuments(): Promise<StoredDocument[]>;
 
   /**
-   * Delete a document and its chunks.
+   * Delete a document, its chunks, its identifier mentions, and any vaulted
+   * identifier that no remaining document mentions.
    *
    * Failure modes: deleting a document that is not there is a no-op, not an
    * error. Rejects if the store is closed.
@@ -158,6 +165,55 @@ export interface StorageProvider {
    * an empty store.
    */
   listLabels(): Promise<StoredLabel[]>;
+
+  /**
+   * Replace the vaulted identifiers of one document, atomically (ADR-0011
+   * section 3). Replace rather than add, as `putChunks` does: a re-scan that
+   * no longer finds an identifier, or finds it under another field, must not
+   * leave the old value attached and revealable. An empty batch clears them.
+   *
+   * Each value is stored once per canonical form (separators and case
+   * removed), however many documents mention it. An identifier no document
+   * mentions any more is deleted, so no copy outlives its last reference.
+   *
+   * Callers write here only when the user has opted in to identifier storage;
+   * the store does not know the setting.
+   *
+   * Failure modes: rejects with `StorageError` if the document does not exist,
+   * if a field is not an identifier field or appears twice, or if a value has
+   * no letters or digits. Rejects if the store is closed. Nothing is written
+   * when it rejects.
+   */
+  putIdentifiers(documentHash: string, identifiers: readonly DocumentIdentifier[]): Promise<void>;
+
+  /**
+   * The full vaulted value for one field of one document: the reveal path. It
+   * is the value as first vaulted, so a later mention in another format reads
+   * back in the first format.
+   *
+   * Failure modes: resolves null when nothing is vaulted for that pair, which
+   * is not an error (identifier storage is off by default). Rejects if the
+   * store is closed.
+   */
+  getIdentifier(documentHash: string, field: IdentifierField): Promise<string | null>;
+
+  /**
+   * Delete every vaulted identifier and every mention of one, leaving
+   * documents, chunks and labels untouched. This is what switching identifier
+   * storage off does, and it is complete by construction because the vault
+   * table is the only place a full value is stored (ADR-0011 amendment).
+   *
+   * Failure modes: rejects if the store is closed. Resolves the number of
+   * identifiers deleted; 0 for an empty vault.
+   */
+  purgeIdentifiers(): Promise<number>;
+
+  /**
+   * How many distinct identifiers are vaulted.
+   *
+   * Failure modes: rejects if the store is closed.
+   */
+  countIdentifiers(): Promise<number>;
 
   /**
    * Close the store and release its handle.
@@ -216,4 +272,37 @@ export function asLabelProvenance(value: string): LabelProvenance {
     throw new StorageError(`Unknown label provenance: ${value}.`);
   }
   return value as LabelProvenance;
+}
+
+const IDENTIFIER_FIELD_SET: ReadonlySet<string> = new Set<string>(Object.values(IDENTIFIER_FIELDS));
+
+/** One validated `putIdentifiers` entry with the canonical key it is stored under. */
+export interface KeyedIdentifier extends DocumentIdentifier {
+  key: string;
+}
+
+/**
+ * Validate a `putIdentifiers` batch and key each entry by its canonical form.
+ * Shared by every implementation so they cannot drift on what they accept.
+ *
+ * Failure modes: throws `StorageError` for a field that is not an identifier
+ * field or appears twice, or a value with no letters or digits. Pure; accepts
+ * an empty batch.
+ */
+export function keyIdentifierBatch(identifiers: readonly DocumentIdentifier[]): KeyedIdentifier[] {
+  const seen = new Set<string>();
+  return identifiers.map(({ field, value }) => {
+    if (!IDENTIFIER_FIELD_SET.has(field)) {
+      throw new StorageError(`Not an identifier field: ${field}.`);
+    }
+    if (seen.has(field)) {
+      throw new StorageError(`Identifier field ${field} appears twice in one batch.`);
+    }
+    seen.add(field);
+    const key = canonicalIdentifier(value);
+    if (key === '') {
+      throw new StorageError(`Refusing to vault a blank ${field}.`);
+    }
+    return { field, value, key };
+  });
 }

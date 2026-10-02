@@ -13,8 +13,10 @@ export {
   APP_DIRECTORY_MODE,
   type AppPathOptions,
   appDataDir,
+  CONFIG_FILE,
   DATABASE_FILE,
   DATABASE_FILE_MODE,
+  defaultConfigPath,
   defaultDatabasePath,
   ensureAppDataDir,
   UnsupportedPlatformError,
@@ -101,6 +103,13 @@ export {
   type OllamaProviderOptions,
 } from './ollama-provider.js';
 export {
+  type PersistOptions,
+  type PersistSummary,
+  persistScan,
+  type SetIdentifierStorageOptions,
+  setIdentifierStorage,
+} from './persist.js';
+export {
   applyCorrection,
   CLASSIFIER_K,
   CONFIDENCE_THRESHOLD,
@@ -125,6 +134,13 @@ export {
   scanDirectory,
 } from './scan.js';
 export {
+  DEFAULT_SETTINGS,
+  readSettings,
+  type Settings,
+  type SettingsRead,
+  writeSettings,
+} from './settings.js';
+export {
   assertCipherPragmas,
   assertEncryptedHeader,
   CIPHER_PRAGMAS,
@@ -140,6 +156,8 @@ export { MemoryStorage } from './storage-memory.js';
 export {
   asLabelProvenance,
   assertChunkBatch,
+  type KeyedIdentifier,
+  keyIdentifierBatch,
   type LabelProvenance,
   type NewLabel,
   StorageError,
