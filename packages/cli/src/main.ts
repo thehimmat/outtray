@@ -26,6 +26,7 @@ import {
   defaultConfigPath,
   defaultDatabasePath,
   type EmbeddingProvider,
+  explainStorageError,
   extractorKeyFor,
   type FindResult,
   firstRunNotice,
@@ -314,8 +315,10 @@ export async function scanFolder(
   let warning = '';
   let notice = '';
   let notes = '';
+  let databasePath = 'the encrypted store';
   try {
     const resolved = resolveDeps(deps);
+    databasePath = resolved.databasePath;
     const read = await readSettings(resolved.configPath);
     identifierStorage = read.settings.identifierStorage;
     if (read.warning !== null) warning = `${read.warning}\n`;
@@ -323,7 +326,7 @@ export async function scanFolder(
     storage = await resolved.openStorage();
     if (firstRun) notice = firstRunNotice(identifierStorage, resolved.databasePath);
   } catch (error) {
-    notes = `Not saved to the encrypted store: ${messageOf(error)}\n`;
+    notes = `Not saved to the encrypted store: ${explainStorageError(error, databasePath)}\n`;
   }
 
   const keys = {
@@ -372,7 +375,7 @@ export async function scanFolder(
         : `Search index not updated (${built.error}); these documents are read again next time.\n`;
     notes = `${notice}${warning}Saved ${summary.documents} document(s) to the encrypted store${unchanged}. ID numbers: ${ids}.\n${index}`;
   } catch (error) {
-    notes = `${warning}Not saved to the encrypted store: ${messageOf(error)}\n`;
+    notes = `${warning}Not saved to the encrypted store: ${explainStorageError(error, databasePath)}\n`;
   }
   return { report, storage, notes };
 }
@@ -456,8 +459,11 @@ export async function runReveal(
   }
 
   let storage: StorageProvider | null = null;
+  let databasePath = 'the encrypted store';
   try {
-    const { configPath, databaseExists, openStorage, stdoutIsTerminal } = resolveDeps(deps);
+    const { configPath, databaseExists, openStorage, stdoutIsTerminal, ...rest } =
+      resolveDeps(deps);
+    databasePath = rest.databasePath;
     if (!stdoutIsTerminal && !toPipe) {
       process.stderr.write(
         `Not revealed: output is going to a pipe or file, not a terminal. Add ${TO_PIPE_FLAG} if that is intended (e.g. ${TO_PIPE_FLAG} | pbcopy).\n`,
@@ -499,8 +505,7 @@ export async function runReveal(
     );
     return 1;
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`reveal failed: ${detail}\n`);
+    process.stderr.write(`reveal failed: ${explainStorageError(error, databasePath)}\n`);
     return 1;
   } finally {
     await storage?.close();
@@ -539,8 +544,11 @@ export async function runCorrect(
   }
 
   let storage: StorageProvider | null = null;
+  let databasePath = 'the encrypted store';
   try {
-    const { databaseExists, openStorage } = resolveDeps(deps);
+    const resolved = resolveDeps(deps);
+    databasePath = resolved.databasePath;
+    const { databaseExists, openStorage } = resolved;
     if (!(await databaseExists())) {
       process.stderr.write('Nothing has been saved yet; run `outtray scan <dir>` first.\n');
       return 1;
@@ -562,7 +570,7 @@ export async function runCorrect(
     process.stdout.write(`${name} is now marked ${pinned}.${reread}\n${learned}`);
     return 0;
   } catch (error) {
-    process.stderr.write(`correct failed: ${messageOf(error)}\n`);
+    process.stderr.write(`correct failed: ${explainStorageError(error, databasePath)}\n`);
     return 1;
   } finally {
     await storage?.close();

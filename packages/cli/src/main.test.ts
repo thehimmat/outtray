@@ -483,6 +483,19 @@ describe('scanFolder (incremental, ADR-0012)', () => {
     expect(result.notes).toBe('Not saved to the encrypted store: Keychain locked\n');
   });
 
+  it('explains a damaged store in recoverable terms instead of a SQLite string', async () => {
+    const { pile, deps, models } = await setup();
+    const result = await scanFolder(pile, models, {
+      ...deps,
+      openStorage: async () => {
+        throw Object.assign(new Error('database disk image is malformed'), {
+          code: 'SQLITE_CORRUPT',
+        });
+      },
+    });
+    expect(result.notes).toMatch(/outtray\.db is damaged .*delete it and re-scan/);
+  });
+
   it('scans without the store when store paths are unavailable (not macOS)', async () => {
     const { pile, models } = await setup();
     const result = await scanFolder(pile, models, () => {

@@ -210,7 +210,7 @@ Not proven, and deliberately out of scope for this spike:
   Keychain (and what happens on backup, migration, or Keychain reset) is
   ADR-0011 territory and then implementation work.
 - **Concurrency, WAL mode, corruption recovery, and backup behaviour** were
-  not exercised.
+  not exercised in this run; see the second run below.
 - **Whether an encrypted store is the right shape at all** for the label store
   versus the vector index. That is the ADR-0011 question this evidence feeds.
 
@@ -221,3 +221,78 @@ Not proven, and deliberately out of scope for this spike:
   Resolves its dependency from the cwd so it never enters the lockfile.
 - `spike/result-sqlcipher.json` - raw output of the run reported here,
   including per-battery pragmas, header bytes, and timings.
+
+## Second run (2026-10-13): purge, contention, damage, WAL and backup (#84)
+
+Run against the shipped store (`storage-sqlcipher.ts`) on the cloud CI-class
+Linux container, not the Air, with `better-sqlite3-multiple-ciphers` 13.0.3.
+Every claim below is pinned by a test in `storage-sqlcipher.test.ts` or
+`storage-errors.test.ts` unless marked as analysis. Timings are from that
+container and indicative only.
+
+### Purges hold in the pages, not only in SQL
+
+- This build defaults `secure_delete` to on, so deleted row content is
+  zeroed rather than left in free pages. The store now sets it explicitly and
+  refuses to open if it does not read back as on, the same treatment as the
+  cipher pragmas, so a dependency bump cannot quietly turn it off.
+- **Test:** vault a distinctive value, switch identifier storage off, close,
+  then decrypt every page of the file outside SQLite and search the
+  plaintext. The decryption is AES-256-CBC per page with the IV at the start
+  of the 80-byte reserve; free pages are included, which SQL cannot see. The
+  value and its last four are absent.
+- **Control:** the same helper finds a deleted value when `secure_delete` is
+  off. Without that control the absence would prove nothing.
+- Rollback journal (`journal_mode = delete`): the journal holds the original
+  pages only while a transaction runs, and is deleted at commit. No old page
+  outlives the purge's transaction in a journal file.
+
+### Two connections at once (current journal mode; probe, not a test)
+
+Observed with two raw connections, one holding `BEGIN IMMEDIATE`; the store's
+interface has no way to hold a transaction open, so this is not in the suite.
+
+- A reader is not blocked while another connection holds an open write
+  transaction; it sees the last committed state.
+- A second writer gets `SQLITE_BUSY` after the driver's busy timeout (5 s by
+  default). Two `outtray scan` runs at once would see this.
+- The CLI now reports it as "Another Outtray command is using the store; try
+  again when it finishes" rather than "database is locked".
+
+### What damage looks like
+
+| Damage | What SQLite says | What Outtray now says |
+| --- | --- | --- |
+| File not a whole number of 4096-byte pages (torn copy, full disk) | `SQLITE_NOTADB` at the key check, previously reported as a wrong key | `StorageCorruptError` at open: damaged, only a cache, delete it and re-scan |
+| Page-aligned truncation | Opens; `SQLITE_CORRUPT` from the first query that meets a missing page | The same damaged message, from `explainStorageError` |
+| Plaintext SQLite file where the store belongs | Unchanged: refused as not encrypted (ADR-0007), checked before the size | Unchanged |
+
+`PRAGMA quick_check` would catch the page-aligned case at open, but it cost
+about 110 ms on a 21 MB store (5000 chunks, 768 dims) here, paid by every
+command including instant ones such as `reveal` and `correct`. Not adopted:
+damage is rare, recovery is always a re-scan, and the error now says so
+wherever it surfaces.
+
+### WAL: not now (analysis)
+
+WAL would split the store into three files (`outtray.db`, `-wal`, `-shm`),
+changing ADR-0011's one-file claim and the iCloud and backup reasoning in
+`docs/THREAT_MODEL.md`, and it would keep purged pages in the `-wal` file
+until a checkpoint. Its benefit is concurrent readers alongside a writer in
+a long-lived process. The CLI opens, does one command and exits; readers are
+already not blocked by a writer in rollback mode. So the store stays in
+rollback-journal mode. The question reopens with Phase 3's long-lived Tauri
+process, where it should be measured on the Air and, if adopted, written up
+as an ADR-0011 amendment including a `wal_checkpoint(TRUNCATE)` after every
+purge.
+
+### Backup copies (analysis)
+
+In rollback mode the main file only changes during a commit, while the
+journal holds the original pages. A file-level copy taken outside a commit
+(the common case for Time Machine) is a consistent, openable store. A copy
+taken during a commit can be torn; restored, it opens with
+`StorageCorruptError` or surfaces `SQLITE_CORRUPT`, which now tells the user
+to delete it and re-scan. That is the correct recovery, because the store is
+a derived cache and the documents themselves are the backup that matters.
+Not exercised: an actual Time Machine snapshot on the Air.

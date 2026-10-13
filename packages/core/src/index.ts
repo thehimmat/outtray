@@ -170,6 +170,7 @@ export {
   type SettingsRead,
   writeSettings,
 } from './settings.js';
+export { explainStorageError, StorageCorruptError } from './storage-errors.js';
 export {
   assertCipherPragmas,
   assertEncryptedHeader,
