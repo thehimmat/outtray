@@ -7,12 +7,13 @@
  * is what `better-sqlite3-multiple-ciphers` actually writes to disk.
  */
 
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, truncate, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DATABASE_FILE_MODE } from './app-paths.js';
 import { DatabaseKeyError, generateDatabaseKey, StaticKeyProvider } from './db-key.js';
+import { explainStorageError, StorageCorruptError } from './storage-errors.js';
 import { hasCleartextSqliteHeader, StorageFormatError } from './storage-format.js';
 import { MIGRATIONS, SCHEMA_VERSION, StorageMigrationError } from './storage-schema.js';
 import { openSqlcipherStorage } from './storage-sqlcipher.js';
@@ -307,5 +308,127 @@ describe('StorageFormatError', () => {
     expect(new StorageFormatError('Something changed.').message).toContain(
       'docs/evals/sqlcipher-spike.md',
     );
+  });
+});
+
+/**
+ * The plaintext of every page, decrypted outside SQLite (SQLCipher 4 with a
+ * raw key: AES-256-CBC over each page minus its 80-byte reserve, IV at the
+ * start of the reserve; page 1's first 16 bytes are the salt). Free pages are
+ * included, which is the point: SQL cannot see them.
+ */
+async function decryptedPages(path: string, rawKey: Buffer): Promise<Buffer> {
+  const { createDecipheriv } = await import('node:crypto');
+  const bytes = await readFile(path);
+  const pageSize = 4096;
+  const reserve = 80;
+  const pages: Buffer[] = [];
+  for (let offset = 0; offset < bytes.length; offset += pageSize) {
+    const page = bytes.subarray(offset, offset + pageSize);
+    const iv = page.subarray(pageSize - reserve, pageSize - reserve + 16);
+    const decipher = createDecipheriv('aes-256-cbc', rawKey, iv);
+    decipher.setAutoPadding(false);
+    const body = page.subarray(offset === 0 ? 16 : 0, pageSize - reserve);
+    pages.push(Buffer.concat([decipher.update(body), decipher.final()]));
+  }
+  return Buffer.concat(pages);
+}
+
+describe('purges hold physically, not only in SQL (#84)', () => {
+  const SECRET = 'ZQ7735190246XK';
+
+  it('the decryption helper does see deleted bytes when secure_delete is off (control)', async () => {
+    const path = join(await workspace(), 'outtray.db');
+    const rawKey = generateDatabaseKey();
+    const { default: Database } = await import('better-sqlite3-multiple-ciphers');
+    const raw = new Database(path);
+    raw.pragma("cipher = 'sqlcipher'");
+    raw.pragma('legacy = 4');
+    raw.pragma(`key = "x'${rawKey.toString('hex')}'"`);
+    raw.pragma('secure_delete = OFF');
+    raw.exec('CREATE TABLE t (v TEXT)');
+    raw.prepare('INSERT INTO t VALUES (?)').run(SECRET);
+    raw.prepare('DELETE FROM t').run();
+    raw.close();
+    expect((await decryptedPages(path, rawKey)).includes(SECRET)).toBe(true);
+  });
+
+  it('switching identifier storage off leaves no trace of the value in any page', async () => {
+    const path = join(await workspace(), 'outtray.db');
+    const rawKey = generateDatabaseKey();
+    const store = await openSqlcipherStorage({ path, keyProvider: new StaticKeyProvider(rawKey) });
+    await store.putDocument({
+      contentHash: 'hash-a',
+      path: '/docs/a.png',
+      type: null,
+      extraction: null,
+      reconciliation: null,
+      scannedAt: 1,
+      extractorKey: null,
+      indexKey: null,
+      userType: null,
+    });
+    await store.putIdentifiers('hash-a', [{ field: 'id_number', value: SECRET }]);
+    expect((await decryptedPages(path, rawKey)).includes(SECRET)).toBe(true);
+    await store.purgeIdentifiers();
+    await store.close();
+    const pages = await decryptedPages(path, rawKey);
+    expect(pages.includes(SECRET)).toBe(false);
+    expect(pages.includes(SECRET.slice(-4))).toBe(false);
+  });
+});
+
+describe('a damaged store says so (#84)', () => {
+  async function storeWithData(): Promise<{ path: string; provider: StaticKeyProvider }> {
+    const path = join(await workspace(), 'outtray.db');
+    const provider = key();
+    const store = await openSqlcipherStorage({ path, keyProvider: provider });
+    await store.putDocument({
+      contentHash: 'hash-a',
+      path: '/docs/a.png',
+      type: null,
+      extraction: null,
+      reconciliation: null,
+      scannedAt: 1,
+      extractorKey: null,
+      indexKey: null,
+      userType: null,
+    });
+    await store.addLabels(
+      Array.from({ length: 200 }, () => ({
+        type: 'bill' as const,
+        embedding: Array.from({ length: 64 }, (_, i) => i),
+        provenance: 'seed' as const,
+        documentHash: null,
+        text: 'x'.repeat(200),
+        embedModel: 'm',
+      })),
+    );
+    await store.close();
+    return { path, provider };
+  }
+
+  it('reports a file cut off mid-page as damaged, not as a wrong key', async () => {
+    const { path, provider } = await storeWithData();
+    const { size } = await stat(path);
+    await truncate(path, size - 1000);
+    const failure = openSqlcipherStorage({ path, keyProvider: provider });
+    await expect(failure).rejects.toThrow(StorageCorruptError);
+    await expect(failure).rejects.toThrow(/damaged.*delete it and re-scan/s);
+  });
+
+  it('a page-aligned cut surfaces as a corrupt-database error the CLI can explain', async () => {
+    const { path, provider } = await storeWithData();
+    const { size } = await stat(path);
+    await truncate(path, Math.floor(size / 8192) * 4096);
+    let failure: unknown;
+    try {
+      const store = await openSqlcipherStorage({ path, keyProvider: provider });
+      await store.listLabels();
+      await store.close();
+    } catch (error) {
+      failure = error;
+    }
+    expect(explainStorageError(failure, path)).toMatch(/damaged/);
   });
 });

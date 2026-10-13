@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A damaged encrypted store now says so in plain terms (it is only a cache,
+  your documents are untouched, delete it and re-scan) instead of a SQLite
+  error, and a file cut off mid-page is no longer misreported as a wrong
+  key. A store locked by another Outtray command says that too (#84).
+- Purges are zeroed in the file, not only removed in SQL: `secure_delete`
+  is pinned on and checked at open, and a test decrypts every page after a
+  purge to prove the value is gone (#84).
+
 - An ID number the model wrote into an action item's due date is now
   redacted and tokenized like everywhere else; before, it could reach the
   action queue in full. Found by the action-level eval (#64).

@@ -27,12 +27,14 @@ import { DatabaseKeyError } from './db-key.js';
 import { DOCUMENT_TYPES, type DocumentExtraction, type DocumentType } from './extraction-schema.js';
 import type { DocumentIdentifier, IdentifierField } from './identifiers.js';
 import type { Reconciliation } from './reconcile.js';
+import { StorageCorruptError } from './storage-errors.js';
 import {
   assertCipherPragmas,
   assertEncryptedHeader,
   CIPHER_PRAGMAS,
   HEADER_BYTES,
   readPragmaScalar,
+  StorageFormatError,
 } from './storage-format.js';
 import {
   asLabelProvenance,
@@ -95,6 +97,9 @@ export interface OpenSqlcipherStorageOptions {
 }
 
 const DOCUMENT_TYPE_SET: ReadonlySet<string> = new Set<string>(DOCUMENT_TYPES);
+
+/** SQLCipher 4's page size, which `legacy = 4` fixes (ADR-0011). */
+const PAGE_SIZE = 4096;
 
 /** Narrow a stored type string, so a corrupt row surfaces instead of being cast. */
 function asDocumentType(value: string): DocumentType {
@@ -159,6 +164,10 @@ async function fileSize(path: string): Promise<number> {
  * - `StorageFormatError` if the cipher configuration or the bytes on disk are
  *   not the upstream-compatible SQLCipher format ADR-0011 committed to.
  * - `StorageMigrationError` if the schema is newer than this build understands.
+ * - `StorageCorruptError` if the file is not a whole number of pages or its
+ *   first page is malformed: damage, reported as such rather than as a key
+ *   problem. Damage deeper in the file surfaces from the query that meets it
+ *   as `SQLITE_CORRUPT`, which `explainStorageError` puts in the user's terms.
  * - Whatever the filesystem raises if the data directory cannot be created
  *   owner-only.
  *
@@ -172,6 +181,13 @@ export async function openSqlcipherStorage(
   await ensureAppDataDir(dirname(path));
 
   const existingSize = await fileSize(path);
+  // A plaintext file is refused as plaintext before anything else (ADR-0007).
+  if (existingSize > 0) assertEncryptedHeader(await readHeader(path));
+  // A rollback-journal database is always whole pages; anything else was cut
+  // off (a torn copy, a full disk), which is damage, not a wrong key (#84).
+  if (existingSize % PAGE_SIZE !== 0) {
+    throw new StorageCorruptError(path, `${existingSize} bytes is not a whole number of pages`);
+  }
   const { key, created } = await keyProvider.getOrCreateKey();
   if (created && existingSize > 0) {
     throw new DatabaseKeyError(
@@ -190,6 +206,10 @@ export async function openSqlcipherStorage(
     try {
       db.prepare('SELECT count(*) AS n FROM sqlite_master').get();
     } catch (error) {
+      const code = (error as { code?: unknown }).code;
+      if (typeof code === 'string' && code.startsWith('SQLITE_CORRUPT')) {
+        throw new StorageCorruptError(path, (error as Error).message);
+      }
       throw new DatabaseKeyError(
         `The database key does not open ${path} (${(error as Error).message}). If the Keychain ` +
           'item was replaced, the file cannot be recovered; delete it and re-scan.',
@@ -198,6 +218,13 @@ export async function openSqlcipherStorage(
 
     assertCipherPragmas((pragma) => db.pragma(pragma));
     db.pragma('foreign_keys = ON');
+    // Zero deleted content, so a purge holds in the pages and not only in SQL
+    // (#84). SQLCipher builds default it on; pinned and checked so a
+    // dependency bump cannot quietly turn it off.
+    db.pragma('secure_delete = ON');
+    if (Number(readPragmaScalar(db.pragma('secure_delete'))) !== 1) {
+      throw new StorageFormatError('PRAGMA secure_delete did not stay on.');
+    }
     migrate(db);
 
     await chmod(path, DATABASE_FILE_MODE);
