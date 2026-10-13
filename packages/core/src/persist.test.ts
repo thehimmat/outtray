@@ -191,4 +191,23 @@ describe('setIdentifierStorage', () => {
     expect(await store.countIdentifiers()).toBe(0);
     expect(await store.listDocuments()).toHaveLength(1);
   });
+
+  it('turning off with no store yet records the choice and purges nothing', async () => {
+    await setIdentifierStorage({ configPath, storage: null, enabled: true });
+    expect(await setIdentifierStorage({ configPath, storage: null, enabled: false })).toEqual({
+      purged: 0,
+    });
+    expect((await readSettings(configPath)).settings.identifierStorage).toBe(false);
+  });
+
+  it('writes the setting before purging, so a failed purge leaves it off', async () => {
+    const store = new MemoryStorage();
+    store.purgeIdentifiers = async () => {
+      throw new Error('disk full');
+    };
+    await expect(
+      setIdentifierStorage({ configPath, storage: store, enabled: false }),
+    ).rejects.toThrow('disk full');
+    expect((await readSettings(configPath)).settings.identifierStorage).toBe(false);
+  });
 });

@@ -137,7 +137,7 @@ export async function scanDirectory(
     });
     items.push({
       file,
-      contentHash: createHash('sha256').update(bytes).digest('hex'),
+      contentHash: contentHashOf(bytes),
       result,
       reconciliation: reconcileType(result.document?.type ?? null, null),
     });
@@ -190,4 +190,14 @@ export async function scanDirectory(
   }
 
   return { scanned, skipped, items, classifierError };
+}
+
+/**
+ * The key a document is stored under: the hex SHA-256 of its bytes, so a moved
+ * or renamed file is the same document (ADR-0011).
+ *
+ * Failure modes: none; pure.
+ */
+export function contentHashOf(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex');
 }

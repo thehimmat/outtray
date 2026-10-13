@@ -47,6 +47,7 @@ export {
   type SecurityRunner,
   StaticKeyProvider,
 } from './db-key.js';
+export { firstRunNotice, IDENTIFIER_STORAGE_DISCLOSURE } from './disclosure.js';
 export {
   type EmbeddingProvider,
   OllamaEmbeddingProvider,
@@ -127,7 +128,14 @@ export {
   VectorIndex,
 } from './retrieval.js';
 export {
+  isIdentifierField,
+  locateDocument,
+  type RevealResult,
+  revealIdentifier,
+} from './reveal.js';
+export {
   type ClassifyStageOptions,
+  contentHashOf,
   type ScanItem,
   type ScanOptions,
   type ScanReport,

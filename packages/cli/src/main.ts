@@ -8,11 +8,13 @@
  * scans (ADR-0008).
  *
  * Failure modes: exits 1 on an unknown command, a missing/inaccessible scan
- * directory, or an unreachable model runtime. Invalid extractions are reported
+ * directory, or an unreachable model runtime; `reveal` and `settings` document
+ * their own. Invalid extractions are reported
  * per file, not treated as a CLI failure.
  */
 
 import { stat } from 'node:fs/promises';
+import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import {
   type ActionQueue,
@@ -20,7 +22,11 @@ import {
   defaultDatabasePath,
   type FindResult,
   findInDirectory,
+  firstRunNotice,
+  IDENTIFIER_STORAGE_DISCLOSURE,
+  isIdentifierField,
   KeychainKeyProvider,
+  locateDocument,
   OllamaEmbeddingProvider,
   OllamaProvider,
   openSqlcipherStorage,
@@ -28,10 +34,12 @@ import {
   planActions,
   readSettings,
   redactExtraction,
+  revealIdentifier,
   type ScanItem,
   type ScanReport,
   type StorageProvider,
   scanDirectory,
+  setIdentifierStorage,
 } from '@outtray/core';
 
 // Demo embedding model. The shipped default is a later retrieval-eval ADR, the
@@ -44,6 +52,12 @@ Usage:
   outtray scan <dir>          Extract every document in a folder of images
   outtray actions <dir>       Scan, then propose an action queue with citations
   outtray find <dir> <query>  Retrieve the passages most relevant to a query, with citations
+  outtray reveal <file> <field>
+                              Print one stored ID number in full (id_number, policy_number,
+                              account_number); needs identifier storage on
+  outtray settings            Show settings and what identifier storage means
+  outtray settings identifier-storage on|off [--yes]
+                              Remember full ID numbers, or forget them (off by default)
   outtray --version           Print version
   outtray --help              Show this help
 `;
@@ -212,25 +226,44 @@ async function scanWithClassifier(dir: string): Promise<ScanReport> {
   });
 }
 
-/** Where `saveScan` finds the settings and the store. Injected by tests. */
-export interface SaveScanDeps {
+/** Where the vault commands find the settings and the store. Injected by tests. */
+export interface StoreDeps {
   configPath: string;
+  databasePath: string;
+  /** Whether the store exists, checked before anything opens (and so creates) it. */
+  databaseExists: () => Promise<boolean>;
   openStorage: () => Promise<StorageProvider>;
 }
 
 /** The real settings file and the Keychain-keyed encrypted store (ADR-0011). */
-function defaultSaveDeps(): SaveScanDeps {
+function defaultStoreDeps(): StoreDeps {
+  const databasePath = defaultDatabasePath();
   return {
     configPath: defaultConfigPath(),
+    databasePath,
+    databaseExists: async () => {
+      try {
+        await stat(databasePath);
+        return true;
+      } catch {
+        return false;
+      }
+    },
     openStorage: () =>
-      openSqlcipherStorage({ path: defaultDatabasePath(), keyProvider: new KeychainKeyProvider() }),
+      openSqlcipherStorage({ path: databasePath, keyProvider: new KeychainKeyProvider() }),
   };
+}
+
+/** Resolve injected deps, deferring the defaults so non-macOS throws inside the caller's try. */
+function resolveDeps<T>(deps: T | (() => T)): T {
+  return typeof deps === 'function' ? (deps as () => T)() : deps;
 }
 
 /**
  * Save a scan to the encrypted store and return the line to show on stderr.
  * The stored extraction is always redacted; full identifiers are vaulted only
- * when the user opted in via `config.json` (ADR-0011 and its amendment).
+ * when the user opted in via `config.json` (ADR-0011 and its amendment). The
+ * scan that creates the store also returns the first-run notice.
  *
  * Failure modes: never rejects. A store that cannot be opened or written (no
  * Keychain, not macOS, a key mismatch) is reported in the returned line, and
@@ -240,12 +273,13 @@ function defaultSaveDeps(): SaveScanDeps {
 export async function saveScan(
   dir: string,
   report: ScanReport,
-  deps: SaveScanDeps | (() => SaveScanDeps) = defaultSaveDeps,
+  deps: StoreDeps | (() => StoreDeps) = defaultStoreDeps,
 ): Promise<string> {
   let storage: StorageProvider | null = null;
   try {
-    const { configPath, openStorage } = typeof deps === 'function' ? deps() : deps;
+    const { configPath, databasePath, databaseExists, openStorage } = resolveDeps(deps);
     const { settings, warning } = await readSettings(configPath);
+    const firstRun = !(await databaseExists());
     storage = await openStorage();
     const summary = await persistScan(storage, report, {
       dir,
@@ -254,13 +288,216 @@ export async function saveScan(
     const ids = settings.identifierStorage
       ? `${summary.identifiersVaulted} stored in full (identifier storage is on)`
       : 'last four only (identifier storage is off)';
+    const notice = firstRun ? firstRunNotice(settings.identifierStorage, databasePath) : '';
     const saved = `Saved ${summary.documents} document(s) to the encrypted store. ID numbers: ${ids}.\n`;
-    return warning === null ? saved : `${warning}\n${saved}`;
+    return `${notice}${warning === null ? '' : `${warning}\n`}${saved}`;
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     return `Not saved to the encrypted store: ${detail}\n`;
   } finally {
     await storage?.close();
+  }
+}
+
+/**
+ * `outtray reveal <file> <field>`: print one vaulted identifier in full
+ * (ADR-0011 section 3). The value goes to stdout alone, so it can be piped,
+ * and never to stderr, which is where diagnostics and logs go.
+ *
+ * Failure modes: exits 1 without opening the store for bad arguments or when
+ * no store exists (opening would create one). Exits 1 when the file matches no
+ * stored document, when the document carries a different field, or when
+ * nothing is vaulted for it, saying which and what to do. Exits 1 if the store
+ * cannot be opened. The store is closed on every path.
+ */
+export async function runReveal(
+  args: readonly string[],
+  deps: StoreDeps | (() => StoreDeps) = defaultStoreDeps,
+): Promise<number> {
+  const [file, field] = args;
+  if (!file || !field) {
+    process.stderr.write('usage: outtray reveal <file> <field>\n');
+    return 1;
+  }
+  if (!isIdentifierField(field)) {
+    process.stderr.write(
+      `Not an identifier field: ${field}. Use one of: id_number, policy_number, account_number.\n`,
+    );
+    return 1;
+  }
+
+  let storage: StorageProvider | null = null;
+  try {
+    const { configPath, databaseExists, openStorage } = resolveDeps(deps);
+    if (!(await databaseExists())) {
+      process.stderr.write('Nothing has been saved yet; run `outtray scan <dir>` first.\n');
+      return 1;
+    }
+    storage = await openStorage();
+    const document = await locateDocument(storage, file);
+    if (document === null) {
+      process.stderr.write(
+        `No scanned document matches ${file}. Scan its folder with \`outtray scan\` first.\n`,
+      );
+      return 1;
+    }
+    const result = await revealIdentifier(storage, document, field);
+    switch (result.status) {
+      case 'revealed':
+        process.stdout.write(`${result.value}\n`);
+        return 0;
+      case 'wrong_field':
+        process.stderr.write(
+          result.documentField
+            ? `${file} carries ${result.documentField}, not ${field}.\n`
+            : `${file} has no ID number field.\n`,
+        );
+        return 1;
+    }
+    // not_stored: say why, from the setting as it is now.
+    const { settings } = await readSettings(configPath);
+    const shown = result.redacted ? ` Stored: ${result.redacted}.` : '';
+    process.stderr.write(
+      settings.identifierStorage
+        ? `Not stored for ${file} yet.${shown} Numbers are remembered from the next scan of each document; re-scan its folder.\n`
+        : `Not stored: identifier storage is off, so only the last four are kept.${shown} See \`outtray settings\`.\n`,
+    );
+    return 1;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`reveal failed: ${detail}\n`);
+    return 1;
+  } finally {
+    await storage?.close();
+  }
+}
+
+/** `runSettings` needs to know whether it can ask, and how. Injected by tests. */
+export interface SettingsDeps extends StoreDeps {
+  /** Whether a person is at the terminal to answer a prompt. */
+  interactive: boolean;
+  /** Ask a yes/no question; resolves true only on yes. */
+  confirm: (question: string) => Promise<boolean>;
+}
+
+function defaultSettingsDeps(): SettingsDeps {
+  return {
+    ...defaultStoreDeps(),
+    interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
+    confirm: async (question) => {
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      try {
+        return /^y(es)?$/i.test((await rl.question(question)).trim());
+      } finally {
+        rl.close();
+      }
+    },
+  };
+}
+
+const SETTINGS_USAGE = 'usage: outtray settings [identifier-storage on|off [--yes]]\n';
+
+/**
+ * `outtray settings`: show the identifier-storage setting with its
+ * disclosure, or switch it (ADR-0011, issue #83).
+ *
+ * Turning it on shows the disclosure and asks first, because that is the
+ * direction that keeps more; without a terminal it needs `--yes` rather than
+ * assuming one. Turning it off does not ask: it is the safe direction, and it
+ * deletes every vaulted number.
+ *
+ * Failure modes: exits 1 on an unknown setting or value, when turning on
+ * without a terminal or `--yes`, or when the settings file cannot be written
+ * (the old setting stands). Turning off never creates a store; if one exists
+ * but cannot be opened, the setting is still saved, exit is 1, and the next
+ * scan completes the purge.
+ */
+export async function runSettings(
+  args: readonly string[],
+  deps: SettingsDeps | (() => SettingsDeps) = defaultSettingsDeps,
+): Promise<number> {
+  const [name, value, ...flags] = args;
+  if (
+    name !== undefined &&
+    (name !== 'identifier-storage' || (value !== 'on' && value !== 'off'))
+  ) {
+    process.stderr.write(SETTINGS_USAGE);
+    return 1;
+  }
+  try {
+    const resolved = resolveDeps(deps);
+    if (name === undefined) {
+      const { settings, warning } = await readSettings(resolved.configPath);
+      if (warning !== null) process.stderr.write(`${warning}\n`);
+      process.stdout.write(
+        `identifier-storage: ${settings.identifierStorage ? 'on' : 'off'}\n\n` +
+          `${IDENTIFIER_STORAGE_DISCLOSURE}\n` +
+          'Change it with `outtray settings identifier-storage on` or `off`.\n',
+      );
+      return 0;
+    }
+    return value === 'on'
+      ? await turnIdentifierStorageOn(resolved, flags.includes('--yes'))
+      : await turnIdentifierStorageOff(resolved);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`settings failed: ${detail}\n`);
+    return 1;
+  }
+}
+
+async function turnIdentifierStorageOn(deps: SettingsDeps, yes: boolean): Promise<number> {
+  if ((await readSettings(deps.configPath)).settings.identifierStorage) {
+    process.stdout.write('Identifier storage is already on.\n');
+    return 0;
+  }
+  process.stdout.write(`${IDENTIFIER_STORAGE_DISCLOSURE}\n`);
+  if (!yes) {
+    if (!deps.interactive) {
+      process.stderr.write(
+        'Not changed: no terminal to confirm at. Re-run with --yes to turn it on.\n',
+      );
+      return 1;
+    }
+    if (!(await deps.confirm('Turn identifier storage on? [y/N] '))) {
+      process.stdout.write('Not changed; identifier storage is still off.\n');
+      return 0;
+    }
+  }
+  await setIdentifierStorage({ configPath: deps.configPath, storage: null, enabled: true });
+  process.stdout.write(
+    'Identifier storage is on. ID numbers are remembered from the next scan of each document.\n',
+  );
+  return 0;
+}
+
+async function turnIdentifierStorageOff(deps: SettingsDeps): Promise<number> {
+  if (!(await deps.databaseExists())) {
+    await setIdentifierStorage({ configPath: deps.configPath, storage: null, enabled: false });
+    process.stdout.write('Identifier storage is off. Nothing was stored.\n');
+    return 0;
+  }
+  let storage: StorageProvider;
+  try {
+    storage = await deps.openStorage();
+  } catch (error) {
+    await setIdentifierStorage({ configPath: deps.configPath, storage: null, enabled: false });
+    const detail = error instanceof Error ? error.message : String(error);
+    process.stderr.write(
+      `Identifier storage is off, but stored numbers could not be deleted now (${detail}); the next scan deletes them.\n`,
+    );
+    return 1;
+  }
+  try {
+    const { purged } = await setIdentifierStorage({
+      configPath: deps.configPath,
+      storage,
+      enabled: false,
+    });
+    process.stdout.write(`Identifier storage is off. Deleted ${purged} stored ID number(s).\n`);
+    return 0;
+  } finally {
+    await storage.close();
   }
 }
 
@@ -338,6 +575,10 @@ export async function run(argv: readonly string[]): Promise<number> {
       return runActions(rest);
     case 'find':
       return runFind(rest);
+    case 'reveal':
+      return runReveal(rest);
+    case 'settings':
+      return runSettings(rest);
     default:
       process.stderr.write(`Unknown command: ${command}\n\n${USAGE}`);
       return 1;

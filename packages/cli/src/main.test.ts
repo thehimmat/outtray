@@ -3,14 +3,26 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   type ActionQueue,
+  contentHashOf,
   type FindResult,
+  IDENTIFIER_STORAGE_DISCLOSURE,
   MemoryStorage,
+  readSettings,
+  redactExtraction,
   type ScanItem,
   type ScanReport,
   writeSettings,
 } from '@outtray/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { formatActions, formatCitations, formatReport, run, saveScan } from './main.js';
+import {
+  formatActions,
+  formatCitations,
+  formatReport,
+  run,
+  runReveal,
+  runSettings,
+  saveScan,
+} from './main.js';
 
 function captureStdout() {
   return vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
@@ -353,12 +365,21 @@ describe('saveScan', () => {
     const store = new MemoryStorage();
     // saveScan closes what it opens; keep this store readable for assertions.
     const closed = vi.spyOn(store, 'close').mockResolvedValue();
-    return { configPath, store, closed, openStorage: async () => store };
+    return {
+      configPath,
+      databasePath: join(dir, 'outtray', 'outtray.db'),
+      // An existing store unless a test says otherwise, so no first-run notice.
+      databaseExists: async () => true,
+      store,
+      closed,
+      openStorage: async () => store,
+    };
   }
 
   it('saves documents without identifiers by default and says so', async () => {
-    const { configPath, store, openStorage } = await setup();
-    const message = await saveScan('pile', report, { configPath, openStorage });
+    const deps = await setup();
+    const { store } = deps;
+    const message = await saveScan('pile', report, deps);
     expect(message).toBe(
       'Saved 1 document(s) to the encrypted store. ID numbers: last four only (identifier storage is off).\n',
     );
@@ -367,8 +388,9 @@ describe('saveScan', () => {
   });
 
   it('vaults identifiers when the setting is on and says how many', async () => {
-    const { configPath, store, openStorage } = await setup('{"identifierStorage": true}');
-    const message = await saveScan('pile', report, { configPath, openStorage });
+    const deps = await setup('{"identifierStorage": true}');
+    const { store } = deps;
+    const message = await saveScan('pile', report, deps);
     expect(message).toBe(
       'Saved 1 document(s) to the encrypted store. ID numbers: 1 stored in full (identifier storage is on).\n',
     );
@@ -376,16 +398,16 @@ describe('saveScan', () => {
   });
 
   it('passes on a settings warning rather than hiding why the setting is off', async () => {
-    const { configPath, openStorage } = await setup('not json');
-    const message = await saveScan('pile', report, { configPath, openStorage });
+    const deps = await setup('not json');
+    const message = await saveScan('pile', report, deps);
     expect(message).toMatch(/not valid JSON; using defaults\.\n/);
     expect(message).toMatch(/identifier storage is off/);
   });
 
   it('reports a store that cannot be opened instead of failing the scan', async () => {
-    const { configPath } = await setup();
+    const deps = await setup();
     const message = await saveScan('pile', report, {
-      configPath,
+      ...deps,
       openStorage: async () => {
         throw new Error('Keychain locked');
       },
@@ -394,19 +416,68 @@ describe('saveScan', () => {
   });
 
   it('closes the store after saving, and after a failed write', async () => {
-    const { configPath, closed, openStorage } = await setup();
-    await saveScan('pile', report, { configPath, openStorage });
-    expect(closed).toHaveBeenCalledTimes(1);
+    const deps = await setup();
+    await saveScan('pile', report, deps);
+    expect(deps.closed).toHaveBeenCalledTimes(1);
 
     const broken = new MemoryStorage();
     vi.spyOn(broken, 'putDocument').mockRejectedValue(new Error('disk full'));
     const closing = vi.spyOn(broken, 'close');
     const message = await saveScan('pile', report, {
-      configPath,
+      ...deps,
       openStorage: async () => broken,
     });
     expect(message).toBe('Not saved to the encrypted store: disk full\n');
     expect(closing).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('saveScan (first run)', () => {
+  let dir = '';
+  afterEach(async () => {
+    if (dir) await rm(dir, { recursive: true, force: true });
+  });
+
+  const report: ScanReport = { scanned: [], skipped: [], items: [], classifierError: null };
+
+  it('tells the user where the store is and what happens to ID numbers when it is created', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'outtray-cli-'));
+    const store = new MemoryStorage();
+    const message = await saveScan('pile', report, {
+      configPath: join(dir, 'config.json'),
+      databasePath: '/data/outtray.db',
+      databaseExists: async () => false,
+      openStorage: async () => store,
+    });
+    expect(message).toMatch(
+      /^Outtray keeps an encrypted copy of what it reads at \/data\/outtray\.db/,
+    );
+    expect(message).toMatch(/last four/);
+    expect(message).toMatch(/Saved 0 document\(s\)/);
+  });
+
+  it('shows nothing extra once the store exists', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'outtray-cli-'));
+    const message = await saveScan('pile', report, {
+      configPath: join(dir, 'config.json'),
+      databasePath: '/data/outtray.db',
+      databaseExists: async () => true,
+      openStorage: async () => new MemoryStorage(),
+    });
+    expect(message).not.toMatch(/Outtray keeps/);
+  });
+
+  it('shows no notice when the store could not be created', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'outtray-cli-'));
+    const message = await saveScan('pile', report, {
+      configPath: join(dir, 'config.json'),
+      databasePath: '/data/outtray.db',
+      databaseExists: async () => false,
+      openStorage: async () => {
+        throw new Error('not macOS');
+      },
+    });
+    expect(message).toBe('Not saved to the encrypted store: not macOS\n');
   });
 });
 
@@ -505,5 +576,273 @@ describe('formatCitations', () => {
       citations: [],
     };
     expect(formatCitations('x', result)).toContain('No relevant passages found.');
+  });
+});
+
+/** A temp data dir with a real config file and an in-memory store. */
+async function vaultFixture(options: { databaseExists?: boolean } = {}) {
+  const dir = await mkdtemp(join(tmpdir(), 'outtray-cli-vault-'));
+  const store = new MemoryStorage();
+  vi.spyOn(store, 'close').mockResolvedValue();
+  const passportFile = join(dir, 'passport.png');
+  await writeFile(passportFile, 'passport bytes');
+  const passport = {
+    type: 'id_document' as const,
+    summary: 'Passport.',
+    action_items: [],
+    holder_name: 'Jane Doe',
+    id_number: 'AB1234567',
+    issuer: 'US Department of State',
+    expiry_date: '2027-03-01',
+  };
+  const hash = contentHashOf(Buffer.from('passport bytes'));
+  await store.putDocument({
+    contentHash: hash,
+    path: passportFile,
+    type: 'id_document',
+    extraction: redactExtraction(passport),
+    reconciliation: null,
+    scannedAt: 1,
+  });
+  return {
+    dir,
+    store,
+    hash,
+    passportFile,
+    deps: {
+      configPath: join(dir, 'outtray', 'config.json'),
+      databasePath: join(dir, 'outtray', 'outtray.db'),
+      databaseExists: async () => options.databaseExists ?? true,
+      openStorage: async () => store,
+    },
+  };
+}
+
+describe('outtray reveal', () => {
+  let dir = '';
+  afterEach(async () => {
+    if (dir) await rm(dir, { recursive: true, force: true });
+  });
+
+  it('prints only the full value on stdout, and nothing about it on stderr', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    await f.store.putIdentifiers(f.hash, [{ field: 'id_number', value: 'AB1234567' }]);
+    const out = captureStdout();
+    const err = captureStderr();
+    expect(await runReveal([f.passportFile, 'id_number'], f.deps)).toBe(0);
+    expect(out.mock.calls.join('')).toBe('AB1234567\n');
+    expect(err.mock.calls.join('')).not.toContain('AB1234567');
+    expect(err.mock.calls.join('')).not.toContain('4567');
+  });
+
+  it('closes the store after revealing', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    captureStdout();
+    await runReveal([f.passportFile, 'id_number'], f.deps);
+    expect(f.store.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('with the setting off, explains that only the last four are kept', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    const out = captureStdout();
+    const err = captureStderr();
+    expect(await runReveal([f.passportFile, 'id_number'], f.deps)).toBe(1);
+    expect(out.mock.calls.join('')).toBe('');
+    const message = err.mock.calls.join('');
+    expect(message).toMatch(/identifier storage is off/);
+    expect(message).toContain('[id_number ending 4567, 9 chars]');
+    expect(message).toMatch(/outtray settings/);
+  });
+
+  it('with the setting on but nothing vaulted yet, says to re-scan', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    await writeSettings(f.deps.configPath, { identifierStorage: true });
+    const err = captureStderr();
+    captureStdout();
+    expect(await runReveal([f.passportFile, 'id_number'], f.deps)).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/next scan/);
+  });
+
+  it('names the field the document does carry when asked for another', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    const err = captureStderr();
+    expect(await runReveal([f.passportFile, 'policy_number'], f.deps)).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/carries id_number, not policy_number/);
+  });
+
+  it('rejects a field that is not an identifier field, before opening the store', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    const open = vi.fn(f.deps.openStorage);
+    const err = captureStderr();
+    expect(await runReveal([f.passportFile, 'holder_name'], { ...f.deps, openStorage: open })).toBe(
+      1,
+    );
+    expect(err.mock.calls.join('')).toMatch(/id_number, policy_number, account_number/);
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it('does not create a store just to say nothing is there', async () => {
+    const f = await vaultFixture({ databaseExists: false });
+    dir = f.dir;
+    const open = vi.fn(f.deps.openStorage);
+    const err = captureStderr();
+    expect(await runReveal([f.passportFile, 'id_number'], { ...f.deps, openStorage: open })).toBe(
+      1,
+    );
+    expect(err.mock.calls.join('')).toMatch(/outtray scan/);
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it('reports a file that was never scanned', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    const other = join(f.dir, 'other.png');
+    await writeFile(other, 'other bytes');
+    const err = captureStderr();
+    expect(await runReveal([other, 'id_number'], f.deps)).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/No scanned document matches/);
+  });
+
+  it('prints usage when arguments are missing', async () => {
+    const err = captureStderr();
+    expect(await run(['reveal'])).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/usage: outtray reveal <file> <field>/);
+  });
+});
+
+describe('outtray settings', () => {
+  let dir = '';
+  afterEach(async () => {
+    if (dir) await rm(dir, { recursive: true, force: true });
+  });
+
+  const never = async () => {
+    throw new Error('should not prompt');
+  };
+
+  it('shows the current setting and the disclosure', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    const out = captureStdout();
+    expect(await runSettings([], { ...f.deps, interactive: false, confirm: never })).toBe(0);
+    const text = out.mock.calls.join('');
+    expect(text).toMatch(/^identifier-storage: off\n/);
+    expect(text).toContain(IDENTIFIER_STORAGE_DISCLOSURE);
+  });
+
+  it('turning on shows the disclosure, asks, and records the choice on yes', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    const out = captureStdout();
+    const confirm = vi.fn(async () => true);
+    expect(
+      await runSettings(['identifier-storage', 'on'], { ...f.deps, interactive: true, confirm }),
+    ).toBe(0);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(out.mock.calls.join('')).toContain(IDENTIFIER_STORAGE_DISCLOSURE);
+    expect(out.mock.calls.join('')).toMatch(/next scan/);
+    expect((await readSettings(f.deps.configPath)).settings.identifierStorage).toBe(true);
+  });
+
+  it('turning on and answering no changes nothing', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    const out = captureStdout();
+    expect(
+      await runSettings(['identifier-storage', 'on'], {
+        ...f.deps,
+        interactive: true,
+        confirm: async () => false,
+      }),
+    ).toBe(0);
+    expect(out.mock.calls.join('')).toMatch(/Not changed/);
+    expect((await readSettings(f.deps.configPath)).settings.identifierStorage).toBe(false);
+  });
+
+  it('turning on without a terminal needs --yes rather than defaulting to yes', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    captureStdout();
+    const err = captureStderr();
+    const deps = { ...f.deps, interactive: false, confirm: never };
+    expect(await runSettings(['identifier-storage', 'on'], deps)).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/--yes/);
+    expect((await readSettings(f.deps.configPath)).settings.identifierStorage).toBe(false);
+
+    expect(await runSettings(['identifier-storage', 'on', '--yes'], deps)).toBe(0);
+    expect((await readSettings(f.deps.configPath)).settings.identifierStorage).toBe(true);
+  });
+
+  it('turning off records the choice and deletes every stored number', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    await writeSettings(f.deps.configPath, { identifierStorage: true });
+    await f.store.putIdentifiers(f.hash, [{ field: 'id_number', value: 'AB1234567' }]);
+    const out = captureStdout();
+    expect(
+      await runSettings(['identifier-storage', 'off'], {
+        ...f.deps,
+        interactive: false,
+        confirm: never,
+      }),
+    ).toBe(0);
+    expect(out.mock.calls.join('')).toMatch(/off\. Deleted 1 stored ID number/);
+    expect(await f.store.countIdentifiers()).toBe(0);
+    expect(f.store.close).toHaveBeenCalledTimes(1);
+    expect((await readSettings(f.deps.configPath)).settings.identifierStorage).toBe(false);
+  });
+
+  it('turning off with no store yet does not create one', async () => {
+    const f = await vaultFixture({ databaseExists: false });
+    dir = f.dir;
+    const open = vi.fn(f.deps.openStorage);
+    captureStdout();
+    expect(
+      await runSettings(['identifier-storage', 'off'], {
+        ...f.deps,
+        openStorage: open,
+        interactive: false,
+        confirm: never,
+      }),
+    ).toBe(0);
+    expect(open).not.toHaveBeenCalled();
+    expect((await readSettings(f.deps.configPath)).settings.identifierStorage).toBe(false);
+  });
+
+  it('turning off when the store cannot be opened saves the setting and says the purge is pending', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    await writeSettings(f.deps.configPath, { identifierStorage: true });
+    captureStdout();
+    const err = captureStderr();
+    expect(
+      await runSettings(['identifier-storage', 'off'], {
+        ...f.deps,
+        openStorage: async () => {
+          throw new Error('Keychain locked');
+        },
+        interactive: false,
+        confirm: never,
+      }),
+    ).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/Keychain locked/);
+    expect(err.mock.calls.join('')).toMatch(/next scan deletes them/);
+    expect((await readSettings(f.deps.configPath)).settings.identifierStorage).toBe(false);
+  });
+
+  it('rejects an unknown setting or value', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    const err = captureStderr();
+    const deps = { ...f.deps, interactive: false, confirm: never };
+    expect(await runSettings(['colour', 'blue'], deps)).toBe(1);
+    expect(await runSettings(['identifier-storage', 'maybe'], deps)).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/usage: outtray settings/);
   });
 });

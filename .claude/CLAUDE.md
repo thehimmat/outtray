@@ -28,9 +28,10 @@ When those conflict, favor the showcase.
   write path: derived text gets a mode-independent `[field]` placeholder,
   `extraction_json` stores the redacted form in both modes, and `scan`
   persists documents in #79. Next: **#79 (identifier vault and tokenizer)
-  must land before #43**, in three slices (1 and 2 done: matcher and
-  redaction in every output; vault, opt-in and scan persistence. Remaining:
-  `outtray reveal`, the settings command and first-run disclosure), because the tokenizer sits on the chunk write path and re-tokenizing
+  must land before #43**, in three slices (all three built: matcher and
+  redaction in every output; vault, opt-in and scan persistence; `outtray
+  reveal`, `outtray settings` and the disclosure text in `disclosure.ts`),
+  because the tokenizer sits on the chunk write path and re-tokenizing
   later invalidates stored embeddings. Then #43 (index persistence) and #67
   (label store). Extracted identifiers get one canonical encrypted row, are
   tokenized out of derived chunk text, are redacted to last-four in every
