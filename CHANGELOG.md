@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- An ID number the model wrote into an action item's due date is now
+  redacted and tokenized like everywhere else; before, it could reach the
+  action queue in full. Found by the action-level eval (#64).
+- The planner reads dates written out in words ("January 6, 2025") the way
+  the eval already scored them, and treats a due date that is not a date as
+  no date instead of comparing it as text. Action recall 10/13 to 11/13.
+- One fact is no longer flagged twice (#65): an extracted to-do or past-due
+  flag on the same document and date as an expiry alert or expired flag
+  folds into it, keeping both citations. Action precision 11/25 to 11/22.
+
 ### Added
 
 - Action-level eval (#64): `pnpm eval:actions` scores the proposed action

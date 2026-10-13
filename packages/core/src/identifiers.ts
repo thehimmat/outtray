@@ -216,7 +216,12 @@ function replaceEverywhere(
     if (key === 'type') out[key] = v;
     else if (key === id.field) out[key] = to;
     else if (key === 'action_items') {
-      out[key] = doc.action_items.map((item) => ({ ...item, text: scrub(item.text) }));
+      // Both fields: a model can put any value, an identifier included, in either.
+      out[key] = doc.action_items.map((item) => ({
+        ...item,
+        text: scrub(item.text),
+        due_date: item.due_date === null ? null : scrub(item.due_date),
+      }));
     } else if (typeof v === 'string') out[key] = scrub(v);
     else if (Array.isArray(v)) out[key] = v.map((x) => (typeof x === 'string' ? scrub(x) : x));
     else out[key] = v;

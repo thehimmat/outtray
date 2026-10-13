@@ -8,15 +8,15 @@ A match needs the same kind, rule, date and retention advice, and a title
 containing the required words. Recall shows a 95% Wilson interval.
 Regenerate with `pnpm eval:actions`; CI replays it and fails on drift.
 
-Generated at commit `96ec07331cb8` over 10 synthetic fixtures.
+Generated at commit `c0d860f456aa` over 10 synthetic fixtures.
 
 | Action kind | Precision | Recall (95% CI) |
 | --- | --- | --- |
-| attention_flag | 2/5 (40%) | 2/3 (67%) [21-94] |
-| todo | 1/10 (10%) | 1/1 (100%) [21-100] |
+| attention_flag | 3/5 (60%) | 3/3 (100%) [44-100] |
+| todo | 1/8 (13%) | 1/1 (100%) [21-100] |
 | expiry_alert | 1/1 (100%) | 1/1 (100%) [21-100] |
 | retention_advice | 6/8 (75%) | 6/8 (75%) [41-93] |
-| **overall** | **10/24 (42%)** | **10/13 (77%) [50-92]** |
+| **overall** | **11/22 (50%)** | **11/13 (85%) [58-96]** |
 
 ## Where it misses
 
@@ -25,13 +25,11 @@ Generated at commit `96ec07331cb8` over 10 synthetic fixtures.
 | bill-001 | retention_advice shred | retention_advice keep |
 | receipt-001 | - | attention_flag flag-past-due 2025-08-23 |
 | letter-001 | - | todo todo-extracted |
-| id_document-001 | - | attention_flag flag-past-due 2026-01-19 |
-| policy-001 | - | todo todo-extracted Comprehensive auto, $500 deductible; todo todo-extracted December 16, 2026; todo todo-extracted POL-804220 |
+| policy-001 | - | todo todo-extracted 2026-12-16; todo todo-extracted; todo todo-extracted |
 | bill-002 | retention_advice shred | retention_advice keep |
 | receipt-002 | - | attention_flag flag-past-due 2025-07-04 |
 | letter-002 | - | todo todo-extracted |
-| id_document-002 | - | todo todo-extracted 2026-07-23 |
-| policy-002 | attention_flag flag-expired 2025-01-06 | todo todo-extracted Comprehensive auto, $500 deductible; todo todo-extracted January 6, 2025; todo todo-extracted POL-769782 |
+| policy-002 | - | todo todo-extracted; todo todo-extracted |
 
 ## Caveats
 

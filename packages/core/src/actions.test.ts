@@ -224,3 +224,111 @@ describe('planActions identifier redaction', () => {
     expect(everything).not.toContain('0042117789');
   });
 });
+
+describe('planActions with free-text dates (#64 findings)', () => {
+  const policy = (expiry: string, actions: DocumentExtraction['action_items'] = []) =>
+    ({
+      type: 'policy',
+      summary: 'Auto policy.',
+      action_items: actions,
+      insurer: 'Evergreen Mutual',
+      policy_number: 'POL-769782',
+      coverage_summary: 'auto',
+      expiry_date: expiry,
+    }) as DocumentExtraction;
+
+  it('reads an expiry written out in words as the same date', () => {
+    const queue = planActions(report([item('p.png', policy('January 6, 2025'))]), { today: TODAY });
+    expect(queue.items.find((i) => i.ruleId === 'flag-expired')?.date).toBe('2025-01-06');
+  });
+
+  it('normalizes a to-do due date written out in words', () => {
+    const queue = planActions(
+      report([
+        item('p.png', policy('2027-01-01', [{ text: 'Renew', due_date: 'December 16, 2026' }])),
+      ]),
+      { today: TODAY },
+    );
+    expect(queue.items.find((i) => i.kind === 'todo')?.date).toBe('2026-12-16');
+  });
+
+  it('treats a due date that is not a date as no date, never past due', () => {
+    const queue = planActions(
+      report([
+        item('p.png', policy('2027-01-01', [{ text: 'Keep for records', due_date: 'see page 2' }])),
+      ]),
+      { today: TODAY },
+    );
+    const todo = queue.items.find((i) => i.ruleId === 'todo-extracted');
+    expect(todo?.date).toBeNull();
+    expect(queue.items.some((i) => i.ruleId === 'flag-past-due')).toBe(false);
+  });
+
+  it('never shows an identifier the model put in a due date field', () => {
+    const queue = planActions(
+      report([
+        item('p.png', policy('2027-01-01', [{ text: 'Policy number', due_date: 'POL-769782' }])),
+      ]),
+      { today: TODAY },
+    );
+    expect(JSON.stringify(queue).replace(/[^0-9]/g, '')).not.toContain('769782');
+  });
+});
+
+describe('planActions merges one fact flagged twice (#65)', () => {
+  const id = (expiry: string, actions: DocumentExtraction['action_items']) =>
+    ({
+      type: 'id_document',
+      summary: 'Driver license.',
+      action_items: actions,
+      holder_name: 'Nina Nguyen',
+      id_number: 'D8923829',
+      issuer: 'State of Washington',
+      expiry_date: expiry,
+    }) as DocumentExtraction;
+
+  it('folds a past-due action into the expired flag for the same document and date', () => {
+    const queue = planActions(
+      report([item('id.png', id('2026-01-19', [{ text: 'Expires', due_date: '2026-01-19' }]))]),
+      { today: TODAY },
+    );
+    const flags = queue.items.filter((i) => i.kind === 'attention_flag');
+    expect(flags.map((f) => f.ruleId)).toEqual(['flag-expired']);
+    expect(flags[0]?.citations.map((c) => c.snippet)).toEqual([
+      'expiry_date: 2026-01-19',
+      'Expires',
+    ]);
+    expect(queue.flagged).toBe(1);
+  });
+
+  it('folds a to-do into the expiry alert for the same document and date', () => {
+    const queue = planActions(
+      report([
+        item('id.png', id('2026-07-23', [{ text: 'Renew license', due_date: 'July 23, 2026' }])),
+      ]),
+      { today: TODAY },
+    );
+    expect(queue.items.filter((i) => i.kind === 'todo')).toEqual([]);
+    const alert = queue.items.find((i) => i.kind === 'expiry_alert');
+    expect(alert?.citations.map((c) => c.snippet)).toEqual([
+      'expiry_date: 2026-07-23',
+      'Renew license',
+    ]);
+  });
+
+  it('keeps actions on other dates, and the same date on another document', () => {
+    const queue = planActions(
+      report([
+        item('a.png', id('2026-01-19', [{ text: 'Call DMV', due_date: '2026-01-10' }])),
+        item('b.png', { ...BILL, action_items: [{ text: 'Pay', due_date: '2026-01-19' }] }),
+      ]),
+      { today: TODAY },
+    );
+    expect(
+      queue.items
+        .filter((i) => i.ruleId === 'flag-past-due')
+        .map((i) => i.date)
+        .sort(),
+    ).toEqual(['2026-01-10', '2026-01-19']);
+  });
+});
