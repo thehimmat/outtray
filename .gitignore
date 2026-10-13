@@ -24,3 +24,6 @@ packages/evals/fixtures/real/
 
 # Claude Code per-user settings (Biome honours this file, so local lint matches CI)
 .claude/settings.local.json
+
+# Rust build output (spikes)
+target/
