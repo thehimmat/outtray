@@ -16,7 +16,17 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # The desktop app's Rust store (ADR-0013): built so the shared
+      # StorageProvider contract suite runs against it, and required so a
+      # missing binary fails instead of skipping.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/app/store
+      - run: cargo fmt --check && cargo build --release --locked
+        working-directory: packages/app/store
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+        env:
+          OUTTRAY_REQUIRE_RUST_STORE: '1'
       - run: pnpm build

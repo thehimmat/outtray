@@ -9,6 +9,18 @@
  * failure goes through `explainStorageError`, so that truth is said once.
  */
 
+/**
+ * Thrown when the database key cannot be read, created or trusted. Lives here,
+ * host-neutral, because every store adapter reports it: the Node one from the
+ * Keychain, the app's from its Rust side (ADR-0013).
+ */
+export class DatabaseKeyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DatabaseKeyError';
+  }
+}
+
 /** Thrown when the store file is structurally damaged (cut off, overwritten). */
 export class StorageCorruptError extends Error {
   readonly path: string;

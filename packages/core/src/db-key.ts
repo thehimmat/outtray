@@ -81,13 +81,9 @@ export interface DatabaseKeyProvider {
   getOrCreateKey(): Promise<DatabaseKey>;
 }
 
-/** Thrown when the database key cannot be read, created or trusted. */
-export class DatabaseKeyError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'DatabaseKeyError';
-  }
-}
+import { DatabaseKeyError } from './storage-errors.js';
+
+export { DatabaseKeyError };
 
 /** Result of running the `security` command. */
 export interface SecurityResult {

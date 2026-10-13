@@ -135,7 +135,16 @@ export {
   type ScanReport,
   scanSource,
 } from './scan.js';
-export { explainStorageError, StorageCorruptError } from './storage-errors.js';
+export {
+  CommandStorage,
+  openCommandStorage,
+  type StorageTransport,
+} from './storage-command.js';
+export {
+  DatabaseKeyError,
+  explainStorageError,
+  StorageCorruptError,
+} from './storage-errors.js';
 export { MemoryStorage } from './storage-memory.js';
 export {
   asLabelProvenance,

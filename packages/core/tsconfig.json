@@ -4,6 +4,7 @@
     "composite": true,
     "rootDir": "src",
     "outDir": "dist",
+    "resolveJsonModule": true,
     "types": ["node"],
     // better-sqlite3-multiple-ciphers 13 added an "exports" map without a
     // "types" condition, so NodeNext resolution cannot find the index.d.ts it
@@ -14,5 +15,5 @@
       ]
     }
   },
-  "include": ["src"]
+  "include": ["src", "src/*.json"]
 }

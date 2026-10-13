@@ -52,7 +52,11 @@ When those conflict, favor the showcase.
   `@outtray/core` is host-neutral; Node-only adapters live behind
   `@outtray/core/node`. Builds stay unsigned until #12. `packages/app`
   (React, Vite) renders the approval queue against an `OuttrayApi`
-  interface, backed by a demo host until the Tauri adapters land.
+  interface, backed by a demo host until the Tauri adapters land. The Rust
+  store (`packages/app/store`: a `handle(op, args)` command layer plus a
+  stdio binary for tests) passes the shared contract suite through
+  `CommandStorage`; schema is one file, `core/src/migrations.json`, embedded
+  by Rust. CI builds it (rust-cache) and sets OUTTRAY_REQUIRE_RUST_STORE.
 - **Action layer v1 shipped (ADR-0010, accepted)**: `outtray actions <dir>`
   plans a deterministic, cited, proposed-only queue (to-dos, expiry alerts,
   keep/shred advice with rule ids + disclaimer, attention flags, review

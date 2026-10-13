@@ -6,12 +6,18 @@
  * rather than the consumers that trusted the fake.
  */
 
+import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createInterface } from 'node:readline';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { generateDatabaseKey, StaticKeyProvider } from './db-key.js';
 import type { IdentifierField } from './identifiers.js';
+import { openCommandStorage, type StorageTransport } from './storage-command.js';
+import { DatabaseKeyError } from './storage-errors.js';
 import { MemoryStorage } from './storage-memory.js';
 import {
   type NewLabel,
@@ -39,6 +45,56 @@ async function sqlcipherStore(): Promise<StorageProvider> {
     path: join(dir, 'outtray.db'),
     keyProvider: new StaticKeyProvider(generateDatabaseKey()),
   });
+}
+
+/**
+ * The Rust store (packages/app/store) over a stdio pipe: the same command
+ * layer the desktop app calls through Tauri (ADR-0013). Built by
+ * `cargo build --release` in packages/app/store; CI sets
+ * OUTTRAY_REQUIRE_RUST_STORE so a missing binary fails rather than skips.
+ */
+const RUST_STORE_BIN =
+  process.env.OUTTRAY_STORE_BIN ??
+  fileURLToPath(new URL('../../app/store/target/release/outtray-store-stdio', import.meta.url));
+const rustStoreBuilt = existsSync(RUST_STORE_BIN);
+if (!rustStoreBuilt && process.env.OUTTRAY_REQUIRE_RUST_STORE) {
+  throw new Error(`OUTTRAY_REQUIRE_RUST_STORE is set but ${RUST_STORE_BIN} is not built.`);
+}
+
+/** A transport that speaks the stdio protocol of `outtray-store-stdio`. */
+function stdioTransport(): StorageTransport {
+  const child = spawn(RUST_STORE_BIN, [], { stdio: ['pipe', 'pipe', 'inherit'] });
+  cleanups.push(async () => {
+    child.kill();
+  });
+  const pending = new Map<
+    number,
+    { resolve: (v: unknown) => void; reject: (e: unknown) => void }
+  >();
+  createInterface({ input: child.stdout }).on('line', (line) => {
+    const response = JSON.parse(line) as { id: number; ok?: unknown; error?: unknown };
+    const waiter = pending.get(response.id);
+    pending.delete(response.id);
+    if ('error' in response) waiter?.reject(response.error);
+    else waiter?.resolve(response.ok);
+  });
+  let next = 0;
+  return (op, args) =>
+    new Promise((resolve, reject) => {
+      const id = next++;
+      pending.set(id, { resolve, reject });
+      child.stdin.write(`${JSON.stringify({ id, op, args })}\n`);
+    });
+}
+
+async function rustStore(keyHex = generateDatabaseKey().toString('hex'), path?: string) {
+  let at = path;
+  if (!at) {
+    const dir = await mkdtemp(join(tmpdir(), 'outtray-rust-store-'));
+    cleanups.push(() => rm(dir, { recursive: true, force: true }));
+    at = join(dir, 'outtray.db');
+  }
+  return openCommandStorage(stdioTransport(), { path: at, keyHex });
 }
 
 function document(overrides: Partial<StoredDocument> = {}): StoredDocument {
@@ -91,10 +147,13 @@ const label = (overrides: Partial<NewLabel> = {}): NewLabel => ({
   ...overrides,
 });
 
-describe.each([
+const STORES: Array<[string, () => Promise<StorageProvider>]> = [
   ['MemoryStorage', memoryStore],
   ['SqlcipherStorage', sqlcipherStore],
-])('%s (StorageProvider contract)', (_name, create) => {
+];
+if (rustStoreBuilt) STORES.push(['CommandStorage over the Rust store', () => rustStore()]);
+
+describe.each(STORES)('%s (StorageProvider contract)', (_name, create) => {
   it('round-trips a document', async () => {
     const store = await create();
     const doc = document();
@@ -513,5 +572,47 @@ describe.each([
     await expect(store.identifierFields('hash-b')).rejects.toThrow(StorageError);
     await expect(store.replaceDocumentLabels('hash-b', [])).rejects.toThrow(StorageError);
     await expect(store.updateLabelEmbedding(1, [1], 'm')).rejects.toThrow(StorageError);
+  });
+});
+
+describe.runIf(rustStoreBuilt)('one file, two stores (ADR-0013)', () => {
+  it('the Rust store reads what the Node store wrote, and the reverse', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'outtray-both-'));
+    cleanups.push(() => rm(dir, { recursive: true, force: true }));
+    const path = join(dir, 'outtray.db');
+    const key = generateDatabaseKey();
+
+    const node = await openSqlcipherStorage({ path, keyProvider: new StaticKeyProvider(key) });
+    await node.putDocument(document());
+    await node.putChunks('hash-b', [chunk()]);
+    await node.putIdentifiers('hash-b', [{ field: 'id_number', value: 'X1234567' }]);
+    await node.close();
+
+    const rust = await rustStore(key.toString('hex'), path);
+    expect(await rust.getDocument('hash-b')).toEqual(document());
+    expect(await rust.listChunks()).toEqual([chunk()]);
+    expect(await rust.getIdentifier('hash-b', 'id_number')).toBe('X1234567');
+    await rust.addLabels([label({ provenance: 'correction', documentHash: 'hash-b' })]);
+    await rust.close();
+
+    const again = await openSqlcipherStorage({ path, keyProvider: new StaticKeyProvider(key) });
+    expect(await again.listLabels()).toMatchObject([
+      { provenance: 'correction', documentHash: 'hash-b' },
+    ]);
+    await again.close();
+  });
+
+  it('a wrong key from the Rust side is a key error, like the Node side', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'outtray-both-'));
+    cleanups.push(() => rm(dir, { recursive: true, force: true }));
+    const path = join(dir, 'outtray.db');
+    const node = await openSqlcipherStorage({
+      path,
+      keyProvider: new StaticKeyProvider(generateDatabaseKey()),
+    });
+    await node.close();
+    await expect(rustStore(generateDatabaseKey().toString('hex'), path)).rejects.toThrow(
+      DatabaseKeyError,
+    );
   });
 });
