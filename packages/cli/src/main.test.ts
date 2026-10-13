@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -15,13 +15,14 @@ import {
 } from '@outtray/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  findInFolder,
   formatActions,
   formatCitations,
   formatReport,
   run,
   runReveal,
   runSettings,
-  saveScan,
+  scanFolder,
 } from './main.js';
 
 function captureStdout() {
@@ -312,172 +313,308 @@ describe('formatReport', () => {
   });
 });
 
-describe('saveScan', () => {
-  const usage = { loadMs: 0, promptTokens: 1, genTokens: 1, genTokPerSec: 1, totalMs: 1 };
+describe('scanFolder (incremental, ADR-0012)', () => {
   const passport = {
-    type: 'id_document' as const,
-    summary: 'Passport.',
+    type: 'id_document',
+    summary: 'Passport AB1234567 for a dentist.',
     action_items: [],
     holder_name: 'Jane Doe',
     id_number: 'AB1234567',
     issuer: 'US Department of State',
     expiry_date: '2027-03-01',
   };
-  const report: ScanReport = {
-    scanned: ['passport.png'],
-    skipped: [],
-    items: [
-      {
-        file: 'passport.png',
-        contentHash: 'hash-passport',
-        result: {
-          valid: true,
-          jsonChannel: 'content',
-          raw: passport,
-          usage,
-          error: null,
-          document: passport,
-        },
-        reconciliation: {
-          effectiveType: 'id_document',
-          status: 'unclassified',
-          review: false,
-          vlmType: 'id_document',
-          classification: null,
-        },
-      },
-    ],
-    classifierError: null,
+  const bill = {
+    type: 'bill',
+    summary: 'Butter delivery invoice.',
+    action_items: [],
+    payee: 'Dairy Co',
+    amount_due: '$12.00',
+    due_date: '2026-11-01',
+    late_fee: null,
   };
+
+  /** Answers by file content: bytes 'P...' are the passport, anything else the bill. */
+  function fakeModels() {
+    const provider = {
+      name: 'fake',
+      calls: 0,
+      async generate(req: { images?: string[] }) {
+        provider.calls += 1;
+        const bytes = Buffer.from(req.images?.[0] ?? '', 'base64').toString();
+        return {
+          json: bytes.startsWith('P') ? passport : bill,
+          jsonChannel: 'content' as const,
+          content: '',
+          thinking: '',
+          doneReason: 'stop',
+          usage: { loadMs: 0, promptTokens: 1, genTokens: 1, genTokPerSec: 1, totalMs: 1 },
+        };
+      },
+    };
+    const embedder = {
+      name: 'letters',
+      calls: 0,
+      fail: false,
+      async embed(texts: string[]) {
+        embedder.calls += 1;
+        if (embedder.fail) throw new Error('embedder down');
+        return texts.map((t) =>
+          [...'abdeprt'].map((c) => t.toLowerCase().split(c).length - 1 + 0.01),
+        );
+      },
+    };
+    return { provider, embedder };
+  }
 
   let dir = '';
   afterEach(async () => {
     if (dir) await rm(dir, { recursive: true, force: true });
   });
 
-  async function setup(config?: string) {
+  async function setup(options: { config?: string; databaseExists?: boolean } = {}) {
     dir = await mkdtemp(join(tmpdir(), 'outtray-cli-'));
+    const pile = join(dir, 'pile');
+    await mkdir(pile);
+    await writeFile(join(pile, 'passport.png'), 'P-bytes');
+    await writeFile(join(pile, 'bill.png'), 'B-bytes');
     const configPath = join(dir, 'outtray', 'config.json');
-    if (config !== undefined) {
+    if (options.config !== undefined) {
       await writeSettings(configPath, { identifierStorage: false });
-      await writeFile(configPath, config);
+      await writeFile(configPath, options.config);
     }
     const store = new MemoryStorage();
-    // saveScan closes what it opens; keep this store readable for assertions.
-    const closed = vi.spyOn(store, 'close').mockResolvedValue();
-    return {
+    // Callers close what scanFolder opened; keep this store readable for assertions.
+    vi.spyOn(store, 'close').mockResolvedValue();
+    const deps = {
       configPath,
       databasePath: join(dir, 'outtray', 'outtray.db'),
-      // An existing store unless a test says otherwise, so no first-run notice.
-      databaseExists: async () => true,
-      store,
-      closed,
+      databaseExists: async () => options.databaseExists ?? true,
       openStorage: async () => store,
     };
+    return { pile, store, deps, models: fakeModels() };
   }
 
-  it('saves documents without identifiers by default and says so', async () => {
-    const deps = await setup();
-    const { store } = deps;
-    const message = await saveScan('pile', report, deps);
-    expect(message).toBe(
-      'Saved 1 document(s) to the encrypted store. ID numbers: last four only (identifier storage is off).\n',
+  it('first scan extracts and indexes everything; a repeat makes no model calls', async () => {
+    const { pile, store, deps, models } = await setup();
+    const first = await scanFolder(pile, models, deps);
+    expect(models.provider.calls).toBe(2);
+    expect(first.notes).toBe(
+      'Saved 2 document(s) to the encrypted store. ID numbers: last four only (identifier storage is off).\n',
     );
-    expect(await store.listDocuments()).toHaveLength(1);
-    expect(await store.countIdentifiers()).toBe(0);
+    expect((await store.listDocuments()).every((d) => d.indexKey !== null)).toBe(true);
+    expect((await store.listChunks()).length).toBeGreaterThan(0);
+
+    models.provider.calls = 0;
+    models.embedder.calls = 0;
+    const again = await scanFolder(pile, models, deps);
+    expect(models.provider.calls).toBe(0);
+    expect(models.embedder.calls).toBe(0);
+    expect(again.report.items.every((i) => i.reused)).toBe(true);
+    expect(again.notes).toMatch(
+      /Saved 2 document\(s\) to the encrypted store \(2 unchanged since the last scan\)/,
+    );
   });
 
-  it('vaults identifiers when the setting is on and says how many', async () => {
-    const deps = await setup('{"identifierStorage": true}');
-    const { store } = deps;
-    const message = await saveScan('pile', report, deps);
-    expect(message).toBe(
-      'Saved 1 document(s) to the encrypted store. ID numbers: 1 stored in full (identifier storage is on).\n',
-    );
-    expect(await store.getIdentifier('hash-passport', 'id_number')).toBe('AB1234567');
+  it('re-extracts only a file whose bytes changed', async () => {
+    const { pile, deps, models } = await setup();
+    await scanFolder(pile, models, deps);
+    await writeFile(join(pile, 'bill.png'), 'B-bytes, edited');
+    models.provider.calls = 0;
+    const again = await scanFolder(pile, models, deps);
+    expect(models.provider.calls).toBe(1);
+    expect(again.report.items.map((i) => [i.file, i.reused ?? false])).toEqual([
+      ['bill.png', false],
+      ['passport.png', true],
+    ]);
+  });
+
+  it('with identifier storage switched on, re-extracts documents whose number is not vaulted', async () => {
+    const { pile, store, deps, models } = await setup();
+    await scanFolder(pile, models, deps);
+    await writeSettings(deps.configPath, { identifierStorage: true });
+    models.provider.calls = 0;
+    const again = await scanFolder(pile, models, deps);
+    expect(models.provider.calls).toBe(1);
+    expect(again.notes).toMatch(/1 stored in full/);
+    const passportHash = again.report.items.find((i) => i.file === 'passport.png')?.contentHash;
+    expect(await store.getIdentifier(passportHash ?? '', 'id_number')).toBe('AB1234567');
+  });
+
+  it('never prints or stores a reused extraction re-redacted', async () => {
+    const { pile, store, deps, models } = await setup();
+    await scanFolder(pile, models, deps);
+    const again = await scanFolder(pile, models, deps);
+    const text = formatReport(pile, again.report);
+    expect(text).toContain('[id_number ending 4567, 9 chars]');
+    expect(JSON.stringify(await store.listDocuments())).not.toMatch(/ending [A-Z]{4}, 2\d chars/);
+  });
+
+  it('saves but does not index when the embedder fails, and re-reads those next time', async () => {
+    const { pile, store, deps, models } = await setup();
+    models.embedder.fail = true;
+    const first = await scanFolder(pile, models, deps);
+    expect(first.notes).toMatch(/Search index not updated \(embedder down\)/);
+    expect((await store.listDocuments()).every((d) => d.indexKey === null)).toBe(true);
+
+    models.embedder.fail = false;
+    models.provider.calls = 0;
+    await scanFolder(pile, models, deps);
+    expect(models.provider.calls).toBe(2);
   });
 
   it('passes on a settings warning rather than hiding why the setting is off', async () => {
-    const deps = await setup('not json');
-    const message = await saveScan('pile', report, deps);
-    expect(message).toMatch(/not valid JSON; using defaults\.\n/);
-    expect(message).toMatch(/identifier storage is off/);
+    const { pile, deps, models } = await setup({ config: 'not json' });
+    const { notes } = await scanFolder(pile, models, deps);
+    expect(notes).toMatch(/not valid JSON; using defaults\.\n/);
+    expect(notes).toMatch(/identifier storage is off/);
   });
 
-  it('reports a store that cannot be opened instead of failing the scan', async () => {
-    const deps = await setup();
-    const message = await saveScan('pile', report, {
+  it('scans without the store when it cannot be opened, and says so', async () => {
+    const { pile, deps, models } = await setup();
+    const result = await scanFolder(pile, models, {
       ...deps,
       openStorage: async () => {
         throw new Error('Keychain locked');
       },
     });
-    expect(message).toBe('Not saved to the encrypted store: Keychain locked\n');
+    expect(result.storage).toBeNull();
+    expect(result.report.items).toHaveLength(2);
+    expect(result.notes).toBe('Not saved to the encrypted store: Keychain locked\n');
   });
 
-  it('closes the store after saving, and after a failed write', async () => {
-    const deps = await setup();
-    await saveScan('pile', report, deps);
-    expect(deps.closed).toHaveBeenCalledTimes(1);
+  it('scans without the store when store paths are unavailable (not macOS)', async () => {
+    const { pile, models } = await setup();
+    const result = await scanFolder(pile, models, () => {
+      throw new Error('this is linux');
+    });
+    expect(result.storage).toBeNull();
+    expect(result.notes).toBe('Not saved to the encrypted store: this is linux\n');
+  });
 
-    const broken = new MemoryStorage();
-    vi.spyOn(broken, 'putDocument').mockRejectedValue(new Error('disk full'));
-    const closing = vi.spyOn(broken, 'close');
-    const message = await saveScan('pile', report, {
+  it('closes the store and rethrows when the scan itself fails', async () => {
+    const { pile, store, deps, models } = await setup();
+    models.provider.generate = async () => {
+      throw new Error('ollama unreachable');
+    };
+    await expect(scanFolder(pile, models, deps)).rejects.toThrow('ollama unreachable');
+    expect(store.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the first-run notice when this scan created the store', async () => {
+    const { pile, deps, models } = await setup({ databaseExists: false });
+    const { notes } = await scanFolder(pile, models, deps);
+    expect(notes).toMatch(/^Outtray keeps an encrypted copy of what it reads at /);
+    expect(notes).toMatch(/Saved 2 document\(s\)/);
+  });
+
+  it('shows no first-run notice when the store could not be created', async () => {
+    const { pile, deps, models } = await setup({ databaseExists: false });
+    const { notes } = await scanFolder(pile, models, {
       ...deps,
-      openStorage: async () => broken,
-    });
-    expect(message).toBe('Not saved to the encrypted store: disk full\n');
-    expect(closing).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('saveScan (first run)', () => {
-  let dir = '';
-  afterEach(async () => {
-    if (dir) await rm(dir, { recursive: true, force: true });
-  });
-
-  const report: ScanReport = { scanned: [], skipped: [], items: [], classifierError: null };
-
-  it('tells the user where the store is and what happens to ID numbers when it is created', async () => {
-    dir = await mkdtemp(join(tmpdir(), 'outtray-cli-'));
-    const store = new MemoryStorage();
-    const message = await saveScan('pile', report, {
-      configPath: join(dir, 'config.json'),
-      databasePath: '/data/outtray.db',
-      databaseExists: async () => false,
-      openStorage: async () => store,
-    });
-    expect(message).toMatch(
-      /^Outtray keeps an encrypted copy of what it reads at \/data\/outtray\.db/,
-    );
-    expect(message).toMatch(/last four/);
-    expect(message).toMatch(/Saved 0 document\(s\)/);
-  });
-
-  it('shows nothing extra once the store exists', async () => {
-    dir = await mkdtemp(join(tmpdir(), 'outtray-cli-'));
-    const message = await saveScan('pile', report, {
-      configPath: join(dir, 'config.json'),
-      databasePath: '/data/outtray.db',
-      databaseExists: async () => true,
-      openStorage: async () => new MemoryStorage(),
-    });
-    expect(message).not.toMatch(/Outtray keeps/);
-  });
-
-  it('shows no notice when the store could not be created', async () => {
-    dir = await mkdtemp(join(tmpdir(), 'outtray-cli-'));
-    const message = await saveScan('pile', report, {
-      configPath: join(dir, 'config.json'),
-      databasePath: '/data/outtray.db',
-      databaseExists: async () => false,
       openStorage: async () => {
         throw new Error('not macOS');
       },
     });
-    expect(message).toBe('Not saved to the encrypted store: not macOS\n');
+    expect(notes).toBe('Not saved to the encrypted store: not macOS\n');
+  });
+});
+
+describe('findInFolder', () => {
+  it('answers from the store, and a repeat query loads no vision model', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'outtray-cli-find-'));
+    try {
+      const pile = join(dir, 'pile');
+      await mkdir(pile);
+      await writeFile(join(pile, 'bill.png'), 'B-bytes');
+      const store = new MemoryStorage();
+      vi.spyOn(store, 'close').mockResolvedValue();
+      const deps = {
+        configPath: join(dir, 'config.json'),
+        databasePath: join(dir, 'outtray.db'),
+        databaseExists: async () => true,
+        openStorage: async () => store,
+      };
+      let generateCalls = 0;
+      const provider = {
+        name: 'fake',
+        async generate() {
+          generateCalls += 1;
+          return {
+            json: {
+              type: 'bill',
+              summary: 'Butter delivery invoice.',
+              action_items: [],
+              payee: 'Dairy Co',
+              amount_due: '$12.00',
+              due_date: null,
+              late_fee: null,
+            },
+            jsonChannel: 'content' as const,
+            content: '',
+            thinking: '',
+            doneReason: 'stop',
+            usage: { loadMs: 0, promptTokens: 1, genTokens: 1, genTokPerSec: 1, totalMs: 1 },
+          };
+        },
+      };
+      const embedder = {
+        name: 'letters',
+        async embed(texts: string[]) {
+          return texts.map((t) => [...'abdeprt'].map((c) => t.split(c).length - 1 + 0.01));
+        },
+      };
+      const first = await findInFolder(pile, 'butter', { provider, embedder }, deps);
+      expect(first.result.citations[0]?.source.documentId).toBe('bill.png');
+      expect(first.notes).toMatch(/Saved 1 document/);
+      generateCalls = 0;
+      const again = await findInFolder(pile, 'butter', { provider, embedder }, deps);
+      expect(generateCalls).toBe(0);
+      expect(again.result.citations[0]?.source.documentId).toBe('bill.png');
+      expect(store.close).toHaveBeenCalledTimes(2);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('falls back to an in-memory index when the store is unavailable', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'outtray-cli-find-'));
+    try {
+      await writeFile(join(dir, 'bill.png'), 'B-bytes');
+      const provider = {
+        name: 'fake',
+        async generate() {
+          return {
+            json: {
+              type: 'bill',
+              summary: 'Butter delivery invoice.',
+              action_items: [],
+              payee: 'Dairy Co',
+              amount_due: '$12.00',
+              due_date: null,
+              late_fee: null,
+            },
+            jsonChannel: 'content' as const,
+            content: '',
+            thinking: '',
+            doneReason: 'stop',
+            usage: { loadMs: 0, promptTokens: 1, genTokens: 1, genTokPerSec: 1, totalMs: 1 },
+          };
+        },
+      };
+      const embedder = {
+        name: 'letters',
+        async embed(texts: string[]) {
+          return texts.map((t) => [...'abdeprt'].map((c) => t.split(c).length - 1 + 0.01));
+        },
+      };
+      const { result, notes } = await findInFolder(dir, 'butter', { provider, embedder }, () => {
+        throw new Error('this is linux');
+      });
+      expect(result.citations[0]?.source.documentId).toBe('bill.png');
+      expect(notes).toMatch(/Not saved to the encrypted store: this is linux/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
 

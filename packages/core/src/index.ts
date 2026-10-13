@@ -76,6 +76,7 @@ export {
   type FindOptions,
   type FindResult,
   findInDirectory,
+  searchReport,
 } from './find.js';
 export {
   canonicalIdentifier,

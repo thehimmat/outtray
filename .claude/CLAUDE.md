@@ -24,7 +24,12 @@ When those conflict, favor the showcase.
   only in `storage-sqlcipher.ts`.** `outtray scan` persists documents via
   `persistScan` (redacted extraction always; vault only when
   `config.json` has `identifierStorage: true`; off purges on every persist).
-  `find` and the classifier do not read the store yet. The ADR-0011 amendment (accepted 2026-09-30, #94) fixes the
+  `scan`, `actions` and `find` are incremental (ADR-0012, #43): a file
+  whose bytes, extractor key and index key match its stored row is reused
+  with no model call; chunks are built on the scan write path from the
+  tokenized full extraction (the store only holds redacted ones) and `find`
+  ranks stored chunks, falling back to an in-memory index without a store.
+  The classifier does not read the store yet (#67). The ADR-0011 amendment (accepted 2026-09-30, #94) fixes the
   write path: derived text gets a mode-independent `[field]` placeholder,
   `extraction_json` stores the redacted form in both modes, and `scan`
   persists documents in #79. #79 (identifier vault and tokenizer) is done
@@ -32,7 +37,7 @@ When those conflict, favor the showcase.
   scan persistence; `outtray reveal`, `outtray settings` and the disclosure
   text in `disclosure.ts`). It had to land before #43 because the tokenizer
   sits on the chunk write path and re-tokenizing later invalidates stored
-  embeddings. Next: #43 (index persistence), then #67 (label store). Extracted identifiers get one canonical encrypted row, are
+  embeddings. #43 (index persistence) is done. Next: #67 (label store). Extracted identifiers get one canonical encrypted row, are
   tokenized out of derived chunk text, are redacted to last-four in every
   default output, need an explicit per-item act to reveal, and are **off by
   default**. Threat-model assessment in `docs/THREAT_MODEL.md`. #75 tracks
@@ -51,8 +56,8 @@ When those conflict, favor the showcase.
 - **Phase 2 complete**: retrieval plumbing (`EmbeddingProvider` +
   `OllamaEmbeddingProvider`, chunking, `VectorIndex` brute-force cosine per
   ADR-0005, cited `retrieve`/`search`), demoed via `outtray find <dir>
-  "<query>"`. Q&A deferred; index persistence (#43) and the embedding-model ADR
-  deferred. The Tauri shell is Phase 3 (ADR-0001), not before.
+  "<query>"`. Q&A deferred; the embedding-model ADR deferred; index
+  persistence landed with ADR-0012. The Tauri shell is Phase 3 (ADR-0001), not before.
 - **Phase 1 complete**: extraction core (`ModelProvider` + `OllamaProvider`
   around `qwen3-vl:2b`, ADR-0004 discriminated-union contract, `extract()` +
   `outtray scan`), eval harness (record/replay, scorers, 10-fixture synthetic
