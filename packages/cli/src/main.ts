@@ -19,13 +19,11 @@ import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import {
   type ActionQueue,
-  buildIndex,
   correctDocument,
   DOCUMENT_TYPES,
   type DocumentType,
   type EmbeddingProvider,
   explainStorageError,
-  extractorKeyFor,
   type FindResult,
   firstRunNotice,
   IDENTIFIER_STORAGE_DISCLOSURE,
@@ -34,16 +32,14 @@ import {
   type ModelProvider,
   OllamaEmbeddingProvider,
   OllamaProvider,
-  persistScan,
-  personalClassifier,
   planActions,
   redactExtraction,
-  reuseOrPin,
   revealIdentifier,
   type ScanItem,
   type ScanReport,
+  type ScanWithStoreResult,
   type StorageProvider,
-  scanSource,
+  scanWithStore,
   searchReport,
   searchStore,
 } from '@outtray/core';
@@ -332,54 +328,36 @@ export async function scanFolder(
     notes = `Not saved to the encrypted store: ${explainStorageError(error, databasePath)}\n`;
   }
 
-  const keys = {
-    extractorKey: extractorKeyFor(EXTRACT_MODEL),
-    indexKey: indexKeyFor(EMBED_MODEL),
-    identifierStorage,
-  };
-  const store = storage;
-  const source = folderSource(dir);
-  let report: ScanReport;
+  let scan: ScanWithStoreResult;
   try {
-    report = await scanSource(models.provider, source, {
-      model: EXTRACT_MODEL,
-      classify: {
-        embedder: models.embedder,
-        // Seeds plus the user's corrections (#67), built only if needed.
-        ...(store
-          ? { classifier: () => personalClassifier(store, models.embedder, EMBED_MODEL) }
-          : {}),
-      },
-      ...(store
-        ? { reuse: (file: string, hash: string) => reuseOrPin(store, file, hash, keys) }
-        : {}),
+    scan = await scanWithStore({
+      provider: models.provider,
+      embedder: models.embedder,
+      source: folderSource(dir),
+      storage,
+      identifierStorage,
+      extractModel: EXTRACT_MODEL,
+      embedModel: EMBED_MODEL,
     });
   } catch (error) {
     await storage?.close();
     throw error;
   }
-  if (store === null) return { report, storage, notes };
+  const { report, saved, indexError, saveError } = scan;
+  if (storage === null) return { report, storage, notes };
 
-  try {
-    const built = await buildIndex(models.embedder, report);
-    const summary = await persistScan(store, report, {
-      locate: source.locate,
-      identifierStorage,
-      extractorKey: keys.extractorKey,
-      ...(built.error === null ? { index: { key: keys.indexKey, chunks: built.chunks } } : {}),
-    });
+  if (saved === null) {
+    notes = `${warning}Not saved to the encrypted store: ${explainStorageError(saveError, databasePath)}\n`;
+  } else {
     const ids = identifierStorage
-      ? `${summary.identifiersVaulted} stored in full (identifier storage is on)`
+      ? `${saved.identifiersVaulted} stored in full (identifier storage is on)`
       : 'last four only (identifier storage is off)';
-    const unchanged =
-      summary.reused > 0 ? ` (${summary.reused} unchanged since the last scan)` : '';
+    const unchanged = saved.reused > 0 ? ` (${saved.reused} unchanged since the last scan)` : '';
     const index =
-      built.error === null
+      indexError === null
         ? ''
-        : `Search index not updated (${built.error}); these documents are read again next time.\n`;
-    notes = `${notice}${warning}Saved ${summary.documents} document(s) to the encrypted store${unchanged}. ID numbers: ${ids}.\n${index}`;
-  } catch (error) {
-    notes = `${warning}Not saved to the encrypted store: ${explainStorageError(error, databasePath)}\n`;
+        : `Search index not updated (${indexError}); these documents are read again next time.\n`;
+    notes = `${notice}${warning}Saved ${saved.documents} document(s) to the encrypted store${unchanged}. ID numbers: ${ids}.\n${index}`;
   }
   return { report, storage, notes };
 }
