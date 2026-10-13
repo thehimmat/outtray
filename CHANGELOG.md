@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Action-level eval (#64): `pnpm eval:actions` scores the proposed action
+  queue against actions authored from each fixture's ground truth, from the
+  recorded extractions and with no model. Baseline: precision 10/24, recall
+  10/13 (`docs/evals/action-scoreboard.md`). CI replays it and fails on
+  drift.
+
 - `outtray correct <file> <type>` marks a document's type yourself (#67,
   ADR-0009 amendment 2). Your type wins over the extractor and classifier on
   every later scan; if the document was read as another type, the next scan

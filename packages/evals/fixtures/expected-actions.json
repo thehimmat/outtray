@@ -1,0 +1,47 @@
+{
+  "asOf": "2026-07-22",
+  "note": "Expected proposed actions per fixture, authored from each fixture's ground truth (its HTML and labels), never from model output. asOf is the fixture set's seed date, fixed so the eval never depends on the wall clock; with the planner's 60-day window it ends 2026-09-20. To-dos are expected only where the document itself asks for something with a date; letters ask for nothing dated, so they expect none.",
+  "fixtures": {
+    "bill-001": [
+      {
+        "kind": "todo",
+        "ruleId": "todo-extracted",
+        "date": "2027-02-16",
+        "titleIncludes": ["pay"]
+      },
+      { "kind": "retention_advice", "ruleId": "ret-bill", "date": null, "advice": "shred" }
+    ],
+    "bill-002": [
+      {
+        "kind": "attention_flag",
+        "ruleId": "flag-past-due",
+        "date": "2025-03-25",
+        "titleIncludes": ["pay"]
+      },
+      { "kind": "retention_advice", "ruleId": "ret-bill", "date": null, "advice": "shred" }
+    ],
+    "id_document-001": [
+      { "kind": "attention_flag", "ruleId": "flag-expired", "date": "2026-01-19" },
+      { "kind": "retention_advice", "ruleId": "ret-id-document", "date": null, "advice": "keep" }
+    ],
+    "id_document-002": [
+      { "kind": "expiry_alert", "ruleId": "expiry-id-document", "date": "2026-07-23" },
+      { "kind": "retention_advice", "ruleId": "ret-id-document", "date": null, "advice": "keep" }
+    ],
+    "letter-001": [],
+    "letter-002": [],
+    "policy-001": [
+      { "kind": "retention_advice", "ruleId": "ret-policy", "date": null, "advice": "keep" }
+    ],
+    "policy-002": [
+      { "kind": "attention_flag", "ruleId": "flag-expired", "date": "2025-01-06" },
+      { "kind": "retention_advice", "ruleId": "ret-policy", "date": null, "advice": "keep" }
+    ],
+    "receipt-001": [
+      { "kind": "retention_advice", "ruleId": "ret-receipt", "date": null, "advice": "shred" }
+    ],
+    "receipt-002": [
+      { "kind": "retention_advice", "ruleId": "ret-receipt", "date": null, "advice": "shred" }
+    ]
+  }
+}

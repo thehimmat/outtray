@@ -49,8 +49,11 @@ When those conflict, favor the showcase.
 - **Action layer v1 shipped (ADR-0010, accepted)**: `outtray actions <dir>`
   plans a deterministic, cited, proposed-only queue (to-dos, expiry alerts,
   keep/shred advice with rule ids + disclaimer, attention flags, review
-  gating) with no model call in planning. Follow-ups: #64 (action-level eval
-  labels + scoreboard row), #65 (overlapping expiry-flag merge).
+  gating) with no model call in planning. Action-level eval (#64):
+  `pnpm eval:actions` replays recorded extractions, plans as of 2026-07-22
+  and matches against authored expectations
+  (`docs/evals/action-scoreboard.md`, CI-gated); baseline P 10/24, R 10/13.
+  Follow-up: #65 (overlapping expiry-flag merge).
 - **ADR-0009 stage complete end to end** (amendment accepted, #54): two-stage
   scan with reconciliation verdicts plus one typed re-extraction on confident
   disagreement (`extract-typed-v1`). Scoreboard: VLM 8/10, classifier 10/10,
