@@ -166,8 +166,10 @@ one exists), and keep going; the owner can reverse it later.
 A phase boundary is not a stop. At each one, finish the phase's definition of
 done, post the checkpoint report (below) on the phase's tracking issue, file
 the owner-walkthrough issue pinned to the phase-end SHA, commit the blog
-draft, then start the next phase. Before starting Phase 3 code, #75 (prove the
-Rust/Tauri read path) must be resolved, since Phase 3 commits to it.
+draft, then start the next phase. #75's format risk is retired (Rust reads and
+writes the shipped store, #114); signing and notarization wait on #12, which
+the owner deferred until a real external tester exists, so Phase 3 builds
+are unsigned until then.
 
 ### The checkpoint report (what to prepare at every phase boundary and stop)
 
