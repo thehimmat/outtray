@@ -104,6 +104,11 @@ export {
   reuseOrPin,
 } from './personalize.js';
 export {
+  type ScanWithStoreOptions,
+  type ScanWithStoreResult,
+  scanWithStore,
+} from './pipeline.js';
+export {
   applyCorrection,
   CLASSIFIER_K,
   CONFIDENCE_THRESHOLD,
