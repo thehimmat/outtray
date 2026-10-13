@@ -193,3 +193,38 @@ describe('redactExtraction', () => {
     expect(redactExtraction(BILL)).toEqual(BILL);
   });
 });
+
+describe('redaction and tokenization are idempotent (ADR-0012 section 5)', () => {
+  const SHORT: DocumentExtraction = {
+    ...PASSPORT,
+    summary: 'Passport X12345.',
+    id_number: 'X12345',
+    action_items: [],
+  };
+
+  it('redacting a redacted extraction changes nothing', () => {
+    const once = redactExtraction(PASSPORT);
+    expect(redactExtraction(once)).toEqual(once);
+    const shortOnce = redactExtraction(SHORT);
+    expect(shortOnce).toMatchObject({ id_number: '[id_number, 6 chars]' });
+    expect(redactExtraction(shortOnce)).toEqual(shortOnce);
+  });
+
+  it('redacting a tokenized extraction changes nothing', () => {
+    const tokenized = tokenizeExtraction(PASSPORT);
+    expect(redactExtraction(tokenized)).toEqual(tokenized);
+  });
+
+  it('tokenizing a redacted extraction leaves placeholders and no last four', () => {
+    const doc = tokenizeExtraction(redactExtraction(PASSPORT));
+    expect(doc).toMatchObject({ id_number: '[id_number]' });
+    expect(doc.summary).toBe('US passport [id_number] for Jane Doe.');
+    expect(doc.action_items[0]?.text).toBe('Renew passport [id_number] before travel');
+    expect(extractionText(doc)).not.toContain('4567');
+  });
+
+  it('tokenizing a tokenized extraction changes nothing', () => {
+    const once = tokenizeExtraction(PASSPORT);
+    expect(tokenizeExtraction(once)).toEqual(once);
+  });
+});

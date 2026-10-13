@@ -21,7 +21,7 @@ export {
   ensureAppDataDir,
   UnsupportedPlatformError,
 } from './app-paths.js';
-export { type Chunk, type ChunkOptions, chunkText } from './chunk.js';
+export { CHUNKER_VERSION, type Chunk, type ChunkOptions, chunkText } from './chunk.js';
 export {
   type Classification,
   type LabeledExample,
@@ -89,8 +89,20 @@ export {
   redactExtraction,
   redactedForm,
   replaceIdentifier,
+  TOKENIZER_VERSION,
   tokenizeExtraction,
 } from './identifiers.js';
+export {
+  type BuiltIndex,
+  buildIndex,
+  extractorKeyFor,
+  indexKeyFor,
+  type ReuseKeys,
+  reusableDocument,
+  reusedItem,
+  type SearchScope,
+  searchStore,
+} from './incremental.js';
 export type {
   GenerateOptions,
   GenerateRequest,

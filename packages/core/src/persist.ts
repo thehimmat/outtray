@@ -11,13 +11,15 @@
  * - Off means an empty vault. Every persist with the setting off purges, so a
  *   purge that failed when the setting was switched off is completed on the
  *   next scan rather than leaving values behind.
+ * - A fresh document is marked indexed only after its chunks are written; a
+ *   reused one keeps its chunks and vault rows and only moves (ADR-0012).
  */
 
 import { resolve } from 'node:path';
 import { identifierOf, redactExtraction } from './identifiers.js';
 import type { ScanReport } from './scan.js';
 import { writeSettings } from './settings.js';
-import type { StorageProvider } from './storage-provider.js';
+import type { StorageProvider, StoredChunk } from './storage-provider.js';
 
 /** Options for `persistScan`. */
 export interface PersistOptions {
@@ -27,12 +29,24 @@ export interface PersistOptions {
   identifierStorage: boolean;
   /** Timestamp to record, in milliseconds since the epoch. Defaults to now. */
   now?: number;
+  /** Which model and prompts produced the fresh extractions (ADR-0012). */
+  extractorKey?: string;
+  /**
+   * The chunks `buildIndex` made for this scan and the key they were built
+   * under. Omitted when there is no index (no embedder, or it failed): fresh
+   * documents are then saved unindexed and extracted again next time.
+   */
+  index?: { key: string; chunks: ReadonlyMap<string, StoredChunk[]> };
 }
 
 /** What a persist wrote. */
 export interface PersistSummary {
   /** Documents written or replaced. */
   documents: number;
+  /** Of those, documents reused from the store rather than extracted (ADR-0012). */
+  reused: number;
+  /** Freshly extracted documents written with their chunks and index key. */
+  indexed: number;
   /** Documents whose identifier was vaulted (0 when the setting is off). */
   identifiersVaulted: number;
   /** Identifiers deleted because the setting is off (normally 0). */
@@ -44,7 +58,9 @@ export interface PersistSummary {
  *
  * Failure modes: rejects if the store rejects a write (closed, or the
  * database refuses it). Documents written before the failure stay written;
- * each is a complete row, and a re-scan replaces them. When the setting is
+ * each is a complete row, and a re-scan replaces them. A document whose
+ * chunks failed to write is left with a null index key, so the next scan
+ * extracts it again. When the setting is
  * off, the purge runs first, so a failure after it cannot leave a vault
  * behind that the setting says should not exist.
  */
@@ -57,24 +73,58 @@ export async function persistScan(
   const identifiersPurged = options.identifierStorage ? 0 : await storage.purgeIdentifiers();
 
   let identifiersVaulted = 0;
-  for (const { file, contentHash, result, reconciliation } of report.items) {
+  let reused = 0;
+  let indexed = 0;
+  for (const { file, contentHash, result, reconciliation, reused: isReused } of report.items) {
     const doc = result.document;
-    await storage.putDocument({
+    const row = {
       contentHash,
       path: resolve(options.dir, file),
       type: doc ? reconciliation.effectiveType : null,
+      // Idempotent, so a reused (already redacted) extraction passes unchanged.
       extraction: doc ? redactExtraction(doc) : null,
       reconciliation: reconciliation.status === 'unclassified' ? null : reconciliation,
       scannedAt,
-    });
+      extractorKey: options.extractorKey ?? null,
+    };
+
+    if (isReused) {
+      // Reuse means both keys matched (ADR-0012 section 2): only the path and
+      // scan time are new. Chunks and the vault were written when it was
+      // extracted, and a redacted extraction has nothing left to vault.
+      const prior = await storage.getDocument(contentHash);
+      await storage.putDocument({
+        ...row,
+        extractorKey: prior?.extractorKey ?? null,
+        indexKey: prior?.indexKey ?? null,
+      });
+      reused += 1;
+      continue;
+    }
+
+    // Unindexed until its chunks are written, so a failure part way leaves a
+    // document that is extracted again rather than one claiming an index.
+    await storage.putDocument({ ...row, indexKey: null });
     if (options.identifierStorage) {
       const id = doc ? identifierOf(doc) : null;
       // Replace, so a value this scan no longer finds is not left revealable.
       await storage.putIdentifiers(contentHash, id ? [id] : []);
       if (id) identifiersVaulted += 1;
     }
+    // Replace, so chunks of an older extraction never outlive it.
+    await storage.putChunks(contentHash, (doc && options.index?.chunks.get(contentHash)) || []);
+    if (doc && options.index) {
+      await storage.putDocument({ ...row, indexKey: options.index.key });
+      indexed += 1;
+    }
   }
-  return { documents: report.items.length, identifiersVaulted, identifiersPurged };
+  return {
+    documents: report.items.length,
+    reused,
+    indexed,
+    identifiersVaulted,
+    identifiersPurged,
+  };
 }
 
 /** Options for `setIdentifierStorage`. */

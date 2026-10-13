@@ -79,6 +79,8 @@ describe('persistScan', () => {
       extraction: BILL,
       reconciliation: confirmed('bill'),
       scannedAt: NOW,
+      extractorKey: null,
+      indexKey: null,
     });
   });
 
@@ -116,7 +118,13 @@ describe('persistScan', () => {
       identifierStorage: false,
     });
     expect(await store.countIdentifiers()).toBe(0);
-    expect(summary).toEqual({ documents: 1, identifiersVaulted: 0, identifiersPurged: 0 });
+    expect(summary).toEqual({
+      documents: 1,
+      reused: 0,
+      indexed: 0,
+      identifiersVaulted: 0,
+      identifiersPurged: 0,
+    });
   });
 
   it('purges a leftover vault when identifier storage is off', async () => {
@@ -141,7 +149,13 @@ describe('persistScan', () => {
       { dir: 'pile', identifierStorage: true },
     );
     expect(await store.getIdentifier('hash-passport.png', 'id_number')).toBe('AB1234567');
-    expect(summary).toEqual({ documents: 2, identifiersVaulted: 1, identifiersPurged: 0 });
+    expect(summary).toEqual({
+      documents: 2,
+      reused: 0,
+      indexed: 0,
+      identifiersVaulted: 1,
+      identifiersPurged: 0,
+    });
   });
 
   it('clears a vaulted value the document no longer carries on a re-scan', async () => {
@@ -156,6 +170,114 @@ describe('persistScan', () => {
     });
     expect(await store.getIdentifier('hash-passport.png', 'id_number')).toBeNull();
     expect(await store.countIdentifiers()).toBe(0);
+  });
+});
+
+describe('persistScan with the incremental index (ADR-0012)', () => {
+  const EXTRACTOR = 'qwen3-vl:2b|extract-v1|extract-typed-v1';
+  const INDEX = 'nomic-embed-text|chunk-v1|tokenize-v1';
+  const chunkFor = (hash: string, text: string) => ({
+    documentHash: hash,
+    chunkIndex: 0,
+    page: null,
+    text,
+    embedding: [1, 0],
+  });
+
+  it('writes chunks, then marks the document indexed under the key', async () => {
+    const store = new MemoryStorage();
+    const summary = await persistScan(store, report([item('bill.png', BILL)]), {
+      dir: 'pile',
+      identifierStorage: false,
+      extractorKey: EXTRACTOR,
+      index: {
+        key: INDEX,
+        chunks: new Map([['hash-bill.png', [chunkFor('hash-bill.png', 'dmv')]]]),
+      },
+    });
+    expect(await store.getDocument('hash-bill.png')).toMatchObject({
+      extractorKey: EXTRACTOR,
+      indexKey: INDEX,
+    });
+    expect((await store.listChunks()).map((c) => c.text)).toEqual(['dmv']);
+    expect(summary).toMatchObject({ documents: 1, indexed: 1, reused: 0 });
+  });
+
+  it('marks a document with no chunks indexed too, so it is not re-extracted forever', async () => {
+    const store = new MemoryStorage();
+    await persistScan(store, report([item('bill.png', BILL)]), {
+      dir: 'pile',
+      identifierStorage: false,
+      extractorKey: EXTRACTOR,
+      index: { key: INDEX, chunks: new Map() },
+    });
+    expect(await store.getDocument('hash-bill.png')).toMatchObject({ indexKey: INDEX });
+  });
+
+  it('without an index, leaves the key null and clears chunks from an older extraction', async () => {
+    const store = new MemoryStorage();
+    await persistScan(store, report([item('bill.png', BILL)]), {
+      dir: 'pile',
+      identifierStorage: false,
+      extractorKey: EXTRACTOR,
+      index: {
+        key: INDEX,
+        chunks: new Map([['hash-bill.png', [chunkFor('hash-bill.png', 'old')]]]),
+      },
+    });
+    await persistScan(store, report([item('bill.png', BILL)]), {
+      dir: 'pile',
+      identifierStorage: false,
+      extractorKey: EXTRACTOR,
+    });
+    expect(await store.getDocument('hash-bill.png')).toMatchObject({ indexKey: null });
+    expect(await store.listChunks()).toEqual([]);
+  });
+
+  it('never indexes a failed extraction', async () => {
+    const store = new MemoryStorage();
+    await persistScan(store, report([item('bad.png', null)]), {
+      dir: 'pile',
+      identifierStorage: false,
+      extractorKey: EXTRACTOR,
+      index: { key: INDEX, chunks: new Map() },
+    });
+    expect(await store.getDocument('hash-bad.png')).toMatchObject({ indexKey: null });
+  });
+
+  it('updates a reused document in place: new path, same keys and chunks, no re-redaction, vault untouched', async () => {
+    const store = new MemoryStorage();
+    await persistScan(store, report([item('passport.png', PASSPORT)]), {
+      dir: 'pile',
+      identifierStorage: true,
+      extractorKey: EXTRACTOR,
+      index: {
+        key: INDEX,
+        chunks: new Map([['hash-passport.png', [chunkFor('hash-passport.png', 'kept')]]]),
+      },
+    });
+    const first = await store.getDocument('hash-passport.png');
+
+    const again = item('moved.png', first?.extraction ?? null, first?.reconciliation ?? undefined);
+    const summary = await persistScan(
+      store,
+      report([{ ...again, contentHash: 'hash-passport.png', reused: true }]),
+      {
+        dir: 'elsewhere',
+        identifierStorage: true,
+        extractorKey: EXTRACTOR,
+        index: { key: INDEX, chunks: new Map() },
+        now: NOW,
+      },
+    );
+    expect(await store.getDocument('hash-passport.png')).toEqual({
+      ...first,
+      path: resolve('elsewhere', 'moved.png'),
+      scannedAt: NOW,
+    });
+    expect((await store.listChunks()).map((c) => c.text)).toEqual(['kept']);
+    expect(await store.getIdentifier('hash-passport.png', 'id_number')).toBe('AB1234567');
+    expect(summary).toMatchObject({ documents: 1, reused: 1, indexed: 0, identifiersVaulted: 0 });
   });
 });
 

@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { DATABASE_FILE_MODE } from './app-paths.js';
 import { DatabaseKeyError, generateDatabaseKey, StaticKeyProvider } from './db-key.js';
 import { hasCleartextSqliteHeader, StorageFormatError } from './storage-format.js';
-import { StorageMigrationError } from './storage-schema.js';
+import { MIGRATIONS, SCHEMA_VERSION, StorageMigrationError } from './storage-schema.js';
 import { openSqlcipherStorage } from './storage-sqlcipher.js';
 
 const dirs: string[] = [];
@@ -45,6 +45,8 @@ describe('openSqlcipherStorage on-disk format', () => {
       extraction: null,
       reconciliation: null,
       scannedAt: 1,
+      extractorKey: null,
+      indexKey: null,
     });
     await store.close();
 
@@ -100,6 +102,8 @@ describe('openSqlcipherStorage key custody', () => {
       extraction: null,
       reconciliation: null,
       scannedAt: 7,
+      extractorKey: null,
+      indexKey: null,
     });
     await first.close();
 
@@ -146,7 +150,7 @@ describe('openSqlcipherStorage migrations', () => {
   it('brings a new database to the current schema version', async () => {
     const path = join(await workspace(), 'outtray.db');
     const store = await openSqlcipherStorage({ path, keyProvider: key() });
-    expect(store.schemaVersion).toBe(1);
+    expect(store.schemaVersion).toBe(SCHEMA_VERSION);
     await store.close();
   });
 
@@ -172,6 +176,8 @@ describe('openSqlcipherStorage migrations', () => {
       extraction: null,
       reconciliation: null,
       scannedAt: 1,
+      extractorKey: null,
+      indexKey: null,
     });
     await store.putChunks('hash-a', [
       { documentHash: 'hash-a', chunkIndex: 0, page: null, text: 'x', embedding: [1, 0] },
@@ -204,6 +210,37 @@ describe('openSqlcipherStorage migrations', () => {
   });
 });
 
+describe('migration 2 (ADR-0012)', () => {
+  it('brings a version-1 database forward with null version keys on existing documents', async () => {
+    const path = join(await workspace(), 'outtray.db');
+    const provider = key();
+    const { key: bytes } = await provider.getOrCreateKey();
+
+    // Build the database a #79-era Outtray left behind: migration 1 only.
+    const { default: Database } = await import('better-sqlite3-multiple-ciphers');
+    const raw = new Database(path);
+    raw.pragma("cipher = 'sqlcipher'");
+    raw.pragma('legacy = 4');
+    raw.pragma(`key = "x'${bytes.toString('hex')}'"`);
+    for (const statement of MIGRATIONS[0]?.statements ?? []) raw.exec(statement);
+    raw
+      .prepare(
+        'INSERT INTO documents (content_hash, path, type, extraction_json, reconciliation_json, scanned_at) VALUES (?, ?, ?, ?, ?, ?)',
+      )
+      .run('hash-old', '/docs/old.png', null, null, null, 5);
+    raw.pragma('user_version = 1');
+    raw.close();
+
+    const store = await openSqlcipherStorage({ path, keyProvider: provider });
+    expect(await store.getDocument('hash-old')).toMatchObject({
+      path: '/docs/old.png',
+      extractorKey: null,
+      indexKey: null,
+    });
+    await store.close();
+  });
+});
+
 describe('embedding round trip', () => {
   it('survives the float32 BLOB with the precision cosine ranking needs', async () => {
     const path = join(await workspace(), 'outtray.db');
@@ -215,6 +252,8 @@ describe('embedding round trip', () => {
       extraction: null,
       reconciliation: null,
       scannedAt: 1,
+      extractorKey: null,
+      indexKey: null,
     });
     const embedding = Array.from({ length: 768 }, (_, i) => Math.sin(i) / 3);
     await store.putChunks('hash-a', [
@@ -238,6 +277,8 @@ describe('embedding round trip', () => {
       extraction: null,
       reconciliation: null,
       scannedAt: 1,
+      extractorKey: null,
+      indexKey: null,
     });
     await expect(
       store.putChunks('hash-a', [

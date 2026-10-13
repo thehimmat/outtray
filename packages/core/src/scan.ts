@@ -54,6 +54,12 @@ export interface ScanItem {
   result: ExtractResult;
   /** The type verdict after the classification stage (ADR-0009). */
   reconciliation: Reconciliation;
+  /**
+   * Set when the item was rebuilt from the store instead of extracted
+   * (ADR-0012). Its `result.document` is then the stored, redacted
+   * extraction, and it skipped classification and typed re-extraction.
+   */
+  reused?: true;
 }
 
 /** The result of scanning a directory. */
@@ -92,6 +98,11 @@ export interface ScanOptions {
   model?: string;
   /** Run the ADR-0009 classification stage after extraction. */
   classify?: ClassifyStageOptions;
+  /**
+   * Offered each file's content hash before extraction. Returning an item
+   * reuses it with no model call (ADR-0012); returning null extracts as usual.
+   */
+  reuse?: (file: string, contentHash: string) => Promise<ScanItem | null>;
 }
 
 /**
@@ -131,13 +142,19 @@ export async function scanDirectory(
   const items: ScanItem[] = [];
   for (const file of scanned) {
     const bytes = await readFile(join(dir, file));
+    const contentHash = contentHashOf(bytes);
+    const reused = options.reuse ? await options.reuse(file, contentHash) : null;
+    if (reused) {
+      items.push(reused);
+      continue;
+    }
     const result = await extract(provider, {
       images: [bytes.toString('base64')],
       ...(options.model ? { model: options.model } : {}),
     });
     items.push({
       file,
-      contentHash: contentHashOf(bytes),
+      contentHash,
       result,
       reconciliation: reconcileType(result.document?.type ?? null, null),
     });
@@ -147,6 +164,8 @@ export async function scanDirectory(
   if (options.classify) {
     const { embedder, k = CLASSIFIER_K, threshold = CONFIDENCE_THRESHOLD } = options.classify;
     const classifiable = items.flatMap((item) => {
+      // Reused items keep the verdict stored with them (ADR-0012).
+      if (item.reused) return [];
       const doc = item.result.document;
       return doc ? [{ item, doc }] : [];
     });
@@ -168,7 +187,7 @@ export async function scanDirectory(
     // disputed item, upgrading to `corrected` only when the result validates
     // as the classifier's type.
     for (const item of items) {
-      if (item.reconciliation.status !== 'disputed') continue;
+      if (item.reused || item.reconciliation.status !== 'disputed') continue;
       const target = item.reconciliation.classification?.type;
       if (!target) continue;
       try {

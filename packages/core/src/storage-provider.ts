@@ -44,6 +44,17 @@ export interface StoredDocument {
   reconciliation: Reconciliation | null;
   /** When the document was last scanned, in milliseconds since the epoch. */
   scannedAt: number;
+  /**
+   * Which model and prompts produced `extraction` (ADR-0012), or null when
+   * unknown. A stored extraction is reused only while this matches.
+   */
+  extractorKey: string | null;
+  /**
+   * Which embedding model, chunker and tokenizer produced this document's
+   * chunks (ADR-0012), or null when it has none. Set only after its chunks
+   * are written, so null is always the safe reading.
+   */
+  indexKey: string | null;
 }
 
 /**
@@ -196,6 +207,17 @@ export interface StorageProvider {
    * store is closed.
    */
   getIdentifier(documentHash: string, field: IdentifierField): Promise<string | null>;
+
+  /**
+   * Which identifier fields have a vaulted value for one document, without
+   * the values. This is how a scan decides that a document must be extracted
+   * again to fill the vault (ADR-0012 section 2); it never needs a value, so
+   * it never reads one.
+   *
+   * Failure modes: resolves an empty array when nothing is vaulted for the
+   * document or the document does not exist. Rejects if the store is closed.
+   */
+  identifierFields(documentHash: string): Promise<IdentifierField[]>;
 
   /**
    * Delete every vaulted identifier and every mention of one, leaving

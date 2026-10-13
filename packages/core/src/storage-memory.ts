@@ -146,6 +146,15 @@ export class MemoryStorage implements StorageProvider {
     return key === undefined ? null : (this.#identifiers.get(key) ?? null);
   }
 
+  async identifierFields(documentHash: string): Promise<IdentifierField[]> {
+    this.#assertOpen();
+    const prefix = `${documentHash}\u0000`;
+    return [...this.#mentions.keys()]
+      .filter((mention) => mention.startsWith(prefix))
+      .map((mention) => mention.slice(prefix.length) as IdentifierField)
+      .sort();
+  }
+
   async purgeIdentifiers(): Promise<number> {
     this.#assertOpen();
     const count = this.#identifiers.size;

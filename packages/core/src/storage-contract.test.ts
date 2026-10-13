@@ -63,6 +63,8 @@ function document(overrides: Partial<StoredDocument> = {}): StoredDocument {
       classification: null,
     },
     scannedAt: 1_753_000_000_000,
+    extractorKey: 'qwen3-vl:2b|extract-v1|extract-typed-v1',
+    indexKey: 'nomic-embed-text|chunk-v1|tokenize-v1',
     ...overrides,
   };
 }
@@ -388,6 +390,25 @@ describe.each([
     await store.close();
   });
 
+  it('lists which identifier fields a document has vaulted, never the values', async () => {
+    const store = await create();
+    await store.putDocument(document());
+    expect(await store.identifierFields('hash-b')).toEqual([]);
+    await store.putIdentifiers('hash-b', [{ field: 'id_number', value: 'X1234567' }]);
+    expect(await store.identifierFields('hash-b')).toEqual(['id_number']);
+    expect(await store.identifierFields('missing')).toEqual([]);
+    await store.purgeIdentifiers();
+    expect(await store.identifierFields('hash-b')).toEqual([]);
+    await store.close();
+  });
+
+  it('round-trips null version keys for a document never indexed', async () => {
+    const store = await create();
+    await store.putDocument(document({ extractorKey: null, indexKey: null }));
+    expect(await store.getDocument('hash-b')).toMatchObject({ extractorKey: null, indexKey: null });
+    await store.close();
+  });
+
   it('reports empty collections for a fresh store', async () => {
     const store = await create();
     expect(await store.listDocuments()).toEqual([]);
@@ -411,5 +432,6 @@ describe.each([
     await expect(store.getIdentifier('hash-b', 'id_number')).rejects.toThrow(StorageError);
     await expect(store.purgeIdentifiers()).rejects.toThrow(StorageError);
     await expect(store.countIdentifiers()).rejects.toThrow(StorageError);
+    await expect(store.identifierFields('hash-b')).rejects.toThrow(StorageError);
   });
 });
