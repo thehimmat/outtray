@@ -27,13 +27,12 @@ When those conflict, favor the showcase.
   `find` and the classifier do not read the store yet. The ADR-0011 amendment (accepted 2026-09-30, #94) fixes the
   write path: derived text gets a mode-independent `[field]` placeholder,
   `extraction_json` stores the redacted form in both modes, and `scan`
-  persists documents in #79. Next: **#79 (identifier vault and tokenizer)
-  must land before #43**, in three slices (all three built: matcher and
-  redaction in every output; vault, opt-in and scan persistence; `outtray
-  reveal`, `outtray settings` and the disclosure text in `disclosure.ts`),
-  because the tokenizer sits on the chunk write path and re-tokenizing
-  later invalidates stored embeddings. Then #43 (index persistence) and #67
-  (label store). Extracted identifiers get one canonical encrypted row, are
+  persists documents in #79. #79 (identifier vault and tokenizer) is done
+  in three slices (matcher and redaction in every output; vault, opt-in and
+  scan persistence; `outtray reveal`, `outtray settings` and the disclosure
+  text in `disclosure.ts`). It had to land before #43 because the tokenizer
+  sits on the chunk write path and re-tokenizing later invalidates stored
+  embeddings. Next: #43 (index persistence), then #67 (label store). Extracted identifiers get one canonical encrypted row, are
   tokenized out of derived chunk text, are redacted to last-four in every
   default output, need an explicit per-item act to reveal, and are **off by
   default**. Threat-model assessment in `docs/THREAT_MODEL.md`. #75 tracks
@@ -95,31 +94,70 @@ scoreboard), `cli` (thin entry, demo surface), `app` (placeholder until
 Phase 3). Decisions live in `docs/adr/`; eval design in
 `docs/evals/METHODOLOGY.md`; threats in `docs/THREAT_MODEL.md`.
 
-## Visibility, releases, and owner checkpoints
+## Ownership, autonomy, and owner checkpoints
 
-The owner steers this project through explicit checkpoints. Development may
-move fast between them, but every session must know where to stop and what to
-hand over. The showcase depends on the owner understanding and being able to
-defend every piece in an interview, so an unreviewed feature is worth less
-than a reviewed smaller one.
+Claude owns this project end to end (owner decision, 2026-10-13): it plans,
+builds, reviews and merges its own work, and stops only for a critical
+decision. The owner steers through those decisions and through the
+walkthrough gate before each release. The showcase still depends on the owner
+being able to defend every piece in an interview, so everything Claude
+decides alone is written down where the walkthrough will find it (ADRs, PR
+"Decisions" sections, the checkpoint report).
 
-### Where a session stops (hard stops, no exceptions)
+### Claude merges its own PRs
 
-1. **Phase boundaries.** Finish the phase's definition of done, prepare the
-   checkpoint report (below), then stop. Do not start the next phase's code.
-2. **ADR changes.** If work reveals that an accepted ADR needs amending
-   (model default, storage mechanism, schema shape), write the proposed
-   amendment and stop for owner sign-off before building on it. Every ADR
-   proposal or amendment includes an "Options considered" section in plain
-   language: each realistic option with pros and cons a non-expert can
-   follow. The owner's quick sign-off (merging the PR) keeps development
-   moving; deep understanding is deferred to the walkthrough gate below.
-3. **Anything public-facing beyond pushing code to this repo**: publishing a
-   blog post, publishing to npm, registering a domain, tagging a release,
-   posting anywhere. Claude drafts; the owner publishes.
-4. **Anything that costs money.** Always an owner decision, always stop.
+Squash-merge a PR without waiting for the owner when all of these hold:
 
-### The checkpoint report (what to prepare at every stop)
+- CI is green on the PR's current head.
+- The repo's own checks passed locally before the push (`pnpm lint`,
+  `pnpm typecheck`, `pnpm test`, `pnpm build`).
+- A self-review pass over the diff found nothing blocking (run
+  `/code-review` or an equivalent adversarial read; fix what it finds).
+- The PR description has what works now, numbers, and a "Decisions" section
+  (choices made, options turned down, open items).
+- It does not contain a critical decision (below). If it does, open the PR,
+  file the decision as an issue, and leave the PR for the owner.
+
+Dependabot PRs: merge when CI is green, unless the bump changes the
+extraction contract hash or anything else that needs a live model to
+re-record (see #88); those wait for a dev-machine session.
+
+### Critical decisions: the only reasons to stop
+
+1. **Money.** Anything that costs money is always the owner's decision.
+2. **Public-facing acts beyond pushing to this repo**: publishing a blog
+   post, publishing to npm, registering a domain, tagging a release or
+   cutting a GitHub release, posting anywhere. Claude drafts; the owner
+   publishes. Tags also stay blocked by the walkthrough hook.
+3. **Weakening a hard constraint or the privacy posture**: the memory budget,
+   cloud providers seeing user documents, committing real documents,
+   destructive tools, identifier storage defaults, anything in
+   `docs/THREAT_MODEL.md` getting worse.
+4. **Reversing an accepted ADR's core decision** (a different storage engine,
+   model class, shell, or extraction contract shape). Amendments that refine
+   how an accepted decision is built are Claude's to make: write the
+   amendment with its "Options considered" section in plain language, mark it
+   accepted by Claude with the date, and merge it.
+5. **Irreversible or destructive repository actions**: force-pushing `main`,
+   deleting history or branches with unmerged work, closing an issue the
+   owner opened with a question they have not answered.
+6. **Product direction and naming**: positioning, scope that drops a planned
+   phase, trademark and name claims.
+
+Everything else is Claude's call, including new ADRs, phase transitions, and
+which issue to work next. When a non-critical question has a reasonable
+default, take it, record it in the PR's Decisions section (and the issue, if
+one exists), and keep going; the owner can reverse it later.
+
+### Phase boundaries
+
+A phase boundary is not a stop. At each one, finish the phase's definition of
+done, post the checkpoint report (below) on the phase's tracking issue, file
+the owner-walkthrough issue pinned to the phase-end SHA, commit the blog
+draft, then start the next phase. Before starting Phase 3 code, #75 (prove the
+Rust/Tauri read path) must be resolved, since Phase 3 commits to it.
+
+### The checkpoint report (what to prepare at every phase boundary and stop)
 
 A short write-up, in the PR description or a comment on the phase's tracking
 issue, containing:
@@ -130,7 +168,9 @@ issue, containing:
   previous checkpoint and honest caveats (N, noise, what is not measured).
 - **Drafts prepared, not published**: blog drafts committed to `docs/blog/`,
   release notes drafted, ADR amendments proposed.
-- **Decisions needed**: each open decision as a GitHub issue with a
+- **Decisions made**: what Claude decided alone since the last checkpoint,
+  each with a link, so the walkthrough can cover them.
+- **Decisions needed**: only critical ones, each as a GitHub issue with a
   recommendation, labeled `owner-action` and a priority.
 - **What comes next** if approved, in two or three sentences.
 
@@ -156,9 +196,10 @@ issue, containing:
   two-stage vs VLM measured (seeded by docs/evals/model-memory-spike.md),
   (3) the rest per the plan's schedule.
 - **Issue hygiene**: anything left unfinished, any discovered bug or idea,
-  and any question for the owner becomes a GitHub issue with a priority
-  label before the session ends. Questions to the owner always get a
-  matching issue so unanswered ones are never lost.
+  and any critical question for the owner becomes a GitHub issue with a
+  priority label before the session ends. `owner-action` is reserved for
+  critical decisions; a non-critical question is decided by default and the
+  decision recorded on its issue.
 
 ## Working conventions
 
