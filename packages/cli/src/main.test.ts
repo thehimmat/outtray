@@ -614,6 +614,7 @@ async function vaultFixture(options: { databaseExists?: boolean } = {}) {
       databasePath: join(dir, 'outtray', 'outtray.db'),
       databaseExists: async () => options.databaseExists ?? true,
       openStorage: async () => store,
+      stdoutIsTerminal: true,
     },
   };
 }
@@ -707,6 +708,33 @@ describe('outtray reveal', () => {
     const err = captureStderr();
     expect(await runReveal([other, 'id_number'], f.deps)).toBe(1);
     expect(err.mock.calls.join('')).toMatch(/No scanned document matches/);
+  });
+
+  it('refuses to write the value into a pipe or file unless --to-pipe says so (#101)', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    await f.store.putIdentifiers(f.hash, [{ field: 'id_number', value: 'AB1234567' }]);
+    const out = captureStdout();
+    const err = captureStderr();
+    const piped = { ...f.deps, stdoutIsTerminal: false };
+    const open = vi.fn(piped.openStorage);
+    expect(await runReveal([f.passportFile, 'id_number'], { ...piped, openStorage: open })).toBe(1);
+    expect(out.mock.calls.join('')).toBe('');
+    expect(err.mock.calls.join('')).toMatch(/--to-pipe/);
+    expect(open).not.toHaveBeenCalled();
+
+    expect(await runReveal([f.passportFile, 'id_number', '--to-pipe'], piped)).toBe(0);
+    expect(out.mock.calls.join('')).toBe('AB1234567\n');
+  });
+
+  it('accepts --to-pipe anywhere in the arguments', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    await f.store.putIdentifiers(f.hash, [{ field: 'id_number', value: 'AB1234567' }]);
+    const out = captureStdout();
+    const piped = { ...f.deps, stdoutIsTerminal: false };
+    expect(await runReveal(['--to-pipe', f.passportFile, 'id_number'], piped)).toBe(0);
+    expect(out.mock.calls.join('')).toBe('AB1234567\n');
   });
 
   it('prints usage when arguments are missing', async () => {

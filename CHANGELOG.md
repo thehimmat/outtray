@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document and one named field, on stdout only. It finds a moved file by its
   contents, and says why when there is nothing to show (setting off, not
   re-scanned since turning it on, or the document carries another field).
+- `outtray reveal` refuses to write a full number into a pipe or file unless
+  `--to-pipe` is given (#101), so an accidental redirect fails closed while
+  `outtray reveal <file> <field> --to-pipe | pbcopy` still works.
 - The scan that creates the encrypted store says where it is and what happens
   to ID numbers.
 
