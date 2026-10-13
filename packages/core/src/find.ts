@@ -11,11 +11,12 @@
  */
 
 import type { ChunkOptions } from './chunk.js';
+import type { DocumentSource } from './document-source.js';
 import type { EmbeddingProvider } from './embedding-provider.js';
 import { derivedText } from './extraction-text.js';
 import type { ModelProvider } from './model-provider.js';
 import { type Citation, type DocumentText, indexDocuments, search } from './retrieval.js';
-import { type ScanOptions, type ScanReport, scanDirectory } from './scan.js';
+import { type ScanOptions, type ScanReport, scanSource } from './scan.js';
 
 export interface FindOptions {
   /** Model tag for extraction (passed through to the scan). */
@@ -31,23 +32,24 @@ export interface FindResult {
 }
 
 /**
- * Scan `dir`, index the extracted documents, and return the top `k` cited
- * passages for `query`.
+ * Scan `source`, index the extracted documents, and return the top `k` cited
+ * passages for `query`. `findInDirectory` in `@outtray/core/node` is this
+ * over a folder on disk.
  *
- * Failure modes: rejects if the directory cannot be read or either provider
+ * Failure modes: rejects if the source cannot be read or either provider
  * rejects (e.g. a runtime is unreachable). Documents that fail extraction are
  * simply absent from the index, not errors; a query with nothing to match
  * returns `[]`.
  */
-export async function findInDirectory(
+export async function findInSource(
   model: ModelProvider,
   embedder: EmbeddingProvider,
-  dir: string,
+  source: DocumentSource,
   query: string,
   k: number,
   options: FindOptions = {},
 ): Promise<FindResult> {
-  const scanned = await scanDirectory(model, dir, {
+  const scanned = await scanSource(model, source, {
     ...(options.model ? { model: options.model } : {}),
     ...options.scan,
   });

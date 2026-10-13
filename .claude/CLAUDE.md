@@ -44,8 +44,13 @@ When those conflict, favor the showcase.
   embeddings. #43 (index persistence) and #67 (label store) are done. Extracted identifiers get one canonical encrypted row, are
   tokenized out of derived chunk text, are redacted to last-four in every
   default output, need an explicit per-item act to reveal, and are **off by
-  default**. Threat-model assessment in `docs/THREAT_MODEL.md`. #75 tracks
-  proving the Rust/Tauri read path before Phase 3 commits to it.
+  default**. Threat-model assessment in `docs/THREAT_MODEL.md`.
+- **Phase 3 under way: ADR-0013 accepted (2026-10-13, #117)**: core runs in
+  the Tauri webview; the app supplies Rust-backed adapters (storage over
+  rusqlite, proven against the shipped store in #114; native Keychain;
+  Tauri file APIs) held to the shared `StorageProvider` contract suite.
+  `@outtray/core` is host-neutral; Node-only adapters live behind
+  `@outtray/core/node`. Builds stay unsigned until #12.
 - **Action layer v1 shipped (ADR-0010, accepted)**: `outtray actions <dir>`
   plans a deterministic, cited, proposed-only queue (to-dos, expiry alerts,
   keep/shred advice with rule ids + disclaimer, attention flags, review
@@ -220,7 +225,7 @@ issue, containing:
 - TDD where outputs are verifiable: failing test first. Model-dependent
   tests use recorded fixtures only; CI never runs a model.
 - Every public function in core documents its failure modes in its docstring.
-- ADR for every consequential decision (next number: 0013). CHANGELOG (Keep a
+- ADR for every consequential decision (next number: 0014). CHANGELOG (Keep a
   Changelog) updated with user-visible changes.
 - Style: no em dashes, no emojis anywhere (docs, UI, commit messages). UI
   icons come from an icon library, never emoji. Never mention Claude in

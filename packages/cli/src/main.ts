@@ -23,8 +23,6 @@ import {
   correctDocument,
   DOCUMENT_TYPES,
   type DocumentType,
-  defaultConfigPath,
-  defaultDatabasePath,
   type EmbeddingProvider,
   explainStorageError,
   extractorKeyFor,
@@ -33,27 +31,32 @@ import {
   IDENTIFIER_STORAGE_DISCLOSURE,
   indexKeyFor,
   isIdentifierField,
-  KeychainKeyProvider,
-  locateDocument,
   type ModelProvider,
   OllamaEmbeddingProvider,
   OllamaProvider,
-  openSqlcipherStorage,
   persistScan,
   personalClassifier,
   planActions,
-  readSettings,
   redactExtraction,
   reuseOrPin,
   revealIdentifier,
   type ScanItem,
   type ScanReport,
   type StorageProvider,
-  scanDirectory,
+  scanSource,
   searchReport,
   searchStore,
-  setIdentifierStorage,
 } from '@outtray/core';
+import {
+  defaultConfigPath,
+  defaultDatabasePath,
+  folderSource,
+  KeychainKeyProvider,
+  locateFile,
+  openSqlcipherStorage,
+  readSettings,
+  setIdentifierStorage,
+} from '@outtray/core/node';
 
 // Demo embedding model. The shipped default is a later retrieval-eval ADR, the
 // way ADR-0002 chose the VLM; this is just what the `find` demo runs against.
@@ -335,9 +338,10 @@ export async function scanFolder(
     identifierStorage,
   };
   const store = storage;
+  const source = folderSource(dir);
   let report: ScanReport;
   try {
-    report = await scanDirectory(models.provider, dir, {
+    report = await scanSource(models.provider, source, {
       model: EXTRACT_MODEL,
       classify: {
         embedder: models.embedder,
@@ -359,7 +363,7 @@ export async function scanFolder(
   try {
     const built = await buildIndex(models.embedder, report);
     const summary = await persistScan(store, report, {
-      dir,
+      locate: source.locate,
       identifierStorage,
       extractorKey: keys.extractorKey,
       ...(built.error === null ? { index: { key: keys.indexKey, chunks: built.chunks } } : {}),
@@ -475,7 +479,7 @@ export async function runReveal(
       return 1;
     }
     storage = await openStorage();
-    const document = await locateDocument(storage, file);
+    const document = await locateFile(storage, file);
     if (document === null) {
       process.stderr.write(
         `No scanned document matches ${file}. Scan its folder with \`outtray scan\` first.\n`,
@@ -554,7 +558,7 @@ export async function runCorrect(
       return 1;
     }
     storage = await openStorage();
-    const document = await locateDocument(storage, file);
+    const document = await locateFile(storage, file);
     if (document === null) {
       process.stderr.write(
         `No scanned document matches ${file}. Scan its folder with \`outtray scan\` first.\n`,

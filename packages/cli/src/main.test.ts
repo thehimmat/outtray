@@ -7,12 +7,11 @@ import {
   type FindResult,
   IDENTIFIER_STORAGE_DISCLOSURE,
   MemoryStorage,
-  readSettings,
   redactExtraction,
   type ScanItem,
   type ScanReport,
-  writeSettings,
 } from '@outtray/core';
+import { readSettings, writeSettings } from '@outtray/core/node';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   findInFolder,
@@ -775,7 +774,7 @@ async function vaultFixture(options: { databaseExists?: boolean } = {}) {
     issuer: 'US Department of State',
     expiry_date: '2027-03-01',
   };
-  const hash = contentHashOf(Buffer.from('passport bytes'));
+  const hash = await contentHashOf(Buffer.from('passport bytes'));
   await store.putDocument({
     contentHash: hash,
     path: passportFile,

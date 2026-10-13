@@ -22,11 +22,10 @@
  * later. Non-image files are reported as skipped, not errors.
  */
 
-import { createHash } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { contentHashOf, toBase64 } from './bytes.js';
 import type { TypeClassifier } from './classifier.js';
 import { buildClassifier } from './classifier-seeds.js';
+import { type DocumentSource, extensionOf } from './document-source.js';
 import type { EmbeddingProvider } from './embedding-provider.js';
 import { type ExtractResult, extract } from './extract.js';
 import type { DocumentType } from './extraction-schema.js';
@@ -124,33 +123,30 @@ export interface ScanOptions {
 }
 
 /**
- * Scan `dir`, extract every image file in it, and reconcile document types.
+ * Scan every image file in `source`, extract it, and reconcile document types.
+ * `scanDirectory` in `@outtray/core/node` is this over a folder on disk.
  *
- * Failure modes: rejects if `dir` cannot be read, or if the model provider
- * rejects on a file (e.g. the runtime is unreachable). Per-file extraction
- * failures are captured as `result.valid === false`, not thrown, so one
- * unreadable document does not abort the batch's report shape. The
- * classification stage never rejects: if the embedder or classifier fails,
+ * Failure modes: rejects if the source cannot be listed or a file read, or if
+ * the model provider rejects on a file (e.g. the runtime is unreachable).
+ * Per-file extraction failures are captured as `result.valid === false`, not
+ * thrown, so one unreadable document does not abort the batch's report shape.
+ * The classification stage never rejects: if the embedder or classifier fails,
  * items keep their single-stage VLM labels (`status: 'unclassified'`) and
  * `classifierError` records the reason. A failed typed re-extraction (provider
  * error, invalid output, or a type other than the target) leaves the item
  * `disputed` with its original extraction and review flag intact.
  */
-export async function scanDirectory(
+export async function scanSource(
   provider: ModelProvider,
-  dir: string,
+  source: DocumentSource,
   options: ScanOptions = {},
 ): Promise<ScanReport> {
-  const entries = await readdir(dir, { withFileTypes: true });
-  const files = entries
-    .filter((e) => e.isFile())
-    .map((e) => e.name)
-    .sort();
+  const files = (await source.list()).sort();
 
   const scanned: string[] = [];
   const skipped: string[] = [];
   for (const name of files) {
-    if (IMAGE_EXTENSIONS.has(extname(name).toLowerCase())) {
+    if (IMAGE_EXTENSIONS.has(extensionOf(name))) {
       scanned.push(name);
     } else {
       skipped.push(name);
@@ -159,12 +155,12 @@ export async function scanDirectory(
 
   const items: ScanItem[] = [];
   for (const file of scanned) {
-    const bytes = await readFile(join(dir, file));
-    const contentHash = contentHashOf(bytes);
+    const bytes = await source.read(file);
+    const contentHash = await contentHashOf(bytes);
     const answer = options.reuse ? await options.reuse(file, contentHash) : null;
     if (answer && 'extractAs' in answer) {
       const result = await extract(provider, {
-        images: [bytes.toString('base64')],
+        images: [toBase64(bytes)],
         type: answer.extractAs,
         ...(options.model ? { model: options.model } : {}),
       });
@@ -186,7 +182,7 @@ export async function scanDirectory(
       continue;
     }
     const result = await extract(provider, {
-      images: [bytes.toString('base64')],
+      images: [toBase64(bytes)],
       ...(options.model ? { model: options.model } : {}),
     });
     items.push({
@@ -236,9 +232,9 @@ export async function scanDirectory(
       const target = item.reconciliation.classification?.type;
       if (!target) continue;
       try {
-        const bytes = await readFile(join(dir, item.file));
+        const bytes = await source.read(item.file);
         const retry = await extract(provider, {
-          images: [bytes.toString('base64')],
+          images: [toBase64(bytes)],
           type: target,
           ...(options.model ? { model: options.model } : {}),
         });
@@ -254,14 +250,4 @@ export async function scanDirectory(
   }
 
   return { scanned, skipped, items, classifierError };
-}
-
-/**
- * The key a document is stored under: the hex SHA-256 of its bytes, so a moved
- * or renamed file is the same document (ADR-0011).
- *
- * Failure modes: none; pure.
- */
-export function contentHashOf(bytes: Uint8Array): string {
-  return createHash('sha256').update(bytes).digest('hex');
 }

@@ -8,10 +8,8 @@
  * ever see the redacted extraction. Callers must not log what this returns.
  */
 
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { contentHashOf } from './bytes.js';
 import { IDENTIFIER_FIELDS, type IdentifierField } from './identifiers.js';
-import { contentHashOf } from './scan.js';
 import type { StorageProvider, StoredDocument } from './storage-provider.js';
 
 const FIELDS: ReadonlySet<string> = new Set<string>(Object.values(IDENTIFIER_FIELDS));
@@ -26,7 +24,9 @@ export function isIdentifierField(value: string): value is IdentifierField {
 }
 
 /**
- * Find the stored document for a file the user names.
+ * Find the stored document for a file the user names, given its absolute path
+ * and a way to read it. `locateFile` in `@outtray/core/node` supplies both on
+ * disk.
  *
  * The file is hashed as it is now, because the store is keyed by content: a
  * moved or renamed file is still found. Only when the file cannot be read
@@ -40,17 +40,17 @@ export function isIdentifierField(value: string): value is IdentifierField {
  */
 export async function locateDocument(
   storage: StorageProvider,
-  path: string,
+  absolutePath: string,
+  read: (path: string) => Promise<Uint8Array>,
 ): Promise<StoredDocument | null> {
-  let bytes: Buffer;
+  let bytes: Uint8Array;
   try {
-    bytes = await readFile(path);
+    bytes = await read(absolutePath);
   } catch {
-    const absolute = resolve(path);
     const all = await storage.listDocuments();
-    return all.find((d) => d.path === absolute) ?? null;
+    return all.find((d) => d.path === absolutePath) ?? null;
   }
-  return storage.getDocument(contentHashOf(bytes));
+  return storage.getDocument(await contentHashOf(bytes));
 }
 
 /** What a reveal found. Only `revealed` carries a full value. */

@@ -2,10 +2,11 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { contentHashOf } from './bytes.js';
 import type { DocumentExtraction } from './extraction-schema.js';
 import { redactExtraction } from './identifiers.js';
-import { isIdentifierField, locateDocument, revealIdentifier } from './reveal.js';
-import { contentHashOf } from './scan.js';
+import { locateFile } from './node.js';
+import { isIdentifierField, revealIdentifier } from './reveal.js';
 import { MemoryStorage } from './storage-memory.js';
 import type { StoredDocument } from './storage-provider.js';
 
@@ -53,7 +54,7 @@ describe('isIdentifierField', () => {
   });
 });
 
-describe('locateDocument', () => {
+describe('locateFile (locateDocument on disk)', () => {
   let dir: string;
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'outtray-reveal-'));
@@ -65,24 +66,24 @@ describe('locateDocument', () => {
   it('finds a document by the hash of the file as it is now', async () => {
     const file = join(dir, 'passport.png');
     await writeFile(file, 'passport bytes');
-    const hash = contentHashOf(Buffer.from('passport bytes'));
+    const hash = await contentHashOf(Buffer.from('passport bytes'));
     const store = new MemoryStorage();
     // Stored under another path: a moved file is the same document.
     await store.putDocument(stored(hash, '/elsewhere/old-name.png', PASSPORT));
-    expect((await locateDocument(store, file))?.contentHash).toBe(hash);
+    expect((await locateFile(store, file))?.contentHash).toBe(hash);
   });
 
   it('falls back to the stored path when the file is gone', async () => {
     const file = join(dir, 'gone.png');
     const store = new MemoryStorage();
     await store.putDocument(stored('hash-gone', file, PASSPORT));
-    expect((await locateDocument(store, file))?.contentHash).toBe('hash-gone');
+    expect((await locateFile(store, file))?.contentHash).toBe('hash-gone');
   });
 
   it('resolves a relative path before comparing with stored paths', async () => {
     const store = new MemoryStorage();
     await store.putDocument(stored('hash-rel', join(process.cwd(), 'no-such-file.png'), PASSPORT));
-    expect((await locateDocument(store, 'no-such-file.png'))?.contentHash).toBe('hash-rel');
+    expect((await locateFile(store, 'no-such-file.png'))?.contentHash).toBe('hash-rel');
   });
 
   it('does not fall back to a stale row when the file exists but changed', async () => {
@@ -90,11 +91,11 @@ describe('locateDocument', () => {
     await writeFile(file, 'new bytes');
     const store = new MemoryStorage();
     await store.putDocument(stored('hash-of-old-bytes', file, PASSPORT));
-    expect(await locateDocument(store, file)).toBeNull();
+    expect(await locateFile(store, file)).toBeNull();
   });
 
   it('resolves null for a document never scanned', async () => {
-    expect(await locateDocument(new MemoryStorage(), join(dir, 'nothing.png'))).toBeNull();
+    expect(await locateFile(new MemoryStorage(), join(dir, 'nothing.png'))).toBeNull();
   });
 });
 
