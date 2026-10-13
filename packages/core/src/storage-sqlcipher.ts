@@ -46,6 +46,7 @@ import {
   type StoredChunk,
   type StoredDocument,
   type StoredLabel,
+  type StoredReview,
 } from './storage-provider.js';
 import {
   decodeEmbedding,
@@ -302,7 +303,7 @@ export class SqlcipherStorage implements StorageProvider {
 
   async deleteDocument(contentHash: string): Promise<void> {
     const db = this.#open();
-    // Chunks and identifier mentions cascade; orphaned identifiers do not.
+    // Chunks, identifier mentions and review marks cascade; orphaned identifiers do not.
     db.transaction(() => {
       db.prepare('DELETE FROM documents WHERE content_hash = ?').run(contentHash);
       deleteOrphanIdentifiers(db);
@@ -475,6 +476,36 @@ export class SqlcipherStorage implements StorageProvider {
   async countIdentifiers(): Promise<number> {
     const db = this.#open();
     return (db.prepare('SELECT count(*) AS n FROM identifiers').get() as { n: number }).n;
+  }
+
+  async setReview(review: StoredReview): Promise<void> {
+    const db = this.#open();
+    const exists = db
+      .prepare('SELECT 1 AS present FROM documents WHERE content_hash = ?')
+      .get(review.documentHash);
+    if (!exists) {
+      throw new StorageError(`No document ${review.documentHash} to mark reviewed.`);
+    }
+    db.prepare(
+      'INSERT OR REPLACE INTO reviews (item_key, document_hash, reviewed_at) VALUES (?, ?, ?)',
+    ).run(review.key, review.documentHash, review.reviewedAt);
+  }
+
+  async clearReview(key: string): Promise<void> {
+    const db = this.#open();
+    db.prepare('DELETE FROM reviews WHERE item_key = ?').run(key);
+  }
+
+  async listReviews(): Promise<StoredReview[]> {
+    const db = this.#open();
+    const rows = db
+      .prepare('SELECT item_key, document_hash, reviewed_at FROM reviews ORDER BY item_key')
+      .all() as Array<{ item_key: string; document_hash: string; reviewed_at: number }>;
+    return rows.map((r) => ({
+      key: r.item_key,
+      documentHash: r.document_hash,
+      reviewedAt: r.reviewed_at,
+    }));
   }
 
   async close(): Promise<void> {

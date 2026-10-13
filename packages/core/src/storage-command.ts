@@ -29,6 +29,7 @@ import {
   type StoredChunk,
   type StoredDocument,
   type StoredLabel,
+  type StoredReview,
 } from './storage-provider.js';
 import { StorageMigrationError } from './storage-schema.js';
 
@@ -200,6 +201,18 @@ export class CommandStorage implements StorageProvider {
 
   async countIdentifiers(): Promise<number> {
     return (await this.#call('countIdentifiers')) as number;
+  }
+
+  async setReview(review: StoredReview): Promise<void> {
+    await this.#call('setReview', { review });
+  }
+
+  async clearReview(key: string): Promise<void> {
+    await this.#call('clearReview', { key });
+  }
+
+  async listReviews(): Promise<StoredReview[]> {
+    return (await this.#call('listReviews')) as StoredReview[];
   }
 
   async close(): Promise<void> {

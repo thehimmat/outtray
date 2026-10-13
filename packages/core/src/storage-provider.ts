@@ -109,6 +109,19 @@ export interface StoredLabel {
 /** A label before the store has assigned it an id. */
 export type NewLabel = Omit<StoredLabel, 'id'>;
 
+/**
+ * A person's "Reviewed" mark on one proposed action (ADR-0010 amendment 1).
+ * A mark records that they looked; it never acts on a file (ADR-0008).
+ */
+export interface StoredReview {
+  /** The action's review key (`reviewKeyOf`): rule, document bytes and date, no document text. */
+  key: string;
+  /** The document the action came from; deleting it drops the mark. */
+  documentHash: string;
+  /** When it was marked, in epoch milliseconds. */
+  reviewedAt: number;
+}
+
 /** A swappable persistence backend (ADR-0011). */
 export interface StorageProvider {
   /** Stable identifier for logs, e.g. `sqlcipher`. */
@@ -274,6 +287,31 @@ export interface StorageProvider {
    * Failure modes: rejects if the store is closed.
    */
   countIdentifiers(): Promise<number>;
+
+  /**
+   * Record a review mark, replacing any mark with the same key.
+   *
+   * Failure modes: rejects with `StorageError` if the document does not exist
+   * (marks reference it), or if the store is closed.
+   */
+  setReview(review: StoredReview): Promise<void>;
+
+  /**
+   * Remove a review mark.
+   *
+   * Failure modes: clearing a mark that is not there is a no-op, not an
+   * error. Rejects if the store is closed.
+   */
+  clearReview(key: string): Promise<void>;
+
+  /**
+   * Every review mark, ordered by key. Deleting a document drops its marks;
+   * replacing its row (a re-scan, a move) keeps them.
+   *
+   * Failure modes: rejects if the store is closed. Resolves an empty array
+   * when nothing is marked.
+   */
+  listReviews(): Promise<StoredReview[]>;
 
   /**
    * Close the store and release its handle.

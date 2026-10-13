@@ -21,6 +21,8 @@ export interface PlannedFolder {
   skipped: string[];
   /** Plain-language notes about the run (store saved, classifier unavailable). */
   notes: string[];
+  /** Ids of the queue items the person marked reviewed on an earlier run. */
+  reviewed: string[];
 }
 
 /** The host the UI runs against. */
@@ -38,4 +40,13 @@ export interface OuttrayApi {
    * for example when the local model runtime is not running.
    */
   planFolder(folder: string): Promise<PlannedFolder>;
+  /**
+   * Save or clear the person's "Reviewed" mark on one item of the last
+   * planned folder (ADR-0010 amendment 1). Changes no document.
+   *
+   * Failure modes: rejects with an Error whose message is shown to the user
+   * when the mark cannot be saved (the store cannot be opened, or the item's
+   * document is not in it).
+   */
+  setReviewed(itemId: string, reviewed: boolean): Promise<void>;
 }

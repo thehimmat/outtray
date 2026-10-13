@@ -546,11 +546,58 @@ describe.each(STORES)('%s (StorageProvider contract)', (_name, create) => {
     await store.close();
   });
 
+  it('records, lists and clears review marks, and ignores clearing a missing one', async () => {
+    const store = await create();
+    await store.putDocument(document());
+    await store.putDocument(document({ contentHash: 'hash-a', path: '/docs/a.png' }));
+    const later = { key: 'retain.passport|hash-b|', documentHash: 'hash-b', reviewedAt: 2 };
+    const earlier = { key: 'expiry.soon|hash-a|2027-03-01', documentHash: 'hash-a', reviewedAt: 1 };
+    await store.setReview(later);
+    await store.setReview(earlier);
+    expect(await store.listReviews()).toEqual([earlier, later]);
+    await store.clearReview(earlier.key);
+    await expect(store.clearReview('never-marked')).resolves.toBeUndefined();
+    expect(await store.listReviews()).toEqual([later]);
+    await store.close();
+  });
+
+  it('replaces a review mark with the same key rather than duplicating it', async () => {
+    const store = await create();
+    await store.putDocument(document());
+    await store.setReview({ key: 'k', documentHash: 'hash-b', reviewedAt: 1 });
+    await store.setReview({ key: 'k', documentHash: 'hash-b', reviewedAt: 5 });
+    expect(await store.listReviews()).toEqual([
+      { key: 'k', documentHash: 'hash-b', reviewedAt: 5 },
+    ]);
+    await store.close();
+  });
+
+  it('refuses a review mark for a document that is not in the store', async () => {
+    const store = await create();
+    await expect(
+      store.setReview({ key: 'k', documentHash: 'missing', reviewedAt: 1 }),
+    ).rejects.toThrow(StorageError);
+    expect(await store.listReviews()).toEqual([]);
+    await store.close();
+  });
+
+  it('drops a document review marks when the document is deleted, not when it is replaced', async () => {
+    const store = await create();
+    await store.putDocument(document());
+    await store.setReview({ key: 'k', documentHash: 'hash-b', reviewedAt: 1 });
+    await store.putDocument(document({ path: '/docs/renamed.png' }));
+    expect(await store.listReviews()).toHaveLength(1);
+    await store.deleteDocument('hash-b');
+    expect(await store.listReviews()).toEqual([]);
+    await store.close();
+  });
+
   it('reports empty collections for a fresh store', async () => {
     const store = await create();
     expect(await store.listDocuments()).toEqual([]);
     expect(await store.listChunks()).toEqual([]);
     expect(await store.listLabels()).toEqual([]);
+    expect(await store.listReviews()).toEqual([]);
     await store.close();
   });
 
@@ -572,6 +619,11 @@ describe.each(STORES)('%s (StorageProvider contract)', (_name, create) => {
     await expect(store.identifierFields('hash-b')).rejects.toThrow(StorageError);
     await expect(store.replaceDocumentLabels('hash-b', [])).rejects.toThrow(StorageError);
     await expect(store.updateLabelEmbedding(1, [1], 'm')).rejects.toThrow(StorageError);
+    await expect(
+      store.setReview({ key: 'k', documentHash: 'hash-b', reviewedAt: 1 }),
+    ).rejects.toThrow(StorageError);
+    await expect(store.clearReview('k')).rejects.toThrow(StorageError);
+    await expect(store.listReviews()).rejects.toThrow(StorageError);
   });
 });
 

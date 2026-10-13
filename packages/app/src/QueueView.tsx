@@ -3,7 +3,8 @@
  * every proposal shows the evidence it came from, review-gated items say so,
  * the retention disclaimer is always shown, the summary never claims an "all
  * clear", and nothing here acts on a file. "Reviewed" is the person's own
- * note, kept in the page; it changes nothing on disk.
+ * note: the host may save it (ADR-0010 amendment 1), but it changes no
+ * document.
  */
 
 import type { ActionItem, ActionKind, ActionQueue } from '@outtray/core';
@@ -24,15 +25,37 @@ function needsLook(item: ActionItem): boolean {
   return item.needsReviewFirst || item.kind === 'attention_flag';
 }
 
-export function QueueView({ queue }: { queue: ActionQueue }) {
-  const [reviewed, setReviewed] = useState<ReadonlySet<string>>(new Set());
-  const toggle = (id: string) =>
-    setReviewed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+function flip(set: ReadonlySet<string>, id: string, on: boolean): ReadonlySet<string> {
+  const next = new Set(set);
+  if (on) next.add(id);
+  else next.delete(id);
+  return next;
+}
+
+export function QueueView({
+  queue,
+  initialReviewed = [],
+  onReviewedChange,
+}: {
+  queue: ActionQueue;
+  /** Item ids the host already has marks for. */
+  initialReviewed?: readonly string[];
+  /** Save one tick; a rejection undoes it in the page. */
+  onReviewedChange?: (itemId: string, reviewed: boolean) => Promise<void>;
+}) {
+  const [reviewed, setReviewed] = useState<ReadonlySet<string>>(() => new Set(initialReviewed));
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const toggle = async (id: string) => {
+    const on = !reviewed.has(id);
+    setReviewed((prev) => flip(prev, id, on));
+    setSaveError(null);
+    try {
+      await onReviewedChange?.(id, on);
+    } catch (error) {
+      setReviewed((prev) => flip(prev, id, !on));
+      setSaveError(error instanceof Error ? error.message : String(error));
+    }
+  };
 
   const unreviewed = queue.items.filter((i) => needsLook(i) && !reviewed.has(i.id)).length;
 
@@ -42,6 +65,11 @@ export function QueueView({ queue }: { queue: ActionQueue }) {
         {queue.items.length} item(s) proposed. {queue.flagged} flagged for attention, {unreviewed}{' '}
         not yet reviewed by you.
       </p>
+      {saveError ? (
+        <p className="error" role="alert">
+          Could not save that mark: {saveError}
+        </p>
+      ) : null}
       {queue.items.length === 0 ? (
         <p className="empty">Nothing to propose: no documents were readable.</p>
       ) : (

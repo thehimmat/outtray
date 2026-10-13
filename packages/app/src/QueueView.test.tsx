@@ -110,6 +110,53 @@ describe('QueueView', () => {
     expect(screen.getByText(/1 not yet reviewed by you/)).toBeTruthy();
   });
 
+  it('starts from the marks the host saved', () => {
+    const gatedId = MIXED.items.find((i) => i.needsReviewFirst)?.id ?? '';
+    render(<QueueView queue={MIXED} initialReviewed={[gatedId]} />);
+    expect(screen.getByText(/1 not yet reviewed by you/)).toBeTruthy();
+  });
+
+  it('hands each tick to the host to save', async () => {
+    const user = userEvent.setup();
+    const saved: Array<[string, boolean]> = [];
+    render(
+      <QueueView
+        queue={MIXED}
+        onReviewedChange={async (id, reviewed) => {
+          saved.push([id, reviewed]);
+        }}
+      />,
+    );
+    const gated = screen.getByRole('listitem', { name: /policy\.png expires/ });
+    const box = within(gated).getByRole('checkbox', { name: /Reviewed/ });
+    await user.click(box);
+    await user.click(box);
+    const gatedId = MIXED.items.find((i) => i.needsReviewFirst)?.id;
+    expect(saved).toEqual([
+      [gatedId, true],
+      [gatedId, false],
+    ]);
+  });
+
+  it('undoes a tick the host could not save, and says so', async () => {
+    const user = userEvent.setup();
+    render(
+      <QueueView
+        queue={MIXED}
+        onReviewedChange={async () => {
+          throw new Error('Storage is closed.');
+        }}
+      />,
+    );
+    const gated = screen.getByRole('listitem', { name: /policy\.png expires/ });
+    await user.click(within(gated).getByRole('checkbox', { name: /Reviewed/ }));
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      'Could not save that mark: Storage is closed.',
+    );
+    expect(screen.getByText(/2 not yet reviewed by you/)).toBeTruthy();
+  });
+
   it('has no control that deletes, moves or shreds anything (ADR-0008)', () => {
     render(<QueueView queue={MIXED} />);
     const labels = screen.queryAllByRole('button').map((b) => b.textContent?.toLowerCase() ?? '');

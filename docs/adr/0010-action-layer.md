@@ -105,3 +105,49 @@ differentiator the one part of the pipeline CI could not test without a model.
 - Depends on the ADR-0009 amendment's reconciliation verdicts (#54) for
   review gating, and its quality improves further once disputed types are
   auto-corrected (#57).
+
+## Amendment 1 (2026-10-13): saved review marks
+
+Status: **accepted 2026-10-13 by Claude** under the project's autonomy rules
+(`.claude/CLAUDE.md`). It adds a person's own note to the queue and reverses
+nothing above: items stay `proposed`, nothing executes, and the planner is
+unchanged.
+
+### Context
+
+The desktop app (ADR-0013) lets the person tick "Reviewed" on items that ask
+for a look (review-gated items and attention flags). Kept only in the page,
+every tick is lost on the next scan, so the "not yet reviewed by you" count
+never goes down across sessions and the gate stops meaning anything.
+
+### Decision
+
+- **A mark is stored per action, keyed by what the action is about**: the
+  rule id, the SHA-256 of the source document's bytes, and the anchor date,
+  plus the queue's collision counter (`reviewTargets` in core). The queue's
+  item id names the file, which is the wrong identity: a rename would lose the
+  mark and an edited file would keep it. Keyed by bytes, a moved file keeps
+  its marks and a re-issued bill starts unreviewed.
+- **Marks live in the encrypted store** (migration 4, table `reviews`), with
+  a foreign key to the document so deleting a document drops its marks. The
+  key holds no document text. All three stores (memory, SQLCipher, Rust) are
+  held to the shared contract suite for it.
+- **A mark is the person's note, not an action.** It changes no document and
+  no item's `status`, and the planner never reads it (ADR-0008).
+
+### Options considered
+
+1. **Key by the queue's item id** (`rule:file`). Turned down: renames lose
+   marks and edits keep them, the opposite of what a review means.
+2. **Key by rule, document bytes and date (chosen).** Stable across moves,
+   reset by new content, and computed from data the scan already has.
+3. **Keep marks in the page's local storage.** Turned down: outside the
+   encrypted store, so it would be a second, unencrypted place that records
+   which documents a person has, and the CLI could never read it.
+
+### Consequences
+
+- The CLI does not show marks yet; `outtray actions` could, later.
+- Two firings of one rule on one document are told apart by the queue's
+  counter, which depends on planning order; if the order of those two changes,
+  their marks swap. Rare, and the cost is one wrong tick.
