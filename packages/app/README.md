@@ -8,9 +8,9 @@ Two hosts implement it:
 - `src/tauri-api.ts`, in the desktop shell (`src-tauri`). Core runs in the
   webview and calls the same `scanWithStore` as the CLI; the shell holds the
   encrypted store (`store/`, the shared contract suite's Rust store), the
-  Keychain key (never sent to the page) and read-only access to the chosen
-  folder. The models are the local Ollama ones (`qwen3-vl:2b`,
-  `nomic-embed-text`).
+  Keychain key (never sent to the page), the native folder picker, and
+  read-only access to the picked folders only (#123). The models are
+  the local Ollama ones (`qwen3-vl:2b`, `nomic-embed-text`).
 - `src/demo-api.ts`, in a plain browser: the real core planner over
   synthetic documents, for UI work without a model.
 

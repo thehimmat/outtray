@@ -67,6 +67,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   flag on the same document and date as an expiry alert or expired flag
   folds into it, keeping both citations. Action precision 11/25 to 11/22.
 
+### Security
+
+- The desktop app reads only folders you pick in its folder picker, and only
+  the files directly inside them. The picker now runs in the native shell, so
+  the page cannot grant itself access to anything else (#123).
+
 ### Added
 
 - Action-level eval (#64): `pnpm eval:actions` scores the proposed action

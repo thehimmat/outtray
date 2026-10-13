@@ -2,19 +2,23 @@
 //!
 //! Core runs in the webview. This side holds only what the webview cannot:
 //! the encrypted store (`outtray-store`, held to the shared contract suite),
-//! the database key in the macOS Keychain, and read-only file access (list a
-//! folder, read a file). The page only asks for the folder the user picked;
-//! enforcing that on this side is #123. There is no command that writes,
-//! moves or deletes a document: the agent proposes, the human acts (ADR-0008).
+//! the database key in the macOS Keychain, the native folder picker, and
+//! read-only access to the folders the user picked there and nothing else
+//! (`folder_scope`, #123). There is no command that writes, moves or deletes
+//! a document: the agent proposes, the human acts (ADR-0008).
 //!
 //! The store and key are the CLI's: same file under
 //! `~/Library/Application Support/outtray/`, same Keychain item, so the app
 //! and the CLI see one store.
 
+mod folder_scope;
+
+use folder_scope::FolderScope;
 use serde_json::{json, Value};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tauri::ipc::Response;
+use tauri_plugin_dialog::DialogExt;
 
 /// The Keychain item the CLI also uses (`KEYCHAIN_SERVICE`, `KEYCHAIN_ACCOUNT` in core).
 #[cfg(target_os = "macos")]
@@ -25,6 +29,14 @@ const KEYCHAIN_ACCOUNT: &str = "database-key";
 /// The open store, if any.
 #[derive(Default)]
 struct StoreState(Mutex<Option<outtray_store::Store>>);
+
+/// The folders the user picked, the only ones the page may read.
+#[derive(Default)]
+struct ScopeState(Mutex<FolderScope>);
+
+fn scope_error(message: String) -> Value {
+    error("storage", message)
+}
 
 fn error(kind: &str, message: impl Into<String>) -> Value {
     json!({ "kind": kind, "message": message.into() })
@@ -134,11 +146,48 @@ fn store_command(state: tauri::State<StoreState>, op: String, args: Value) -> Re
     result
 }
 
-/// The regular files directly in `folder`. Read-only.
+/// Show the native folder picker and allow the chosen folder. Resolves its
+/// resolved path, or null when the user cancels. The picker is the only way a
+/// folder becomes readable, so the page cannot widen its own access.
 #[tauri::command]
-fn list_folder(folder: String) -> Result<Vec<String>, Value> {
+async fn pick_folder(
+    app: tauri::AppHandle,
+    scope: tauri::State<'_, ScopeState>,
+) -> Result<Option<String>, Value> {
+    let picked = tauri::async_runtime::spawn_blocking(move || {
+        app.dialog()
+            .file()
+            .set_title("Choose a folder of documents")
+            .blocking_pick_folder()
+    })
+    .await
+    .map_err(|e| error("storage", e.to_string()))?;
+    let Some(picked) = picked else {
+        return Ok(None);
+    };
+    let path = picked
+        .into_path()
+        .map_err(|e| error("storage", e.to_string()))?;
+    let resolved = scope
+        .0
+        .lock()
+        .map_err(|_| error("storage", "The folder scope lock is poisoned."))?
+        .allow(&path)
+        .map_err(scope_error)?;
+    Ok(Some(resolved.to_string_lossy().into_owned()))
+}
+
+/// The regular files directly in a picked folder. Read-only.
+#[tauri::command]
+fn list_folder(scope: tauri::State<ScopeState>, folder: String) -> Result<Vec<String>, Value> {
+    let folder = scope
+        .0
+        .lock()
+        .map_err(|_| error("storage", "The folder scope lock is poisoned."))?
+        .folder(Path::new(&folder))
+        .map_err(scope_error)?;
     let entries = std::fs::read_dir(&folder)
-        .map_err(|e| error("storage", format!("Cannot read {folder}: {e}")))?;
+        .map_err(|e| error("storage", format!("Cannot read {}: {e}", folder.display())))?;
     Ok(entries
         .filter_map(Result::ok)
         .filter(|e| e.file_type().map(|t| t.is_file()).unwrap_or(false))
@@ -146,12 +195,19 @@ fn list_folder(folder: String) -> Result<Vec<String>, Value> {
         .collect())
 }
 
-/// The bytes of one file, as raw IPC (no JSON number arrays). Read-only.
+/// The bytes of one file directly in a picked folder, as raw IPC (no JSON
+/// number arrays). Read-only.
 #[tauri::command]
-fn read_file(path: String) -> Result<Response, Value> {
+fn read_file(scope: tauri::State<ScopeState>, path: String) -> Result<Response, Value> {
+    let path = scope
+        .0
+        .lock()
+        .map_err(|_| error("storage", "The folder scope lock is poisoned."))?
+        .file(Path::new(&path))
+        .map_err(scope_error)?;
     std::fs::read(&path)
         .map(Response::new)
-        .map_err(|e| error("storage", format!("Cannot read {path}: {e}")))
+        .map_err(|e| error("storage", format!("Cannot read {}: {e}", path.display())))
 }
 
 /// The identifier-storage opt-in from `config.json` beside the store, read
@@ -172,9 +228,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(StoreState::default())
+        .manage(ScopeState::default())
         .invoke_handler(tauri::generate_handler![
             store_open,
             store_command,
+            pick_folder,
             list_folder,
             read_file,
             read_settings

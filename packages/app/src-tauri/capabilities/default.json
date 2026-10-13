@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window: the app's own commands and the folder picker. No file-system plugin: files are read only through the read-only commands in src/lib.rs (ADR-0008).",
+  "description": "The main window: the app's own commands only. The folder picker runs on the Rust side (pick_folder), and files are read only through the scoped, read-only commands in src/lib.rs (#123, ADR-0008). No dialog or file-system permission is granted to the page.",
   "windows": ["main"],
-  "permissions": ["core:default", "dialog:allow-open"]
+  "permissions": ["core:default"]
 }
