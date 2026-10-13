@@ -158,3 +158,66 @@ The proposed routing:
 - When the OCR arm lands, the order question reopens: classify-first becomes
   possible and cheaper, and this amendment's inverted order becomes the
   fallback path for image-only flows.
+
+## Amendment 2 (2026-10-13): the personalization loop
+
+Status: **accepted 2026-10-13 by Claude** under the project's autonomy rules
+(`.claude/CLAUDE.md`). It builds the loop this ADR's decision describes
+(issue #67) and reverses nothing above.
+
+### Decision
+
+- **`outtray correct <file> <type>` pins a document's type.** A new
+  reconciliation status, `user`, trusts the pinned type outright: no review,
+  no classifier vote, on this scan and every later one. The VLM label and the
+  classifier verdict stay on the record as provenance.
+- **A pinned type that differs from the stored extraction forces one typed
+  re-extraction** on the next scan, under the pinned type's schema, reusing
+  the typed prompt from amendment 1. Relabeling alone would leave the action
+  layer reading fields the extraction does not have (option 2 of amendment 1,
+  rejected there for the same reason). If the typed extraction does not
+  validate as the pinned type, the item keeps the pin and asks for review.
+- **Each correction is a labeled example** in the encrypted `labels` table
+  (ADR-0011), one per document: correcting the same document again replaces
+  the earlier example rather than leaving two contradictory ones.
+- **Labels are embedded from tokenized text.** The example and every
+  classifier query embed `derivedText`, the flattened extraction with
+  identifiers replaced by `[field]` placeholders (ADR-0011 amendment), so a
+  label never carries an identifier or its last four, and queries and examples
+  are the same kind of text. The classification eval embeds the same text.
+- **Labels keep their text and embedding model.** `outtray correct` needs no
+  model: the example is embedded lazily, the next time a scan has something
+  to classify, and re-embedded once if the embedding model changes.
+
+### Options considered
+
+1. **Pin, re-extract under the pinned type, and learn from it
+   (recommended).** Pros: the correction fixes this document's fields and
+   improves the next similar one; works offline; sticky, so the user never
+   corrects the same document twice. Cons: one extra vision call per
+   corrected document whose type changed; a new reconciliation status that
+   every consumer must handle (the CLI output and the action layer do).
+2. **Only record a labeled example.** Pros: smallest change. Cons: the
+   corrected document itself stays wrong until the classifier happens to
+   agree, and a confident VLM label can keep winning. The user's explicit
+   answer should not be a mere vote.
+3. **Only pin, without learning.** Pros: no label store. Cons: drops the
+   personalization half of this ADR, which is its stated promise.
+4. **Embed the label at correction time.** Pros: the example is usable
+   immediately. Cons: `correct` would need Ollama running for what is a pure
+   bookkeeping act; lazy embedding loses nothing because nothing classifies
+   until the next scan.
+
+### Consequences
+
+- Moving queries from `extractionText` to `derivedText` changes what the
+  classifier sees for the three types that carry an identifier. Expected
+  effect on accuracy is nil (a digit string carries no semantic signal, per
+  ADR-0011), but the dev-run classification scoreboard must be re-run at the
+  next dev-machine session to confirm it.
+- The "gets better with use" claim needs its own measurement: accuracy with N
+  corrections layered on the seeds. That needs live embeddings and is tracked
+  as its own issue.
+- When labels become mutable like this, a classifier version belongs in the
+  ADR-0012 reuse rule; today a correction affects only documents classified
+  after it, which is the intended behavior.

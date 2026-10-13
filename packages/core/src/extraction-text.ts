@@ -5,6 +5,7 @@
  */
 
 import type { DocumentExtraction } from './extraction-schema.js';
+import { tokenizeExtraction } from './identifiers.js';
 
 /**
  * Flatten a structured extraction into text.
@@ -21,4 +22,17 @@ export function extractionText(doc: DocumentExtraction): string {
     }
   }
   return parts.filter((p) => p.trim() !== '').join('. ');
+}
+
+/**
+ * The text Outtray derives from an extraction and embeds: the flattened,
+ * tokenized form, with every identifier replaced by its `[field]`
+ * placeholder (ADR-0011 amendment). Chunks, classifier queries, correction
+ * labels and the classification eval all embed this, so a query and the
+ * examples it is compared with are always the same kind of text.
+ *
+ * Failure modes: none; pure. As `extractionText`, may return ''.
+ */
+export function derivedText(doc: DocumentExtraction): string {
+  return extractionText(tokenizeExtraction(doc));
 }

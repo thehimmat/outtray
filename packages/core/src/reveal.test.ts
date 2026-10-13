@@ -39,6 +39,7 @@ function stored(contentHash: string, path: string, doc: DocumentExtraction | nul
     scannedAt: 1,
     extractorKey: null,
     indexKey: null,
+    userType: null,
   };
 }
 

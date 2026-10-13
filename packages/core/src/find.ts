@@ -12,8 +12,7 @@
 
 import type { ChunkOptions } from './chunk.js';
 import type { EmbeddingProvider } from './embedding-provider.js';
-import { extractionText } from './extraction-text.js';
-import { tokenizeExtraction } from './identifiers.js';
+import { derivedText } from './extraction-text.js';
 import type { ModelProvider } from './model-provider.js';
 import { type Citation, type DocumentText, indexDocuments, search } from './retrieval.js';
 import { type ScanOptions, type ScanReport, scanDirectory } from './scan.js';
@@ -75,7 +74,7 @@ export async function searchReport(
   for (const item of report.items) {
     const doc = item.result.document;
     // Derived text is indexed tokenized, never with a full identifier (ADR-0011).
-    if (doc) docs.push({ id: item.file, text: extractionText(tokenizeExtraction(doc)) });
+    if (doc) docs.push({ id: item.file, text: derivedText(doc) });
   }
   const index = await indexDocuments(embedder, docs, chunk);
   return search(index, embedder, query, k);

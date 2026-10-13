@@ -94,8 +94,28 @@ const MIGRATION_2: Migration = {
   ],
 };
 
+/**
+ * Migration 3: the personalization loop (#67, ADR-0009 amendment 2). A
+ * document can carry the type its user pinned; a correction label records
+ * which document it came from, the tokenized text it was embedded from (so it
+ * can be re-embedded when the embedding model changes, never holding a full
+ * identifier), and which model produced its embedding. Rows written before
+ * this migration read as seeds of unknown model.
+ */
+const MIGRATION_3: Migration = {
+  version: 3,
+  name: 'personalization',
+  statements: [
+    'ALTER TABLE documents ADD COLUMN user_type TEXT',
+    'ALTER TABLE labels ADD COLUMN document_hash TEXT',
+    'ALTER TABLE labels ADD COLUMN text TEXT',
+    'ALTER TABLE labels ADD COLUMN embed_model TEXT',
+    'CREATE INDEX labels_by_document ON labels (document_hash)',
+  ],
+};
+
 /** Every migration, in order. Append only. */
-export const MIGRATIONS: readonly Migration[] = [MIGRATION_1, MIGRATION_2];
+export const MIGRATIONS: readonly Migration[] = [MIGRATION_1, MIGRATION_2, MIGRATION_3];
 
 /** Schema version a store is brought up to at open time. */
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;

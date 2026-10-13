@@ -65,6 +65,7 @@ function document(overrides: Partial<StoredDocument> = {}): StoredDocument {
     scannedAt: 1_753_000_000_000,
     extractorKey: 'qwen3-vl:2b|extract-v1|extract-typed-v1',
     indexKey: 'nomic-embed-text|chunk-v1|tokenize-v1',
+    userType: null,
     ...overrides,
   };
 }
@@ -84,6 +85,9 @@ const label = (overrides: Partial<NewLabel> = {}): NewLabel => ({
   type: 'bill',
   embedding: [0.25, 0.5],
   provenance: 'seed',
+  documentHash: null,
+  text: null,
+  embedModel: 'nomic-embed-text',
   ...overrides,
 });
 
@@ -250,6 +254,80 @@ describe.each([
   it('returns an empty array for an empty label batch', async () => {
     const store = await create();
     expect(await store.addLabels([])).toEqual([]);
+    await store.close();
+  });
+
+  it('round-trips a correction with its document, tokenized text and embedding model', async () => {
+    const store = await create();
+    await store.addLabels([
+      label({
+        type: 'statement',
+        provenance: 'correction',
+        documentHash: 'hash-b',
+        text: 'account_number: [account_number]',
+        embedModel: null,
+        embedding: [],
+      }),
+    ]);
+    expect(await store.listLabels()).toMatchObject([
+      {
+        type: 'statement',
+        documentHash: 'hash-b',
+        text: 'account_number: [account_number]',
+        embedModel: null,
+        embedding: [],
+      },
+    ]);
+    await store.close();
+  });
+
+  it("replaces one document's labels atomically, leaving seeds and other documents", async () => {
+    const store = await create();
+    await store.addLabels([
+      label(),
+      label({ provenance: 'correction', documentHash: 'hash-a', type: 'receipt' }),
+      label({ provenance: 'correction', documentHash: 'hash-b', type: 'bill' }),
+    ]);
+    await store.replaceDocumentLabels('hash-b', [
+      label({ provenance: 'correction', documentHash: 'hash-b', type: 'statement' }),
+    ]);
+    expect((await store.listLabels()).map((l) => [l.documentHash, l.type])).toEqual([
+      [null, 'bill'],
+      ['hash-a', 'receipt'],
+      ['hash-b', 'statement'],
+    ]);
+    await store.replaceDocumentLabels('hash-b', []);
+    expect(await store.listLabels()).toHaveLength(2);
+    await store.close();
+  });
+
+  it('refuses a replacement label that belongs to another document, writing nothing', async () => {
+    const store = await create();
+    await store.addLabels([label({ provenance: 'correction', documentHash: 'hash-b' })]);
+    await expect(
+      store.replaceDocumentLabels('hash-b', [
+        label({ provenance: 'correction', documentHash: 'hash-z' }),
+      ]),
+    ).rejects.toThrow(StorageError);
+    expect(await store.listLabels()).toHaveLength(1);
+    await store.close();
+  });
+
+  it('updates one label embedding and its model, and rejects an unknown id', async () => {
+    const store = await create();
+    const [added] = await store.addLabels([label({ embedModel: null, embedding: [] })]);
+    await store.updateLabelEmbedding(added?.id ?? 0, [0.5, 0.5], 'nomic-embed-text');
+    expect(await store.listLabels()).toMatchObject([
+      { embedding: [0.5, 0.5], embedModel: 'nomic-embed-text' },
+    ]);
+    await expect(store.updateLabelEmbedding(999, [1], 'm')).rejects.toThrow(StorageError);
+    await store.close();
+  });
+
+  it('round-trips the type a user pinned on a document', async () => {
+    const store = await create();
+    await store.putDocument(document({ userType: 'statement' }));
+    expect(await store.getDocument('hash-b')).toMatchObject({ userType: 'statement' });
     await store.close();
   });
 
@@ -433,5 +511,7 @@ describe.each([
     await expect(store.purgeIdentifiers()).rejects.toThrow(StorageError);
     await expect(store.countIdentifiers()).rejects.toThrow(StorageError);
     await expect(store.identifierFields('hash-b')).rejects.toThrow(StorageError);
+    await expect(store.replaceDocumentLabels('hash-b', [])).rejects.toThrow(StorageError);
+    await expect(store.updateLabelEmbedding(1, [1], 'm')).rejects.toThrow(StorageError);
   });
 });

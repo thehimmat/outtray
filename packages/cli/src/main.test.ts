@@ -20,6 +20,7 @@ import {
   formatCitations,
   formatReport,
   run,
+  runCorrect,
   runReveal,
   runSettings,
   scanFolder,
@@ -500,6 +501,35 @@ describe('scanFolder (incremental, ADR-0012)', () => {
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
+  it('after outtray correct, the next scan re-reads the file under the pinned type and keeps the pin', async () => {
+    const { pile, store, deps, models } = await setup();
+    await scanFolder(pile, models, deps);
+    const err = captureStderr();
+    const out = captureStdout();
+    expect(await runCorrect([join(pile, 'bill.png'), 'statement'], deps)).toBe(0);
+    expect(out.mock.calls.join('')).toMatch(/bill\.png is now marked statement/);
+    expect(err.mock.calls.join('')).toBe('');
+
+    models.provider.calls = 0;
+    const again = await scanFolder(pile, models, deps);
+    expect(models.provider.calls).toBe(1);
+    const bill = again.report.items.find((i) => i.file === 'bill.png');
+    expect(bill?.pinned).toBe(true);
+    expect(bill?.reconciliation).toMatchObject({ status: 'user', effectiveType: 'statement' });
+    const storedBill = (await store.listDocuments()).find((d) => d.path.endsWith('bill.png'));
+    expect(storedBill?.userType).toBe('statement');
+    // Embedded lazily: nothing new needed classifying yet.
+    expect(await store.listLabels()).toMatchObject([
+      { type: 'statement', provenance: 'correction', embedModel: null },
+    ]);
+
+    await writeFile(join(pile, 'another.png'), 'B-other');
+    await scanFolder(pile, models, deps);
+    expect(await store.listLabels()).toMatchObject([
+      { type: 'statement', provenance: 'correction', embedModel: 'nomic-embed-text' },
+    ]);
+  });
+
   it('shows the first-run notice when this scan created the store', async () => {
     const { pile, deps, models } = await setup({ databaseExists: false });
     const { notes } = await scanFolder(pile, models, deps);
@@ -742,6 +772,7 @@ async function vaultFixture(options: { databaseExists?: boolean } = {}) {
     scannedAt: 1,
     extractorKey: null,
     indexKey: null,
+    userType: null,
   });
   return {
     dir,
@@ -880,6 +911,66 @@ describe('outtray reveal', () => {
     const err = captureStderr();
     expect(await run(['reveal'])).toBe(1);
     expect(err.mock.calls.join('')).toMatch(/usage: outtray reveal <file> <field>/);
+  });
+});
+
+describe('outtray correct', () => {
+  let dir = '';
+  afterEach(async () => {
+    if (dir) await rm(dir, { recursive: true, force: true });
+  });
+
+  it('pins the type and says the next scan re-reads it when the extraction is of another type', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    const out = captureStdout();
+    expect(await runCorrect([f.passportFile, 'statement'], f.deps)).toBe(0);
+    expect(out.mock.calls.join('')).toMatch(
+      /passport\.png is now marked statement\. The next scan reads it again as statement\./,
+    );
+    expect(await f.store.getDocument(f.hash)).toMatchObject({ userType: 'statement' });
+    expect(f.store.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('confirms without a re-read when the type already matches', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    const out = captureStdout();
+    expect(await runCorrect([f.passportFile, 'id_document'], f.deps)).toBe(0);
+    expect(out.mock.calls.join('')).toMatch(/passport\.png is now marked id_document\.\n/);
+    expect(out.mock.calls.join('')).not.toMatch(/next scan/);
+  });
+
+  it('rejects a type that is not a document type, or unknown, before opening the store', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    const open = vi.fn(f.deps.openStorage);
+    const err = captureStderr();
+    expect(await runCorrect([f.passportFile, 'invoice'], { ...f.deps, openStorage: open })).toBe(1);
+    expect(await runCorrect([f.passportFile, 'unknown'], { ...f.deps, openStorage: open })).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/letter, bill, receipt, id_document, contract/);
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it('does not create a store, and reports a file never scanned', async () => {
+    const f = await vaultFixture({ databaseExists: false });
+    dir = f.dir;
+    const err = captureStderr();
+    expect(await runCorrect([f.passportFile, 'bill'], f.deps)).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/outtray scan/);
+
+    const g = await vaultFixture();
+    const other = join(g.dir, 'other.png');
+    await writeFile(other, 'other bytes');
+    expect(await runCorrect([other, 'bill'], g.deps)).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/No scanned document matches/);
+    await rm(g.dir, { recursive: true, force: true });
+  });
+
+  it('prints usage when arguments are missing', async () => {
+    const err = captureStderr();
+    expect(await run(['correct'])).toBe(1);
+    expect(err.mock.calls.join('')).toMatch(/usage: outtray correct <file> <type>/);
   });
 });
 

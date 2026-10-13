@@ -71,7 +71,7 @@ export {
   documentJsonSchemaFor,
   validateExtraction,
 } from './extraction-schema.js';
-export { extractionText } from './extraction-text.js';
+export { derivedText, extractionText } from './extraction-text.js';
 export {
   type FindOptions,
   type FindResult,
@@ -124,12 +124,19 @@ export {
   setIdentifierStorage,
 } from './persist.js';
 export {
+  type CorrectionOutcome,
+  correctDocument,
+  personalClassifier,
+  reuseOrPin,
+} from './personalize.js';
+export {
   applyCorrection,
   CLASSIFIER_K,
   CONFIDENCE_THRESHOLD,
   type Reconciliation,
   type ReconciliationStatus,
   reconcileType,
+  userVerdict,
 } from './reconcile.js';
 export {
   type Citation,
@@ -149,6 +156,7 @@ export {
 export {
   type ClassifyStageOptions,
   contentHashOf,
+  type ReuseAnswer,
   type ScanItem,
   type ScanOptions,
   type ScanReport,

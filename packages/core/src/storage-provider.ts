@@ -55,6 +55,12 @@ export interface StoredDocument {
    * are written, so null is always the safe reading.
    */
   indexKey: string | null;
+  /**
+   * The type the user pinned with `outtray correct` (#67), or null. A pinned
+   * type wins over the classifier on every later scan, and a document whose
+   * extraction is of another type is extracted again under the pinned type.
+   */
+  userType: DocumentType | null;
 }
 
 /**
@@ -86,6 +92,18 @@ export interface StoredLabel {
   /** The example's embedding. Round-trips through float32; see `addLabels`. */
   embedding: number[];
   provenance: LabelProvenance;
+  /** The document a correction came from, or null for a seed. */
+  documentHash: string | null;
+  /**
+   * The tokenized text the embedding was made from, so it can be re-embedded
+   * under another model. Never a full identifier (ADR-0011 amendment).
+   */
+  text: string | null;
+  /**
+   * The embedding model that produced `embedding`, or null when it has not
+   * been embedded yet (then `embedding` is empty).
+   */
+  embedModel: string | null;
 }
 
 /** A label before the store has assigned it an id. */
@@ -168,6 +186,26 @@ export interface StorageProvider {
    * are two data points.
    */
   addLabels(labels: NewLabel[]): Promise<StoredLabel[]>;
+
+  /**
+   * Replace every label that came from one document, atomically. This is how a
+   * correction is recorded: correcting the same document again replaces the
+   * earlier correction instead of leaving two contradictory examples.
+   *
+   * Failure modes: rejects with `StorageError` if a label's `documentHash` is
+   * not `documentHash`, or a provenance is unknown. Rejects if the store is
+   * closed. Nothing is written when it rejects. An empty batch clears them.
+   */
+  replaceDocumentLabels(documentHash: string, labels: NewLabel[]): Promise<void>;
+
+  /**
+   * Set one label's embedding and the model that produced it, after a
+   * re-embed.
+   *
+   * Failure modes: rejects with `StorageError` if no label has `id`. Rejects
+   * if the store is closed.
+   */
+  updateLabelEmbedding(id: number, embedding: number[], embedModel: string): Promise<void>;
 
   /**
    * Every label, ordered by id, so seeds precede the corrections that followed.

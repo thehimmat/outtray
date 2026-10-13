@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import type { Classification } from './classifier.js';
 import type { ExtractResult } from './extract.js';
 import type { DocumentExtraction, DocumentType } from './extraction-schema.js';
-import { applyCorrection, CLASSIFIER_K, CONFIDENCE_THRESHOLD, reconcileType } from './reconcile.js';
+import {
+  applyCorrection,
+  CLASSIFIER_K,
+  CONFIDENCE_THRESHOLD,
+  reconcileType,
+  userVerdict,
+} from './reconcile.js';
 
 function cls(type: DocumentType, confidence: number): Classification {
   return { type, confidence, votes: { [type]: confidence } };
@@ -116,5 +122,28 @@ describe('applyCorrection', () => {
   it('never upgrades a non-disputed reconciliation', () => {
     const confirmed = reconcileType('bill', cls('bill', 0.9));
     expect(applyCorrection(confirmed, retryWith(BILL_DOC))).toBe(confirmed);
+  });
+});
+
+describe('userVerdict (#67)', () => {
+  it('trusts the type the user pinned, with no review, keeping provenance', () => {
+    const classification = { type: 'bill' as const, confidence: 0.9, votes: { bill: 2 } };
+    expect(userVerdict('statement', 'bill', classification)).toEqual({
+      effectiveType: 'statement',
+      status: 'user',
+      review: false,
+      vlmType: 'bill',
+      classification,
+    });
+  });
+
+  it('still asks for review when there is no extraction under the pinned type', () => {
+    expect(userVerdict('statement', null)).toMatchObject({
+      effectiveType: 'statement',
+      status: 'user',
+      review: true,
+      vlmType: null,
+      classification: null,
+    });
   });
 });

@@ -49,6 +49,7 @@ function stored(overrides: Partial<StoredDocument> = {}): StoredDocument {
     scannedAt: 1,
     extractorKey: EXTRACTOR,
     indexKey: INDEX,
+    userType: null,
     ...overrides,
   };
 }

@@ -17,8 +17,8 @@
 import { CHUNKER_VERSION, type ChunkOptions, chunkText } from './chunk.js';
 import type { EmbeddingProvider } from './embedding-provider.js';
 import { PROMPT_VERSION, TYPED_PROMPT_VERSION } from './extract.js';
-import { extractionText } from './extraction-text.js';
-import { IDENTIFIER_FIELDS, TOKENIZER_VERSION, tokenizeExtraction } from './identifiers.js';
+import { derivedText } from './extraction-text.js';
+import { IDENTIFIER_FIELDS, TOKENIZER_VERSION } from './identifiers.js';
 import { reconcileType } from './reconcile.js';
 import type { Citation } from './retrieval.js';
 import type { ScanItem, ScanReport } from './scan.js';
@@ -131,7 +131,7 @@ export async function buildIndex(
     const doc = item.result.document;
     if (item.reused || !doc) continue;
     // Derived text is built tokenized, never with a full identifier (ADR-0011).
-    for (const piece of chunkText(extractionText(tokenizeExtraction(doc)), options)) {
+    for (const piece of chunkText(derivedText(doc), options)) {
       pending.push({ hash: item.contentHash, index: piece.index, text: piece.text });
     }
   }

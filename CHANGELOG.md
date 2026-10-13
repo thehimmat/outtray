@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `outtray correct <file> <type>` marks a document's type yourself (#67,
+  ADR-0009 amendment 2). Your type wins over the extractor and classifier on
+  every later scan; if the document was read as another type, the next scan
+  reads it again as yours so the right fields are extracted. Each correction
+  becomes an example the classifier learns from, stored in the encrypted
+  database from tokenized text (never an ID number or its last four). Needs
+  no model; the example is embedded the next time a scan classifies
+  something.
+
 - `outtray scan`, `outtray actions` and `outtray find` are incremental
   (ADR-0012, #43). A file whose contents, extraction model and prompts are
   unchanged since its last scan is read from the encrypted store with no

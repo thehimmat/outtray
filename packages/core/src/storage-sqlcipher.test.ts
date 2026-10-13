@@ -47,6 +47,7 @@ describe('openSqlcipherStorage on-disk format', () => {
       scannedAt: 1,
       extractorKey: null,
       indexKey: null,
+      userType: null,
     });
     await store.close();
 
@@ -104,6 +105,7 @@ describe('openSqlcipherStorage key custody', () => {
       scannedAt: 7,
       extractorKey: null,
       indexKey: null,
+      userType: null,
     });
     await first.close();
 
@@ -178,6 +180,7 @@ describe('openSqlcipherStorage migrations', () => {
       scannedAt: 1,
       extractorKey: null,
       indexKey: null,
+      userType: null,
     });
     await store.putChunks('hash-a', [
       { documentHash: 'hash-a', chunkIndex: 0, page: null, text: 'x', embedding: [1, 0] },
@@ -236,6 +239,7 @@ describe('migration 2 (ADR-0012)', () => {
       path: '/docs/old.png',
       extractorKey: null,
       indexKey: null,
+      userType: null,
     });
     await store.close();
   });
@@ -254,6 +258,7 @@ describe('embedding round trip', () => {
       scannedAt: 1,
       extractorKey: null,
       indexKey: null,
+      userType: null,
     });
     const embedding = Array.from({ length: 768 }, (_, i) => Math.sin(i) / 3);
     await store.putChunks('hash-a', [
@@ -279,6 +284,7 @@ describe('embedding round trip', () => {
       scannedAt: 1,
       extractorKey: null,
       indexKey: null,
+      userType: null,
     });
     await expect(
       store.putChunks('hash-a', [

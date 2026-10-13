@@ -118,6 +118,27 @@ export class MemoryStorage implements StorageProvider {
     return stored.map(clone);
   }
 
+  async replaceDocumentLabels(documentHash: string, labels: NewLabel[]): Promise<void> {
+    this.#assertOpen();
+    for (const label of labels) {
+      asLabelProvenance(label.provenance);
+      if (label.documentHash !== documentHash) {
+        throw new StorageError(`Label belongs to ${label.documentHash}, not ${documentHash}.`);
+      }
+    }
+    const kept = this.#labels.filter((l) => l.documentHash !== documentHash);
+    this.#labels.length = 0;
+    this.#labels.push(...kept, ...labels.map((l) => ({ ...clone(l), id: this.#nextLabelId++ })));
+  }
+
+  async updateLabelEmbedding(id: number, embedding: number[], embedModel: string): Promise<void> {
+    this.#assertOpen();
+    const label = this.#labels.find((l) => l.id === id);
+    if (!label) throw new StorageError(`No label ${id}.`);
+    label.embedding = [...embedding];
+    label.embedModel = embedModel;
+  }
+
   async listLabels(): Promise<StoredLabel[]> {
     this.#assertOpen();
     return [...this.#labels].sort((a, b) => a.id - b.id).map(clone);

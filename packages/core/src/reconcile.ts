@@ -40,7 +40,9 @@ export type ReconciliationStatus =
   /** Classifier disagrees without confidence; neither label is trusted. */
   | 'low_confidence'
   /** No classifier verdict: stage not configured, failed, or extraction invalid. */
-  | 'unclassified';
+  | 'unclassified'
+  /** The user pinned the type with `outtray correct` (#67); it wins over both labels. */
+  | 'user';
 
 /** The pipeline's verdict on one document's type, consumed by the action layer. */
 export interface Reconciliation {
@@ -120,4 +122,27 @@ export function applyCorrection(
   if (reconciliation.status !== 'disputed' || !target) return reconciliation;
   if (!retry.valid || retry.document?.type !== target) return reconciliation;
   return { ...reconciliation, effectiveType: target, status: 'corrected', review: false };
+}
+
+/**
+ * The verdict for a document whose type the user pinned (#67, ADR-0009
+ * amendment 2). The user's type is trusted outright; review is still asked
+ * for when there is no extraction under it yet (the typed re-extraction
+ * failed), because then the fields the action layer reads are missing. The
+ * VLM label and classifier verdict are kept as provenance.
+ *
+ * Failure modes: none; pure.
+ */
+export function userVerdict(
+  userType: DocumentType,
+  vlmType: DocumentType | null,
+  classification: Classification | null = null,
+): Reconciliation {
+  return {
+    effectiveType: userType,
+    status: 'user',
+    review: vlmType === null,
+    vlmType,
+    classification,
+  };
 }

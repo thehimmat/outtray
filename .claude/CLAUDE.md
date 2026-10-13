@@ -29,7 +29,11 @@ When those conflict, favor the showcase.
   with no model call; chunks are built on the scan write path from the
   tokenized full extraction (the store only holds redacted ones) and `find`
   ranks stored chunks, falling back to an in-memory index without a store.
-  The classifier does not read the store yet (#67). The ADR-0011 amendment (accepted 2026-09-30, #94) fixes the
+  The classifier is the seeds plus the user's corrections from the store
+  (`outtray correct`, #67, ADR-0009 amendment 2): a pinned type is sticky
+  (`user` reconciliation status) and forces one typed re-extraction when the
+  stored extraction is of another type; labels are embedded lazily from
+  `derivedText` (tokenized) and re-embedded on a model change. The ADR-0011 amendment (accepted 2026-09-30, #94) fixes the
   write path: derived text gets a mode-independent `[field]` placeholder,
   `extraction_json` stores the redacted form in both modes, and `scan`
   persists documents in #79. #79 (identifier vault and tokenizer) is done
@@ -37,7 +41,7 @@ When those conflict, favor the showcase.
   scan persistence; `outtray reveal`, `outtray settings` and the disclosure
   text in `disclosure.ts`). It had to land before #43 because the tokenizer
   sits on the chunk write path and re-tokenizing later invalidates stored
-  embeddings. #43 (index persistence) is done. Next: #67 (label store). Extracted identifiers get one canonical encrypted row, are
+  embeddings. #43 (index persistence) and #67 (label store) are done. Extracted identifiers get one canonical encrypted row, are
   tokenized out of derived chunk text, are redacted to last-four in every
   default output, need an explicit per-item act to reveal, and are **off by
   default**. Threat-model assessment in `docs/THREAT_MODEL.md`. #75 tracks
@@ -51,8 +55,8 @@ When those conflict, favor the showcase.
   scan with reconciliation verdicts plus one typed re-extraction on confident
   disagreement (`extract-typed-v1`). Scoreboard: VLM 8/10, classifier 10/10,
   reconciled 10/10 (`docs/evals/classification-scoreboard.md`; dev-run, #52
-  tracks CI replay). Remaining personalization scope of #30 is #67 (user
-  corrections + persisted label store; storage decision shared with #6/#43).
+  tracks CI replay). The personalization scope of #30 landed with #67;
+  measuring accuracy with N corrections is #108 (needs the dev machine).
 - **Phase 2 complete**: retrieval plumbing (`EmbeddingProvider` +
   `OllamaEmbeddingProvider`, chunking, `VectorIndex` brute-force cosine per
   ADR-0005, cited `retrieve`/`search`), demoed via `outtray find <dir>
