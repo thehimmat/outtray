@@ -80,7 +80,10 @@ function label(row: unknown): StoredLabel {
 }
 
 /**
- * Open the store on the far side of `transport`.
+ * Open the store on the far side of `transport`. `options` are for transports
+ * that take the location and key from the caller (the stdio test binary);
+ * the desktop app omits them, because its Rust side reads the key from the
+ * Keychain and it never reaches JavaScript (ADR-0013).
  *
  * Failure modes: rejects with `StorageCorruptError`, `DatabaseKeyError`,
  * `StorageFormatError` or `StorageMigrationError` as the TypeScript store
@@ -88,14 +91,15 @@ function label(row: unknown): StoredLabel {
  */
 export async function openCommandStorage(
   transport: StorageTransport,
-  options: { path: string; keyHex: string },
+  options: { path?: string; keyHex?: string } = {},
 ): Promise<CommandStorage> {
+  const path = options.path ?? 'the encrypted store';
   try {
-    await transport('open', { path: options.path, keyHex: options.keyHex });
+    await transport('open', { ...options });
   } catch (failure) {
-    throw toStorageError(failure, options.path);
+    throw toStorageError(failure, path);
   }
-  return new CommandStorage(transport, options.path);
+  return new CommandStorage(transport, path);
 }
 
 /** The store, reached through commands. Construct it with `openCommandStorage`. */
