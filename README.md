@@ -79,9 +79,9 @@ one — most piles are ordinary, and ordinary piles are the point.
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 0 | Scaffold, CI, ADRs, threat model, eval methodology | Done |
-| 1 | Extraction core: file in, typed fields + confidence out; eval harness, record/replay CI, scoreboard | Next |
-| 2 | Retrieval plumbing: local embeddings, similarity search, citations (timeboxed) | |
-| 3 | Action layer + approval queue; Tauri shell enters here; demo video | |
+| 1 | Extraction core: file in, typed fields + confidence out; eval harness, record/replay CI, scoreboard | Done |
+| 2 | Retrieval plumbing: local embeddings, similarity search, citations (timeboxed) | Done |
+| 3 | Action layer + approval queue; Tauri shell enters here; demo video | In progress: action layer v1 and the encrypted store ship in the CLI; index and label persistence next, then the shell |
 | 4 | Eval deepening: held-out split, calibration, cost dashboard, degradation paths | |
 | 5 | Packaging: signed build, onboarding, BYO cloud key, landing page | |
 | 6+ | Explicitly deferred: mobile, web, sync, Windows/Linux, monitoring | |
