@@ -296,3 +296,32 @@ taken during a commit can be torn; restored, it opens with
 to delete it and re-scan. That is the correct recovery, because the store is
 a derived cache and the documents themselves are the backup that matters.
 Not exercised: an actual Time Machine snapshot on the Air.
+
+## Third run (2026-10-13): the Rust side reads and writes the shipped store (#75)
+
+The first run proved format interop against the Zetetic CLI. This run proves
+the Phase 3 path itself: `rusqlite` with `bundled-sqlcipher-vendored-openssl`
+(the build a Tauri app links), against a store written by the shipped Node
+code at schema version 3, on the Linux container.
+
+Spike: `spike/rust-interop/` (`src/main.rs`, `node-side.mjs`, `Cargo.lock`).
+
+| Check | Result |
+| --- | --- |
+| Rust opens the Node-written store with only `PRAGMA key = "x'<64 hex>'"` | Yes. No `legacy`, `cipher` or KDF pragmas needed: upstream SQLCipher 4 defaults are what `legacy = 4` selects on the Node side |
+| What SQLCipher reports from Rust | `cipher_version` 4.6.1 community, `cipher_page_size` 4096, `user_version` 3 |
+| Rust reads every table the product writes | Documents with their version keys, a 768-dim float32 chunk embedding, labels |
+| Node reads a row Rust wrote | Yes, and Node's open-time format assertions (pragmas and on-disk header) still pass afterwards |
+| Wrong key from Rust | Fails with `NotADatabase`, never a silent empty database |
+| Build cost | About 2.5 minutes for a clean release build with vendored OpenSSL |
+
+**What this settles:** the shared-file design survives contact with Rust.
+Phase 3 can read the store from the Tauri side; the Node-sidecar fallback
+(ADR-0001) is not needed for format reasons.
+
+**Still open, and needs the Air plus an Apple Developer ID:** whether the
+bundled, statically linked SQLCipher and OpenSSL sign and notarize cleanly in
+a Developer ID build (ADR-0007's distribution decision). The Developer
+Program is a paid account, which is an owner decision already tracked in #12.
+The Keychain-to-Rust key handoff is also unexercised (the key was passed as an
+argument here, for the spike only).
