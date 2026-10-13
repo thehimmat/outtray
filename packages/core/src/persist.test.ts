@@ -81,6 +81,7 @@ describe('persistScan', () => {
       scannedAt: NOW,
       extractorKey: null,
       indexKey: null,
+      userType: null,
     });
   });
 
@@ -198,6 +199,7 @@ describe('persistScan with the incremental index (ADR-0012)', () => {
     expect(await store.getDocument('hash-bill.png')).toMatchObject({
       extractorKey: EXTRACTOR,
       indexKey: INDEX,
+      userType: null,
     });
     expect((await store.listChunks()).map((c) => c.text)).toEqual(['dmv']);
     expect(summary).toMatchObject({ documents: 1, indexed: 1, reused: 0 });

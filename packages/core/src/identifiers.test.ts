@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DocumentExtraction } from './extraction-schema.js';
-import { extractionText } from './extraction-text.js';
+import { derivedText, extractionText } from './extraction-text.js';
 import {
   canonicalIdentifier,
   identifierOf,
@@ -226,5 +226,12 @@ describe('redaction and tokenization are idempotent (ADR-0012 section 5)', () =>
   it('tokenizing a tokenized extraction changes nothing', () => {
     const once = tokenizeExtraction(PASSPORT);
     expect(tokenizeExtraction(once)).toEqual(once);
+  });
+});
+
+describe('derivedText', () => {
+  it('is the flattened tokenized extraction, with no identifier value', () => {
+    expect(derivedText(PASSPORT)).toBe(extractionText(tokenizeExtraction(PASSPORT)));
+    expect(canonicalIdentifier(derivedText(PASSPORT))).not.toContain('1234567');
   });
 });

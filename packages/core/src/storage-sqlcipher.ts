@@ -64,6 +64,7 @@ interface DocumentRow {
   scanned_at: number;
   extractor_key: string | null;
   index_key: string | null;
+  user_type: string | null;
 }
 
 /** A `chunks` row as SQLite returns it. */
@@ -81,6 +82,9 @@ interface LabelRow {
   type: string;
   embedding: Uint8Array;
   provenance: string;
+  document_hash: string | null;
+  text: string | null;
+  embed_model: string | null;
 }
 
 export interface OpenSqlcipherStorageOptions {
@@ -231,8 +235,8 @@ export class SqlcipherStorage implements StorageProvider {
     db.prepare(
       `INSERT INTO documents
          (content_hash, path, type, extraction_json, reconciliation_json, scanned_at,
-          extractor_key, index_key)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          extractor_key, index_key, user_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(content_hash) DO UPDATE SET
          path = excluded.path,
          type = excluded.type,
@@ -240,7 +244,8 @@ export class SqlcipherStorage implements StorageProvider {
          reconciliation_json = excluded.reconciliation_json,
          scanned_at = excluded.scanned_at,
          extractor_key = excluded.extractor_key,
-         index_key = excluded.index_key`,
+         index_key = excluded.index_key,
+         user_type = excluded.user_type`,
     ).run(
       document.contentHash,
       document.path,
@@ -250,6 +255,7 @@ export class SqlcipherStorage implements StorageProvider {
       document.scannedAt,
       document.extractorKey,
       document.indexKey,
+      document.userType,
     );
   }
 
@@ -321,16 +327,50 @@ export class SqlcipherStorage implements StorageProvider {
       provenance: asLabelProvenance(label.provenance),
       embedding: encodeEmbedding(label.embedding),
     }));
-    const insert = db.prepare(
-      'INSERT INTO labels (type, embedding, provenance) VALUES (?, ?, ?) RETURNING id',
-    );
+    const insert = insertLabelStatement(db);
     const insertAll = db.transaction(() =>
       encoded.map(({ label, provenance, embedding }) => {
-        const { id } = insert.get(label.type, embedding, provenance) as { id: number };
+        const { id } = insert.get(
+          label.type,
+          embedding,
+          provenance,
+          label.documentHash,
+          label.text,
+          label.embedModel,
+        ) as { id: number };
         return { ...label, id };
       }),
     );
     return insertAll();
+  }
+
+  async replaceDocumentLabels(documentHash: string, labels: NewLabel[]): Promise<void> {
+    const db = this.#open();
+    const encoded = labels.map((label) => {
+      if (label.documentHash !== documentHash) {
+        throw new StorageError(`Label belongs to ${label.documentHash}, not ${documentHash}.`);
+      }
+      return {
+        label,
+        provenance: asLabelProvenance(label.provenance),
+        embedding: encodeEmbedding(label.embedding),
+      };
+    });
+    const insert = insertLabelStatement(db);
+    db.transaction(() => {
+      db.prepare('DELETE FROM labels WHERE document_hash = ?').run(documentHash);
+      for (const { label, provenance, embedding } of encoded) {
+        insert.get(label.type, embedding, provenance, documentHash, label.text, label.embedModel);
+      }
+    })();
+  }
+
+  async updateLabelEmbedding(id: number, embedding: number[], embedModel: string): Promise<void> {
+    const db = this.#open();
+    const changes = db
+      .prepare('UPDATE labels SET embedding = ?, embed_model = ? WHERE id = ?')
+      .run(encodeEmbedding(embedding), embedModel, id).changes;
+    if (changes === 0) throw new StorageError(`No label ${id}.`);
   }
 
   async listLabels(): Promise<StoredLabel[]> {
@@ -341,6 +381,9 @@ export class SqlcipherStorage implements StorageProvider {
       type: asDocumentType(row.type),
       embedding: decodeEmbedding(row.embedding),
       provenance: asLabelProvenance(row.provenance),
+      documentHash: row.document_hash,
+      text: row.text,
+      embedModel: row.embed_model,
     }));
   }
 
@@ -414,6 +457,14 @@ export class SqlcipherStorage implements StorageProvider {
   }
 }
 
+/** The one INSERT every label write goes through, so the column list cannot drift. */
+function insertLabelStatement(db: Db) {
+  return db.prepare(
+    `INSERT INTO labels (type, embedding, provenance, document_hash, text, embed_model)
+     VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+  );
+}
+
 /** Delete identifiers no document mentions any more, so no copy outlives its last reference. */
 function deleteOrphanIdentifiers(db: Db): void {
   db.prepare(
@@ -432,5 +483,6 @@ function toDocument(row: DocumentRow): StoredDocument {
     scannedAt: row.scanned_at,
     extractorKey: row.extractor_key,
     indexKey: row.index_key,
+    userType: row.user_type === null ? null : asDocumentType(row.user_type),
   };
 }

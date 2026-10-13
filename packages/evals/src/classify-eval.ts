@@ -17,9 +17,9 @@ import {
   buildClassifier,
   CLASSIFIER_K,
   classifyText,
+  derivedText,
   type EmbeddingProvider,
   extract,
-  extractionText,
   type ModelProvider,
   reconcileType,
 } from '@outtray/core';
@@ -74,7 +74,7 @@ export async function classifyEval(
     const result = await extract(model, { images: [fixture.imageBase64], model: options.model });
     const doc = result.document;
     const vlm = doc ? doc.type : 'invalid';
-    const text = doc ? extractionText(doc) : '';
+    const text = doc ? derivedText(doc) : '';
     const classification = text
       ? await classifyText(classifier, embedder, text, CLASSIFIER_K)
       : null;

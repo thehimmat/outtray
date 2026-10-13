@@ -14,11 +14,15 @@
  */
 
 import { stat } from 'node:fs/promises';
+import { basename } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import {
   type ActionQueue,
   buildIndex,
+  correctDocument,
+  DOCUMENT_TYPES,
+  type DocumentType,
   defaultConfigPath,
   defaultDatabasePath,
   type EmbeddingProvider,
@@ -35,11 +39,11 @@ import {
   OllamaProvider,
   openSqlcipherStorage,
   persistScan,
+  personalClassifier,
   planActions,
   readSettings,
   redactExtraction,
-  reusableDocument,
-  reusedItem,
+  reuseOrPin,
   revealIdentifier,
   type ScanItem,
   type ScanReport,
@@ -68,6 +72,8 @@ Usage:
                               Print one stored ID number in full (id_number, policy_number,
                               account_number); needs identifier storage on. --to-pipe
                               allows output to a pipe or file
+  outtray correct <file> <type>
+                              Mark a document's type yourself; Outtray learns from it
   outtray settings            Show settings and what identifier storage means
   outtray settings identifier-storage on|off [--yes]
                               Remember full ID numbers, or forget them (off by default)
@@ -89,6 +95,10 @@ function typeTag(doc: { type: string }, reconciliation: ScanItem['reconciliation
       return `unknown, type unclear (vlm ${doc.type} vs classifier ${c?.type} ${c?.confidence.toFixed(2)}), needs review`;
     case 'unclassified':
       return doc.type;
+    case 'user':
+      return reconciliation.review
+        ? `${reconciliation.effectiveType}, set by you, could not be read as one yet, needs review`
+        : `${reconciliation.effectiveType}, set by you`;
   }
 }
 
@@ -326,14 +336,15 @@ export async function scanFolder(
   try {
     report = await scanDirectory(models.provider, dir, {
       model: EXTRACT_MODEL,
-      classify: { embedder: models.embedder },
+      classify: {
+        embedder: models.embedder,
+        // Seeds plus the user's corrections (#67), built only if needed.
+        ...(store
+          ? { classifier: () => personalClassifier(store, models.embedder, EMBED_MODEL) }
+          : {}),
+      },
       ...(store
-        ? {
-            reuse: async (file: string, hash: string) => {
-              const doc = await reusableDocument(store, hash, keys);
-              return doc ? reusedItem(file, doc) : null;
-            },
-          }
+        ? { reuse: (file: string, hash: string) => reuseOrPin(store, file, hash, keys) }
         : {}),
     });
   } catch (error) {
@@ -490,6 +501,68 @@ export async function runReveal(
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     process.stderr.write(`reveal failed: ${detail}\n`);
+    return 1;
+  } finally {
+    await storage?.close();
+  }
+}
+
+/** Types a user can pin: every document type except `unknown`. */
+const PINNABLE_TYPES: readonly DocumentType[] = DOCUMENT_TYPES.filter((t) => t !== 'unknown');
+
+/**
+ * `outtray correct <file> <type>`: pin a document's type (#67). The pin wins
+ * over the classifier on every later scan; the correction becomes a labeled
+ * example the classifier learns from; and when the stored extraction is of
+ * another type, the next scan reads the document again under the pinned one.
+ * Needs no model.
+ *
+ * Failure modes: exits 1 without opening the store for bad arguments or when
+ * no store exists. Exits 1 when the file matches no stored document or the
+ * store cannot be opened or written. The store is closed on every path.
+ */
+export async function runCorrect(
+  args: readonly string[],
+  deps: StoreDeps | (() => StoreDeps) = defaultStoreDeps,
+): Promise<number> {
+  const [file, type] = args;
+  if (!file || !type) {
+    process.stderr.write('usage: outtray correct <file> <type>\n');
+    return 1;
+  }
+  const pinned = PINNABLE_TYPES.find((t) => t === type);
+  if (!pinned) {
+    process.stderr.write(
+      `Not a document type: ${type}. Use one of: ${PINNABLE_TYPES.join(', ')}.\n`,
+    );
+    return 1;
+  }
+
+  let storage: StorageProvider | null = null;
+  try {
+    const { databaseExists, openStorage } = resolveDeps(deps);
+    if (!(await databaseExists())) {
+      process.stderr.write('Nothing has been saved yet; run `outtray scan <dir>` first.\n');
+      return 1;
+    }
+    storage = await openStorage();
+    const document = await locateDocument(storage, file);
+    if (document === null) {
+      process.stderr.write(
+        `No scanned document matches ${file}. Scan its folder with \`outtray scan\` first.\n`,
+      );
+      return 1;
+    }
+    const outcome = await correctDocument(storage, document, pinned);
+    const name = basename(file);
+    const reread = outcome.reextract ? ` The next scan reads it again as ${pinned}.` : '';
+    const learned = outcome.learned
+      ? 'Outtray will use it as an example for documents like it.\n'
+      : '';
+    process.stdout.write(`${name} is now marked ${pinned}.${reread}\n${learned}`);
+    return 0;
+  } catch (error) {
+    process.stderr.write(`correct failed: ${messageOf(error)}\n`);
     return 1;
   } finally {
     await storage?.close();
@@ -702,6 +775,8 @@ export async function run(argv: readonly string[]): Promise<number> {
       return runFind(rest);
     case 'reveal':
       return runReveal(rest);
+    case 'correct':
+      return runCorrect(rest);
     case 'settings':
       return runSettings(rest);
     default:

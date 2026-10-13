@@ -77,6 +77,7 @@ export async function persistScan(
   let indexed = 0;
   for (const { file, contentHash, result, reconciliation, reused: isReused } of report.items) {
     const doc = result.document;
+    const prior = await storage.getDocument(contentHash);
     const row = {
       contentHash,
       path: resolve(options.dir, file),
@@ -86,13 +87,14 @@ export async function persistScan(
       reconciliation: reconciliation.status === 'unclassified' ? null : reconciliation,
       scannedAt,
       extractorKey: options.extractorKey ?? null,
+      // A type the user pinned outlives every re-scan (#67).
+      userType: prior?.userType ?? null,
     };
 
     if (isReused) {
       // Reuse means both keys matched (ADR-0012 section 2): only the path and
       // scan time are new. Chunks and the vault were written when it was
       // extracted, and a redacted extraction has nothing left to vault.
-      const prior = await storage.getDocument(contentHash);
       await storage.putDocument({
         ...row,
         extractorKey: prior?.extractorKey ?? null,

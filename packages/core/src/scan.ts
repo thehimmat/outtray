@@ -29,7 +29,8 @@ import type { TypeClassifier } from './classifier.js';
 import { buildClassifier } from './classifier-seeds.js';
 import type { EmbeddingProvider } from './embedding-provider.js';
 import { type ExtractResult, extract } from './extract.js';
-import { extractionText } from './extraction-text.js';
+import type { DocumentType } from './extraction-schema.js';
+import { derivedText } from './extraction-text.js';
 import type { ModelProvider } from './model-provider.js';
 import {
   applyCorrection,
@@ -37,6 +38,7 @@ import {
   CONFIDENCE_THRESHOLD,
   type Reconciliation,
   reconcileType,
+  userVerdict,
 } from './reconcile.js';
 
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp']);
@@ -60,7 +62,21 @@ export interface ScanItem {
    * extraction, and it skipped classification and typed re-extraction.
    */
   reused?: true;
+  /**
+   * Set when the user pinned this document's type (#67): it was extracted
+   * under that type's schema and skipped classification.
+   */
+  pinned?: true;
 }
+
+/** What a reuse hook can answer for one file. */
+export type ReuseAnswer =
+  /** Reuse this item; no model call. */
+  | ScanItem
+  /** Extract it under this type's schema; the user pinned the type (#67). */
+  | { extractAs: DocumentType }
+  /** Extract it as usual. */
+  | null;
 
 /** The result of scanning a directory. */
 export interface ScanReport {
@@ -82,10 +98,12 @@ export interface ClassifyStageOptions {
   /** Embeds extraction texts (and seeds, unless a classifier is injected). */
   embedder: EmbeddingProvider;
   /**
-   * Prebuilt classifier (tests, or a persisted label store later). Defaults
-   * to one built from `SEED_EXAMPLES` with `embedder`.
+   * Prebuilt classifier, or a factory for one (seeds plus the user's stored
+   * corrections, #67). A factory is called only when something needs
+   * classifying, so a scan where every file is reused loads no embedder.
+   * Defaults to one built from `SEED_EXAMPLES` with `embedder`.
    */
-  classifier?: TypeClassifier;
+  classifier?: TypeClassifier | (() => Promise<TypeClassifier>);
   /** Neighbors per vote; defaults to `CLASSIFIER_K`. */
   k?: number;
   /** Confidence cutoff for reconciliation; defaults to `CONFIDENCE_THRESHOLD`. */
@@ -99,10 +117,10 @@ export interface ScanOptions {
   /** Run the ADR-0009 classification stage after extraction. */
   classify?: ClassifyStageOptions;
   /**
-   * Offered each file's content hash before extraction. Returning an item
-   * reuses it with no model call (ADR-0012); returning null extracts as usual.
+   * Offered each file's content hash before extraction (ADR-0012, #67): reuse
+   * a stored item, extract under a pinned type, or extract as usual.
    */
-  reuse?: (file: string, contentHash: string) => Promise<ScanItem | null>;
+  reuse?: (file: string, contentHash: string) => Promise<ReuseAnswer>;
 }
 
 /**
@@ -143,9 +161,28 @@ export async function scanDirectory(
   for (const file of scanned) {
     const bytes = await readFile(join(dir, file));
     const contentHash = contentHashOf(bytes);
-    const reused = options.reuse ? await options.reuse(file, contentHash) : null;
-    if (reused) {
-      items.push(reused);
+    const answer = options.reuse ? await options.reuse(file, contentHash) : null;
+    if (answer && 'extractAs' in answer) {
+      const result = await extract(provider, {
+        images: [bytes.toString('base64')],
+        type: answer.extractAs,
+        ...(options.model ? { model: options.model } : {}),
+      });
+      const doc = result.document;
+      items.push({
+        file,
+        contentHash,
+        result,
+        reconciliation: userVerdict(
+          answer.extractAs,
+          doc && doc.type === answer.extractAs ? doc.type : null,
+        ),
+        pinned: true,
+      });
+      continue;
+    }
+    if (answer) {
+      items.push(answer);
       continue;
     }
     const result = await extract(provider, {
@@ -164,15 +201,23 @@ export async function scanDirectory(
   if (options.classify) {
     const { embedder, k = CLASSIFIER_K, threshold = CONFIDENCE_THRESHOLD } = options.classify;
     const classifiable = items.flatMap((item) => {
-      // Reused items keep the verdict stored with them (ADR-0012).
-      if (item.reused) return [];
+      // Reused items keep the verdict stored with them (ADR-0012), and a
+      // pinned type is the user's call, not the classifier's (#67).
+      if (item.reused || item.pinned) return [];
       const doc = item.result.document;
       return doc ? [{ item, doc }] : [];
     });
     if (classifiable.length > 0) {
       try {
-        const classifier = options.classify.classifier ?? (await buildClassifier(embedder));
-        const vectors = await embedder.embed(classifiable.map(({ doc }) => extractionText(doc)));
+        const given = options.classify.classifier;
+        const classifier =
+          given === undefined
+            ? await buildClassifier(embedder)
+            : typeof given === 'function'
+              ? await given()
+              : given;
+        // Tokenized, the same text correction labels are embedded from (#67).
+        const vectors = await embedder.embed(classifiable.map(({ doc }) => derivedText(doc)));
         classifiable.forEach(({ item, doc }, i) => {
           const vector = vectors[i];
           if (!vector) return;
@@ -187,7 +232,7 @@ export async function scanDirectory(
     // disputed item, upgrading to `corrected` only when the result validates
     // as the classifier's type.
     for (const item of items) {
-      if (item.reused || item.reconciliation.status !== 'disputed') continue;
+      if (item.reused || item.pinned || item.reconciliation.status !== 'disputed') continue;
       const target = item.reconciliation.classification?.type;
       if (!target) continue;
       try {
