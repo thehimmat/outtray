@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The desktop app's first screen (Phase 3, `packages/app`): choose a folder,
+  see its proposed action queue grouped as in the CLI, each item with its
+  citations, review-gated items marked and a "Reviewed" note the person can
+  tick. Runs today against a demo host that plans synthetic documents with
+  the real core planner in the page; the Tauri adapters come next.
+
 ### Changed
 
 - `@outtray/core` is now host-neutral so it can run inside the desktop app's

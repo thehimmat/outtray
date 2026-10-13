@@ -1,0 +1,27 @@
+{
+  "name": "@outtray/app",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Desktop app UI (Phase 3). React over the host-neutral core (ADR-0013); the Tauri shell and Rust adapters follow.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "bundle": "vite build"
+  },
+  "dependencies": {
+    "@outtray/core": "workspace:*",
+    "lucide-react": "^1.56.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "jsdom": "^30.1.2",
+    "vite": "^7.3.6"
+  }
+}

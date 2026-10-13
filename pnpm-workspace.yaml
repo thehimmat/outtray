@@ -7,3 +7,6 @@ allowBuilds:
   # loads them first, so the node-gyp source build (39 s cold, see
   # docs/evals/sqlcipher-spike.md) would only produce an unused binary.
   better-sqlite3-multiple-ciphers: false
+minimumReleaseAgeExclude:
+  - '@testing-library/user-event@14.6.8'
+  - lucide-react@1.56.0
