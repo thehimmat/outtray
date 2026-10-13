@@ -15,16 +15,17 @@
  *   reused one keeps its chunks and vault rows and only moves (ADR-0012).
  */
 
-import { resolve } from 'node:path';
 import { identifierOf, redactExtraction } from './identifiers.js';
 import type { ScanReport } from './scan.js';
-import { writeSettings } from './settings.js';
 import type { StorageProvider, StoredChunk } from './storage-provider.js';
 
 /** Options for `persistScan`. */
 export interface PersistOptions {
-  /** The scanned directory, so stored paths are absolute. */
-  dir: string;
+  /**
+   * The absolute location to record for a scanned file, normally the scan's
+   * `DocumentSource.locate`.
+   */
+  locate: (file: string) => string;
   /** The user's opt-in, from `readSettings`. */
   identifierStorage: boolean;
   /** Timestamp to record, in milliseconds since the epoch. Defaults to now. */
@@ -80,7 +81,7 @@ export async function persistScan(
     const prior = await storage.getDocument(contentHash);
     const row = {
       contentHash,
-      path: resolve(options.dir, file),
+      path: options.locate(file),
       type: doc ? reconciliation.effectiveType : null,
       // Idempotent, so a reused (already redacted) extraction passes unchanged.
       extraction: doc ? redactExtraction(doc) : null,
@@ -127,36 +128,4 @@ export async function persistScan(
     identifiersVaulted,
     identifiersPurged,
   };
-}
-
-/** Options for `setIdentifierStorage`. */
-export interface SetIdentifierStorageOptions {
-  /** Where the settings live, normally `defaultConfigPath()`. */
-  configPath: string;
-  /**
-   * The store to purge when switching off, or null when no store exists yet
-   * (nothing to purge, and opening one would create it).
-   */
-  storage: StorageProvider | null;
-  enabled: boolean;
-}
-
-/**
- * Record the user's identifier-storage choice, purging the vault when it is
- * switched off. Switching on changes nothing in the store: values already
- * redacted are gone, and reach the vault when their documents are next
- * extracted (ADR-0011 amendment, section 3).
- *
- * Failure modes: rejects if the settings file cannot be written, in which
- * case nothing is purged and the old setting stands. If the setting is
- * written but the purge rejects, the setting is off and the next
- * `persistScan` completes the purge. A null `storage` purges nothing, which
- * is complete when no store exists.
- */
-export async function setIdentifierStorage(
-  options: SetIdentifierStorageOptions,
-): Promise<{ purged: number }> {
-  await writeSettings(options.configPath, { identifierStorage: options.enabled });
-  if (options.enabled || options.storage === null) return { purged: 0 };
-  return { purged: await options.storage.purgeIdentifiers() };
 }

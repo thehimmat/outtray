@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `@outtray/core` is now host-neutral so it can run inside the desktop app's
+  webview (ADR-0013, accepted). Node-only pieces (the encrypted SQLite store,
+  the Keychain key, the settings file, app paths, and folder scanning) moved
+  to `@outtray/core/node`. Scans read through a `DocumentSource`, and content
+  hashing uses Web Crypto. No change in CLI behaviour.
+
 ### Fixed
 
 - A damaged encrypted store now says so in plain terms (it is only a cache,

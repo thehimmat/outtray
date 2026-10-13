@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { EmbeddingProvider } from './embedding-provider.js';
 import { extractionText } from './extraction-text.js';
-import { findInDirectory } from './find.js';
 import type { GenerateRequest, GenerateResult, ModelProvider } from './model-provider.js';
+import { findInDirectory } from './node.js';
 
 const usage = { loadMs: 0, promptTokens: 1, genTokens: 1, genTokPerSec: 1, totalMs: 1 };
 

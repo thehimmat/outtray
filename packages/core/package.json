@@ -2,13 +2,17 @@
   "name": "@outtray/core",
   "version": "0.0.0",
   "private": true,
-  "description": "Pure TypeScript domain logic: extraction, classification, agent orchestration, schemas. Never imports Tauri.",
+  "description": "Pure TypeScript domain logic: extraction, classification, agent orchestration, schemas. Never imports Tauri. The default entry is host-neutral (Node and the Tauri webview); Node-only adapters are under ./node (ADR-0013).",
   "license": "MIT",
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
     }
   },
   "dependencies": {

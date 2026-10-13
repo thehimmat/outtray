@@ -8,19 +8,7 @@ export {
   planActions,
   type RetentionAdvice,
 } from './actions.js';
-export {
-  APP_DIRECTORY,
-  APP_DIRECTORY_MODE,
-  type AppPathOptions,
-  appDataDir,
-  CONFIG_FILE,
-  DATABASE_FILE,
-  DATABASE_FILE_MODE,
-  defaultConfigPath,
-  defaultDatabasePath,
-  ensureAppDataDir,
-  UnsupportedPlatformError,
-} from './app-paths.js';
+export { contentHashOf, toBase64 } from './bytes.js';
 export { CHUNKER_VERSION, type Chunk, type ChunkOptions, chunkText } from './chunk.js';
 export {
   type Classification,
@@ -34,21 +22,8 @@ export {
   type SeedExample,
 } from './classifier-seeds.js';
 export { normalizeDate } from './dates.js';
-export {
-  DATABASE_KEY_BYTES,
-  type DatabaseKey,
-  DatabaseKeyError,
-  type DatabaseKeyProvider,
-  generateDatabaseKey,
-  KEYCHAIN_ACCOUNT,
-  KEYCHAIN_SERVICE,
-  KeychainKeyProvider,
-  type KeychainKeyProviderOptions,
-  type SecurityResult,
-  type SecurityRunner,
-  StaticKeyProvider,
-} from './db-key.js';
 export { firstRunNotice, IDENTIFIER_STORAGE_DISCLOSURE } from './disclosure.js';
+export { type DocumentSource, extensionOf } from './document-source.js';
 export {
   type EmbeddingProvider,
   OllamaEmbeddingProvider,
@@ -76,7 +51,7 @@ export { derivedText, extractionText } from './extraction-text.js';
 export {
   type FindOptions,
   type FindResult,
-  findInDirectory,
+  findInSource,
   searchReport,
 } from './find.js';
 export {
@@ -121,8 +96,6 @@ export {
   type PersistOptions,
   type PersistSummary,
   persistScan,
-  type SetIdentifierStorageOptions,
-  setIdentifierStorage,
 } from './persist.js';
 export {
   type CorrectionOutcome,
@@ -156,33 +129,13 @@ export {
 } from './reveal.js';
 export {
   type ClassifyStageOptions,
-  contentHashOf,
   type ReuseAnswer,
   type ScanItem,
   type ScanOptions,
   type ScanReport,
-  scanDirectory,
+  scanSource,
 } from './scan.js';
-export {
-  DEFAULT_SETTINGS,
-  readSettings,
-  type Settings,
-  type SettingsRead,
-  writeSettings,
-} from './settings.js';
 export { explainStorageError, StorageCorruptError } from './storage-errors.js';
-export {
-  assertCipherPragmas,
-  assertEncryptedHeader,
-  CIPHER_PRAGMAS,
-  EXPECTED_CIPHER,
-  EXPECTED_LEGACY,
-  HEADER_BYTES,
-  hasCleartextSqliteHeader,
-  type PragmaReader,
-  readPragmaScalar,
-  StorageFormatError,
-} from './storage-format.js';
 export { MemoryStorage } from './storage-memory.js';
 export {
   asLabelProvenance,
@@ -206,9 +159,4 @@ export {
   SCHEMA_VERSION,
   StorageMigrationError,
 } from './storage-schema.js';
-export {
-  type OpenSqlcipherStorageOptions,
-  openSqlcipherStorage,
-  SqlcipherStorage,
-} from './storage-sqlcipher.js';
 export { cosineSimilarity, rankBySimilarity } from './vector.js';

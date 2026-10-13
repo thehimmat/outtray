@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DocumentExtraction } from './extraction-schema.js';
-import { persistScan, setIdentifierStorage } from './persist.js';
+import { persistScan } from './persist.js';
 import type { Reconciliation } from './reconcile.js';
 import type { ScanItem, ScanReport } from './scan.js';
-import { readSettings } from './settings.js';
+import { readSettings, setIdentifierStorage } from './settings.js';
 import { MemoryStorage } from './storage-memory.js';
 
 const usage = { loadMs: 0, promptTokens: 1, genTokens: 1, genTokPerSec: 1, totalMs: 1 };
@@ -68,7 +68,7 @@ describe('persistScan', () => {
   it('stores each document by content hash with its path, type and verdict', async () => {
     const store = new MemoryStorage();
     await persistScan(store, report([item('bill.png', BILL)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: false,
       now: NOW,
     });
@@ -88,7 +88,7 @@ describe('persistScan', () => {
   it('stores a failed extraction with no type, extraction or verdict', async () => {
     const store = new MemoryStorage();
     await persistScan(store, report([item('bad.png', null)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: false,
     });
     expect(await store.getDocument('hash-bad.png')).toMatchObject({
@@ -103,7 +103,7 @@ describe('persistScan', () => {
     async (identifierStorage) => {
       const store = new MemoryStorage();
       await persistScan(store, report([item('passport.png', PASSPORT)]), {
-        dir: 'pile',
+        locate: (f: string) => resolve('pile', f),
         identifierStorage,
       });
       const stored = JSON.stringify(await store.listDocuments());
@@ -115,7 +115,7 @@ describe('persistScan', () => {
   it('vaults nothing when identifier storage is off', async () => {
     const store = new MemoryStorage();
     const summary = await persistScan(store, report([item('passport.png', PASSPORT)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: false,
     });
     expect(await store.countIdentifiers()).toBe(0);
@@ -131,11 +131,11 @@ describe('persistScan', () => {
   it('purges a leftover vault when identifier storage is off', async () => {
     const store = new MemoryStorage();
     await persistScan(store, report([item('passport.png', PASSPORT)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: true,
     });
     const summary = await persistScan(store, report([item('bill.png', BILL)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: false,
     });
     expect(summary.identifiersPurged).toBe(1);
@@ -147,7 +147,7 @@ describe('persistScan', () => {
     const summary = await persistScan(
       store,
       report([item('passport.png', PASSPORT), item('bill.png', BILL)]),
-      { dir: 'pile', identifierStorage: true },
+      { locate: (f: string) => resolve('pile', f), identifierStorage: true },
     );
     expect(await store.getIdentifier('hash-passport.png', 'id_number')).toBe('AB1234567');
     expect(summary).toEqual({
@@ -162,11 +162,11 @@ describe('persistScan', () => {
   it('clears a vaulted value the document no longer carries on a re-scan', async () => {
     const store = new MemoryStorage();
     await persistScan(store, report([item('passport.png', PASSPORT)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: true,
     });
     await persistScan(store, report([item('passport.png', null)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: true,
     });
     expect(await store.getIdentifier('hash-passport.png', 'id_number')).toBeNull();
@@ -188,7 +188,7 @@ describe('persistScan with the incremental index (ADR-0012)', () => {
   it('writes chunks, then marks the document indexed under the key', async () => {
     const store = new MemoryStorage();
     const summary = await persistScan(store, report([item('bill.png', BILL)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: false,
       extractorKey: EXTRACTOR,
       index: {
@@ -208,7 +208,7 @@ describe('persistScan with the incremental index (ADR-0012)', () => {
   it('marks a document with no chunks indexed too, so it is not re-extracted forever', async () => {
     const store = new MemoryStorage();
     await persistScan(store, report([item('bill.png', BILL)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: false,
       extractorKey: EXTRACTOR,
       index: { key: INDEX, chunks: new Map() },
@@ -219,7 +219,7 @@ describe('persistScan with the incremental index (ADR-0012)', () => {
   it('without an index, leaves the key null and clears chunks from an older extraction', async () => {
     const store = new MemoryStorage();
     await persistScan(store, report([item('bill.png', BILL)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: false,
       extractorKey: EXTRACTOR,
       index: {
@@ -228,7 +228,7 @@ describe('persistScan with the incremental index (ADR-0012)', () => {
       },
     });
     await persistScan(store, report([item('bill.png', BILL)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: false,
       extractorKey: EXTRACTOR,
     });
@@ -239,7 +239,7 @@ describe('persistScan with the incremental index (ADR-0012)', () => {
   it('never indexes a failed extraction', async () => {
     const store = new MemoryStorage();
     await persistScan(store, report([item('bad.png', null)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: false,
       extractorKey: EXTRACTOR,
       index: { key: INDEX, chunks: new Map() },
@@ -250,7 +250,7 @@ describe('persistScan with the incremental index (ADR-0012)', () => {
   it('updates a reused document in place: new path, same keys and chunks, no re-redaction, vault untouched', async () => {
     const store = new MemoryStorage();
     await persistScan(store, report([item('passport.png', PASSPORT)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: true,
       extractorKey: EXTRACTOR,
       index: {
@@ -265,7 +265,7 @@ describe('persistScan with the incremental index (ADR-0012)', () => {
       store,
       report([{ ...again, contentHash: 'hash-passport.png', reused: true }]),
       {
-        dir: 'elsewhere',
+        locate: (f: string) => resolve('elsewhere', f),
         identifierStorage: true,
         extractorKey: EXTRACTOR,
         index: { key: INDEX, chunks: new Map() },
@@ -305,7 +305,7 @@ describe('setIdentifierStorage', () => {
   it('turning off records the choice and purges the vault', async () => {
     const store = new MemoryStorage();
     await persistScan(store, report([item('passport.png', PASSPORT)]), {
-      dir: 'pile',
+      locate: (f: string) => resolve('pile', f),
       identifierStorage: true,
     });
     expect(await setIdentifierStorage({ configPath, storage: store, enabled: false })).toEqual({

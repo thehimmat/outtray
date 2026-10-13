@@ -17,6 +17,7 @@
 import { chmod, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { DATABASE_FILE_MODE, ensureAppDataDir } from './app-paths.js';
+import type { StorageProvider } from './storage-provider.js';
 
 /** Everything the user can set. */
 export interface Settings {
@@ -101,4 +102,36 @@ export async function writeSettings(path: string, settings: Settings): Promise<v
   await writeFile(temp, `${JSON.stringify(settings, null, 2)}\n`, { mode: DATABASE_FILE_MODE });
   await chmod(temp, DATABASE_FILE_MODE);
   await rename(temp, path);
+}
+
+/** Options for `setIdentifierStorage`. */
+export interface SetIdentifierStorageOptions {
+  /** Where the settings live, normally `defaultConfigPath()`. */
+  configPath: string;
+  /**
+   * The store to purge when switching off, or null when no store exists yet
+   * (nothing to purge, and opening one would create it).
+   */
+  storage: StorageProvider | null;
+  enabled: boolean;
+}
+
+/**
+ * Record the user's identifier-storage choice, purging the vault when it is
+ * switched off. Switching on changes nothing in the store: values already
+ * redacted are gone, and reach the vault when their documents are next
+ * extracted (ADR-0011 amendment, section 3).
+ *
+ * Failure modes: rejects if the settings file cannot be written, in which
+ * case nothing is purged and the old setting stands. If the setting is
+ * written but the purge rejects, the setting is off and the next
+ * `persistScan` completes the purge. A null `storage` purges nothing, which
+ * is complete when no store exists.
+ */
+export async function setIdentifierStorage(
+  options: SetIdentifierStorageOptions,
+): Promise<{ purged: number }> {
+  await writeSettings(options.configPath, { identifierStorage: options.enabled });
+  if (options.enabled || options.storage === null) return { purged: 0 };
+  return { purged: await options.storage.purgeIdentifiers() };
 }

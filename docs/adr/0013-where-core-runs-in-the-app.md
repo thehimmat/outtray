@@ -1,9 +1,9 @@
 # ADR-0013: Where core runs inside the desktop app
 
-Status: **proposed 2026-10-13**, awaiting owner sign-off (owner-action issue
-linked from the PR). Written by Claude. It refines ADR-0001 and reverses
-nothing, but it is hard to reverse once Phase 3 code builds on it, so it goes
-to the owner rather than being accepted under the autonomy rules.
+Status: **accepted 2026-10-13** on owner sign-off (issue #117, PR #118
+merged by the owner): option 2. Written by Claude. It refines ADR-0001 and
+reverses nothing; it went to the owner because it is hard to reverse once
+Phase 3 builds on it.
 
 ## Context
 
@@ -66,7 +66,7 @@ implementation on the far side of Tauri IPC".
    - Cons: immature, and native modules still do not load, so it ends up as
      option 2 with extra machinery. Rejected.
 
-## Decision (proposed)
+## Decision
 
 Option 2. `core` runs in the webview; the app package provides Rust-backed
 adapters for storage, the key, and files; the CLI keeps its Node adapters.
