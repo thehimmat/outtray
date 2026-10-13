@@ -7,6 +7,13 @@
  * retrieval quality is measured later, and the chunker is a swappable knob.
  */
 
+/**
+ * Version of `chunkText`'s output. Part of the index key (ADR-0012): bump it
+ * whenever a change would split the same text differently, so stored chunks
+ * built the old way are rebuilt.
+ */
+export const CHUNKER_VERSION = 'chunk-v1';
+
 export interface ChunkOptions {
   /** Maximum characters per chunk. */
   maxChars?: number;

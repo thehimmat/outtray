@@ -2,10 +2,11 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TypeClassifier } from './classifier.js';
 import type { EmbeddingProvider } from './embedding-provider.js';
 import type { GenerateRequest, GenerateResult, ModelProvider } from './model-provider.js';
+import { reconcileType } from './reconcile.js';
 import { contentHashOf, scanDirectory } from './scan.js';
 
 const usage = { loadMs: 0, promptTokens: 1, genTokens: 1, genTokPerSec: 1, totalMs: 1 };
@@ -118,6 +119,78 @@ describe('scanDirectory', () => {
     expect(report.items).toHaveLength(2);
     expect(report.items[0]?.result.valid).toBe(true);
     expect(provider.calls).toBe(2);
+  });
+
+  it('reuses an item the reuse hook offers, with no model call for that file (ADR-0012)', async () => {
+    await writeFile(join(dir, 'a.png'), Buffer.from([1]));
+    await writeFile(join(dir, 'b.png'), Buffer.from([2]));
+    const provider = new FakeProvider(BILL);
+    const seen: Array<[string, string]> = [];
+    const report = await scanDirectory(provider, dir, {
+      reuse: async (file, hash) => {
+        seen.push([file, hash]);
+        if (file !== 'a.png') return null;
+        return {
+          file,
+          contentHash: hash,
+          result: {
+            valid: true,
+            jsonChannel: null,
+            raw: null,
+            usage,
+            error: null,
+            document: STATEMENT as never,
+          },
+          reconciliation: reconcileType('statement', null),
+          reused: true,
+        };
+      },
+    });
+    expect(provider.calls).toBe(1);
+    expect(seen.map(([f]) => f)).toEqual(['a.png', 'b.png']);
+    expect(seen[0]?.[1]).toBe(
+      createHash('sha256')
+        .update(Buffer.from([1]))
+        .digest('hex'),
+    );
+    expect(report.items.map((i) => [i.file, i.reused ?? false])).toEqual([
+      ['a.png', true],
+      ['b.png', false],
+    ]);
+  });
+
+  it('keeps a reused item out of classification and typed re-extraction', async () => {
+    await writeFile(join(dir, 'a.png'), Buffer.from([1]));
+    const provider = new FakeProvider(BILL);
+    const embedder = new FakeEmbedder([0, 1, 0]);
+    const embed = vi.spyOn(embedder, 'embed');
+    const disputed = {
+      effectiveType: 'bill' as const,
+      status: 'disputed' as const,
+      review: true,
+      vlmType: 'bill' as const,
+      classification: { type: 'statement' as const, confidence: 0.9, votes: { statement: 3 } },
+    };
+    const report = await scanDirectory(provider, dir, {
+      classify: { embedder, classifier: axisClassifier() },
+      reuse: async (file, hash) => ({
+        file,
+        contentHash: hash,
+        result: {
+          valid: true,
+          jsonChannel: null,
+          raw: null,
+          usage,
+          error: null,
+          document: BILL as never,
+        },
+        reconciliation: disputed,
+        reused: true,
+      }),
+    });
+    expect(provider.calls).toBe(0);
+    expect(embed).not.toHaveBeenCalled();
+    expect(report.items[0]?.reconciliation).toEqual(disputed);
   });
 
   it('keys each item by the SHA-256 of its bytes, so a moved file is the same document', async () => {

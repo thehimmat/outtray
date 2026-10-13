@@ -37,6 +37,8 @@ function stored(contentHash: string, path: string, doc: DocumentExtraction | nul
     extraction: doc ? redactExtraction(doc) : null,
     reconciliation: null,
     scannedAt: 1,
+    extractorKey: null,
+    indexKey: null,
   };
 }
 

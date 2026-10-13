@@ -603,6 +603,8 @@ async function vaultFixture(options: { databaseExists?: boolean } = {}) {
     extraction: redactExtraction(passport),
     reconciliation: null,
     scannedAt: 1,
+    extractorKey: null,
+    indexKey: null,
   });
   return {
     dir,

@@ -26,6 +26,13 @@
 
 import type { DocumentExtraction, DocumentType } from './extraction-schema.js';
 
+/**
+ * Version of `tokenizeExtraction`'s output. Part of the index key (ADR-0012):
+ * bump it whenever a change would tokenize the same extraction differently,
+ * since chunk text and embeddings are built from that output.
+ */
+export const TOKENIZER_VERSION = 'tokenize-v1';
+
 /** The extraction fields that hold a full identifier. */
 export type IdentifierField = 'id_number' | 'policy_number' | 'account_number';
 
@@ -170,6 +177,26 @@ export function replaceIdentifier(
   return { text: count === 0 ? text : out + text.slice(copied), count };
 }
 
+/**
+ * Matches the forms this module writes in place of a value: the placeholder
+ * `[field]` and the redacted `[field ending 1234, 9 chars]` or
+ * `[field, 5 chars]`. Global, for replacing every one in free text.
+ */
+function protectedForms(field: IdentifierField): RegExp {
+  return new RegExp(`\\[${field}(?: ending [A-Z0-9]{4})?(?:, \\d+ chars)?\\]`, 'g');
+}
+
+/**
+ * Whether `value` is already a placeholder or redacted form rather than an
+ * identifier. Stored extractions are redacted (ADR-0011 amendment) and are
+ * shown again when a scan reuses them (ADR-0012), so redacting must not treat
+ * its own output as a new value.
+ */
+function isProtectedForm(field: IdentifierField, value: string): boolean {
+  const match = value.match(protectedForms(field));
+  return match !== null && match[0] === value;
+}
+
 /** Rebuild `doc` with its identifier replaced everywhere by `replacement`. */
 function replaceEverywhere(
   doc: DocumentExtraction,
@@ -178,7 +205,11 @@ function replaceEverywhere(
   const id = identifierOf(doc);
   if (!id) return doc;
   const to = replacement(id);
-  const scrub = (s: string) => replaceIdentifier(s, id.value, to).text;
+  // Already protected: the full value is gone, so only earlier protected
+  // forms can be swapped, never a value found by matching.
+  const scrub = isProtectedForm(id.field, id.value)
+    ? (s: string) => s.replace(protectedForms(id.field), to)
+    : (s: string) => replaceIdentifier(s, id.value, to).text;
 
   const out: Record<string, unknown> = {};
   for (const [key, v] of Object.entries(doc)) {
@@ -200,7 +231,9 @@ function replaceEverywhere(
  *
  * Failure modes: none; pure, and the input is not mutated. Documents without
  * an identifier are returned as is. Mentions rewritten beyond the matched
- * variants survive in free text (see `replaceIdentifier`).
+ * variants survive in free text (see `replaceIdentifier`). An already
+ * redacted extraction has its redacted forms turned into placeholders, so no
+ * last four reaches derived text.
  */
 export function tokenizeExtraction(doc: DocumentExtraction): DocumentExtraction {
   return replaceEverywhere(doc, (id) => placeholderFor(id.field));
@@ -212,9 +245,13 @@ export function tokenizeExtraction(doc: DocumentExtraction): DocumentExtraction 
  * the redacted form (`redactedForm`).
  *
  * Failure modes: none; pure, and the input is not mutated. Documents without
- * an identifier are returned as is. Mentions rewritten beyond the matched
- * variants survive in free text (see `replaceIdentifier`).
+ * an identifier are returned as is, and so is an extraction already redacted
+ * or tokenized. Mentions rewritten beyond the matched variants survive in
+ * free text (see `replaceIdentifier`).
  */
 export function redactExtraction(doc: DocumentExtraction): DocumentExtraction {
-  return replaceEverywhere(doc, (id) => redactedForm(id.field, id.value));
+  const id = identifierOf(doc);
+  // Redacting what is already redacted or tokenized changes nothing (ADR-0012).
+  if (id && isProtectedForm(id.field, id.value)) return doc;
+  return replaceEverywhere(doc, (found) => redactedForm(found.field, found.value));
 }

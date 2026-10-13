@@ -62,6 +62,8 @@ interface DocumentRow {
   extraction_json: string | null;
   reconciliation_json: string | null;
   scanned_at: number;
+  extractor_key: string | null;
+  index_key: string | null;
 }
 
 /** A `chunks` row as SQLite returns it. */
@@ -228,14 +230,17 @@ export class SqlcipherStorage implements StorageProvider {
     const db = this.#open();
     db.prepare(
       `INSERT INTO documents
-         (content_hash, path, type, extraction_json, reconciliation_json, scanned_at)
-       VALUES (?, ?, ?, ?, ?, ?)
+         (content_hash, path, type, extraction_json, reconciliation_json, scanned_at,
+          extractor_key, index_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(content_hash) DO UPDATE SET
          path = excluded.path,
          type = excluded.type,
          extraction_json = excluded.extraction_json,
          reconciliation_json = excluded.reconciliation_json,
-         scanned_at = excluded.scanned_at`,
+         scanned_at = excluded.scanned_at,
+         extractor_key = excluded.extractor_key,
+         index_key = excluded.index_key`,
     ).run(
       document.contentHash,
       document.path,
@@ -243,6 +248,8 @@ export class SqlcipherStorage implements StorageProvider {
       document.extraction === null ? null : JSON.stringify(document.extraction),
       document.reconciliation === null ? null : JSON.stringify(document.reconciliation),
       document.scannedAt,
+      document.extractorKey,
+      document.indexKey,
     );
   }
 
@@ -381,6 +388,14 @@ export class SqlcipherStorage implements StorageProvider {
     return row ? row.value : null;
   }
 
+  async identifierFields(documentHash: string): Promise<IdentifierField[]> {
+    const db = this.#open();
+    const rows = db
+      .prepare('SELECT field FROM identifier_mentions WHERE document_hash = ? ORDER BY field')
+      .all(documentHash) as Array<{ field: string }>;
+    return rows.map((row) => row.field as IdentifierField);
+  }
+
   async purgeIdentifiers(): Promise<number> {
     const db = this.#open();
     // Mentions cascade through the foreign key.
@@ -415,5 +430,7 @@ function toDocument(row: DocumentRow): StoredDocument {
     extraction: parseJson<DocumentExtraction>(row.extraction_json, 'extraction JSON'),
     reconciliation: parseJson<Reconciliation>(row.reconciliation_json, 'reconciliation JSON'),
     scannedAt: row.scanned_at,
+    extractorKey: row.extractor_key,
+    indexKey: row.index_key,
   };
 }

@@ -79,8 +79,23 @@ const MIGRATION_1: Migration = {
   ],
 };
 
+/**
+ * Migration 2: the version keys ADR-0012 uses to decide whether a stored
+ * extraction and its chunks can be reused instead of re-extracting. Both are
+ * nullable: null means "unknown, extract again", which is the right reading
+ * for every row written before this migration.
+ */
+const MIGRATION_2: Migration = {
+  version: 2,
+  name: 'document-version-keys',
+  statements: [
+    'ALTER TABLE documents ADD COLUMN extractor_key TEXT',
+    'ALTER TABLE documents ADD COLUMN index_key TEXT',
+  ],
+};
+
 /** Every migration, in order. Append only. */
-export const MIGRATIONS: readonly Migration[] = [MIGRATION_1];
+export const MIGRATIONS: readonly Migration[] = [MIGRATION_1, MIGRATION_2];
 
 /** Schema version a store is brought up to at open time. */
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;
