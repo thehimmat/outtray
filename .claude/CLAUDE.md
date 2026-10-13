@@ -52,7 +52,11 @@ When those conflict, favor the showcase.
   `@outtray/core` is host-neutral; Node-only adapters live behind
   `@outtray/core/node`. Builds stay unsigned until #12. `packages/app`
   (React, Vite) renders the approval queue against an `OuttrayApi`
-  interface, backed by a demo host until the Tauri adapters land. The Rust
+  interface. The Tauri shell (`packages/app/src-tauri`) hosts it for real:
+  `tauri-api.ts` runs core's `scanWithStore` (the CLI's pipeline) against
+  Rust commands for the store, the Keychain key (created natively, never
+  sent to the page) and read-only folder access; CI builds the shell on
+  ubuntu and macOS. Not yet run on the Air (#81 tracks the Keychain). The Rust
   store (`packages/app/store`: a `handle(op, args)` command layer plus a
   stdio binary for tests) passes the shared contract suite through
   `CommandStorage`; schema is one file, `core/src/migrations.json`, embedded

@@ -2,20 +2,24 @@
   "name": "@outtray/app",
   "version": "0.0.0",
   "private": true,
-  "description": "Desktop app UI (Phase 3). React over the host-neutral core (ADR-0013); the Tauri shell and Rust adapters follow.",
+  "description": "Desktop app (Phase 3): React over the host-neutral core in a Tauri shell with Rust adapters (ADR-0013).",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "bundle": "vite build"
+    "bundle": "vite build",
+    "tauri": "tauri"
   },
   "dependencies": {
     "@outtray/core": "workspace:*",
+    "@tauri-apps/api": "^2.12.3",
+    "@tauri-apps/plugin-dialog": "^2.8.2",
     "lucide-react": "^1.56.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.12.2",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "@types/react": "^19.3.0",

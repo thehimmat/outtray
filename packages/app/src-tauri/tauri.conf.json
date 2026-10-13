@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Outtray",
+  "version": "0.0.0",
+  "identifier": "app.outtray.desktop",
+  "build": {
+    "frontendDist": "../dist/web",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm bundle"
+  },
+  "app": {
+    "windows": [
+      { "title": "Outtray", "width": 900, "height": 760, "minWidth": 560, "minHeight": 480 }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:11434 http://localhost:11434"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "icon": ["icons/icon.png"],
+    "category": "Productivity",
+    "shortDescription": "Point it at the pile, get an action list."
+  }
+}

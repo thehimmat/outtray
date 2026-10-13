@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The desktop app runs for real (Phase 3, `packages/app/src-tauri`): a Tauri
+  shell that scans the chosen folder with the same incremental pipeline as
+  `outtray scan` and saves to the same encrypted store. The database key
+  stays in the Rust side and never reaches the page; on first run the app
+  creates it in the Keychain with a native call, so it never appears in a
+  process argument list. The shell's file commands only list and read:
+  no command writes, moves or deletes a document. macOS only,
+  unsigned until a signing identity exists.
+
 - The desktop app's encrypted store, in Rust (`packages/app/store`,
   ADR-0013), reached from core through `CommandStorage`. It passes the same
   37-test `StorageProvider` contract suite as the CLI's store, and the two

@@ -1,0 +1,23 @@
+[package]
+name = "outtray-app"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "The Outtray desktop shell (ADR-0001, ADR-0013): Tauri around the host-neutral core, with the encrypted store and the Keychain key in Rust."
+
+[lib]
+name = "outtray_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde_json = "1"
+getrandom = "0.3"
+outtray-store = { path = "../store" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "3"
