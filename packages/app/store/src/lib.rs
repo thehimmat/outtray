@@ -540,6 +540,40 @@ impl Store {
             .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(json!(fields))
     }
+
+    fn set_review(&mut self, r: &Value) -> Result<Value> {
+        let key = str_arg(r, "key")?;
+        let hash = str_arg(r, "documentHash")?;
+        let at = arg(r, "reviewedAt")?
+            .as_i64()
+            .ok_or_else(|| StoreError::protocol("reviewedAt must be an integer"))?;
+        let tx = self.conn.transaction()?;
+        if !Self::document_exists(&tx, hash)? {
+            return Err(StoreError::storage(format!(
+                "No document {hash} to mark reviewed."
+            )));
+        }
+        tx.execute(
+            "INSERT OR REPLACE INTO reviews (item_key, document_hash, reviewed_at) VALUES (?, ?, ?)",
+            params![key, hash, at],
+        )?;
+        tx.commit()?;
+        Ok(Value::Null)
+    }
+
+    fn list_reviews(&self) -> Result<Value> {
+        let mut stmt = self.conn.prepare(
+            "SELECT item_key, document_hash, reviewed_at FROM reviews ORDER BY item_key",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(json!({
+                "key": r.get::<_, String>(0)?,
+                "documentHash": r.get::<_, String>(1)?,
+                "reviewedAt": r.get::<_, i64>(2)?,
+            }))
+        })?;
+        Ok(Value::Array(rows.collect::<rusqlite::Result<Vec<_>>>()?))
+    }
 }
 
 /// Execute one `StorageProvider` command. The op names and argument shapes
@@ -573,6 +607,15 @@ pub fn handle(store: &mut Store, op: &str, args: &Value) -> Result<Value> {
             [],
             |r| r.get::<_, i64>(0)
         )?)),
+        "setReview" => store.set_review(arg(args, "review")?),
+        "clearReview" => {
+            store.conn.execute(
+                "DELETE FROM reviews WHERE item_key = ?",
+                [str_arg(args, "key")?],
+            )?;
+            Ok(Value::Null)
+        }
+        "listReviews" => store.list_reviews(),
         "close" => Ok(Value::Null),
         other => Err(StoreError::protocol(format!("unknown op {other}"))),
     }

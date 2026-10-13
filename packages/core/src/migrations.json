@@ -31,5 +31,13 @@
       "ALTER TABLE labels ADD COLUMN embed_model TEXT",
       "CREATE INDEX labels_by_document ON labels (document_hash)"
     ]
+  },
+  {
+    "version": 4,
+    "name": "review-marks",
+    "note": "Review marks (ADR-0010 amendment 1): a person's 'Reviewed' tick on a proposed action, keyed by rule, document bytes and date. Cascades with its document.",
+    "statements": [
+      "CREATE TABLE reviews ( item_key      TEXT    PRIMARY KEY, document_hash TEXT    NOT NULL REFERENCES documents(content_hash) ON DELETE CASCADE, reviewed_at   INTEGER NOT NULL )"
+    ]
   }
 ]

@@ -79,6 +79,8 @@ function item(file: string, doc: DocumentExtraction): ScanItem {
 export function demoApi(
   today: () => string = () => new Date().toISOString().slice(0, 10),
 ): OuttrayApi {
+  // Kept for the page's lifetime only: the demo has no store.
+  const reviewed = new Set<string>();
   return {
     async chooseFolder() {
       return 'Demo documents';
@@ -95,7 +97,12 @@ export function demoApi(
         scanned: items.length,
         skipped: [],
         notes: ['Demo mode: synthetic documents, planned by the real Outtray planner.'],
+        reviewed: [...reviewed],
       };
+    },
+    async setReviewed(itemId: string, on: boolean) {
+      if (on) reviewed.add(itemId);
+      else reviewed.delete(itemId);
     },
   };
 }

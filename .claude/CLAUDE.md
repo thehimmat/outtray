@@ -12,7 +12,7 @@ When those conflict, favor the showcase.
   `scan` is its first consumer (#79 slice 2)**: `StorageProvider` seam in core with `MemoryStorage` and
   `SqlcipherStorage`, one encrypted file at `~/Library/Application
   Support/outtray/outtray.db` (dir chmod 700), tables `documents`, `chunks`,
-  `labels`, `identifiers`, `identifier_mentions`, migrated by `PRAGMA
+  `labels`, `identifiers`, `identifier_mentions`, `reviews`, migrated by `PRAGMA
   user_version`. Cipher is `cipher = 'sqlcipher'` then `legacy = 4` in that
   order, asserted at open from both the driver's pragmas and the bytes on
   disk (`storage-format.ts`); without `legacy = 4` the file is unreadable by
@@ -56,7 +56,9 @@ When those conflict, favor the showcase.
   `tauri-api.ts` runs core's `scanWithStore` (the CLI's pipeline) against
   Rust commands for the store, the Keychain key (created natively, never
   sent to the page) and read-only folder access; CI builds the shell on
-  ubuntu and macOS. Not yet run on the Air (#81 tracks the Keychain). The Rust
+  ubuntu and macOS. Not yet run on the Air (#81 tracks the Keychain).
+  "Reviewed" marks persist (ADR-0010 amendment 1, migration 4 `reviews`,
+  keyed by rule, document bytes and date). The Rust
   store (`packages/app/store`: a `handle(op, args)` command layer plus a
   stdio binary for tests) passes the shared contract suite through
   `CommandStorage`; schema is one file, `core/src/migrations.json`, embedded
@@ -118,7 +120,7 @@ Conventional Commits; squash-merge PRs to an always-releasable main.
 
 Packages: `core` (pure domain logic), `evals` (harness/fixtures/scorers/
 scoreboard), `cli` (thin entry, demo surface), `app` (React UI over the host-neutral
-core; Tauri shell next). Decisions live in `docs/adr/`; eval design in
+core, in the Tauri shell `app/src-tauri`). Decisions live in `docs/adr/`; eval design in
 `docs/evals/METHODOLOGY.md`; threats in `docs/THREAT_MODEL.md`.
 
 ## Ownership, autonomy, and owner checkpoints

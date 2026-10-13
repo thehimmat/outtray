@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- "Reviewed" marks in the desktop app are saved in the encrypted store and
+  come back on the next scan (ADR-0010 amendment 1). A mark follows the
+  document's contents, so a moved file keeps it and a re-issued bill starts
+  unreviewed; deleting a document drops its marks. A mark changes no file.
+
 - The desktop app runs for real (Phase 3, `packages/app/src-tauri`): a Tauri
   shell that scans the chosen folder with the same incremental pipeline as
   `outtray scan` and saves to the same encrypted store. The database key

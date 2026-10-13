@@ -23,6 +23,7 @@ import {
   type StoredChunk,
   type StoredDocument,
   type StoredLabel,
+  type StoredReview,
 } from './storage-provider.js';
 
 /** Deep-copy a record so callers cannot mutate what the store holds. */
@@ -40,6 +41,7 @@ export class MemoryStorage implements StorageProvider {
   readonly #identifiers = new Map<string, string>();
   /** `documentHash + NUL + field` to canonical key. */
   readonly #mentions = new Map<string, string>();
+  readonly #reviews = new Map<string, StoredReview>();
   #closed = false;
 
   #assertOpen(): void {
@@ -70,6 +72,9 @@ export class MemoryStorage implements StorageProvider {
     this.#assertOpen();
     this.#documents.delete(contentHash);
     this.#chunks.delete(contentHash);
+    for (const [key, review] of this.#reviews) {
+      if (review.documentHash === contentHash) this.#reviews.delete(key);
+    }
     this.#dropMentions(contentHash);
     this.#dropOrphans();
   }
@@ -187,6 +192,26 @@ export class MemoryStorage implements StorageProvider {
   async countIdentifiers(): Promise<number> {
     this.#assertOpen();
     return this.#identifiers.size;
+  }
+
+  async setReview(review: StoredReview): Promise<void> {
+    this.#assertOpen();
+    if (!this.#documents.has(review.documentHash)) {
+      throw new StorageError(`No document ${review.documentHash} to mark reviewed.`);
+    }
+    this.#reviews.set(review.key, clone(review));
+  }
+
+  async clearReview(key: string): Promise<void> {
+    this.#assertOpen();
+    this.#reviews.delete(key);
+  }
+
+  async listReviews(): Promise<StoredReview[]> {
+    this.#assertOpen();
+    return [...this.#reviews.values()]
+      .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+      .map(clone);
   }
 
   async close(): Promise<void> {

@@ -27,6 +27,22 @@ describe('App', () => {
     expect(document.body.textContent).not.toMatch(/D8923829|POL-804220/);
   });
 
+  it('takes the marks from the host, not the last screen, when a folder is planned again', async () => {
+    const user = userEvent.setup();
+    // A host that saves nothing: after a re-plan, no tick may survive.
+    const api: OuttrayApi = { ...demoApi(() => '2026-07-22'), setReviewed: async () => {} };
+    render(<App api={api} />);
+    const choose = screen.getByRole('button', { name: /Choose a folder/ });
+    await user.click(choose);
+    const [box] = await screen.findAllByRole('checkbox', { name: /Reviewed/ });
+    await user.click(box as HTMLElement);
+    expect((box as HTMLInputElement).checked).toBe(true);
+    await user.click(choose);
+    await screen.findByRole('heading', { name: 'Demo documents' });
+    const [again] = await screen.findAllByRole('checkbox', { name: /Reviewed/ });
+    expect((again as HTMLInputElement).checked).toBe(false);
+  });
+
   it('stays put when the person cancels the folder picker', async () => {
     const user = userEvent.setup();
     const api: OuttrayApi = { ...demoApi(), chooseFolder: async () => null };
@@ -43,6 +59,7 @@ describe('App', () => {
       planFolder: async () => {
         throw new Error('The local model is not running. Start Ollama and try again.');
       },
+      setReviewed: async () => {},
     };
     render(<App api={api} />);
     await user.click(screen.getByRole('button', { name: /Choose a folder/ }));

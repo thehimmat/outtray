@@ -62,6 +62,9 @@ const ARGS: Record<string, string[]> = {
   identifierFields: ['documentHash'],
   purgeIdentifiers: [],
   countIdentifiers: [],
+  setReview: ['review'],
+  clearReview: ['key'],
+  listReviews: [],
   close: [],
 };
 
@@ -178,5 +181,57 @@ describe('tauriApi', () => {
     await expect(api(shell.invoke, provider).planFolder('/docs')).rejects.toThrow(/Start Ollama/);
     expect(shell.log).toContain('store:close');
     expect(shell.isOpen()).toBe(false);
+  });
+
+  it('saves a Reviewed mark that the next plan reads back, even after a rename', async () => {
+    const files: Record<string, Uint8Array> = { 'bill.png': PNG };
+    const shell = fakeShell(files);
+    const host = api(shell.invoke);
+    const first = await host.planFolder('/docs');
+    expect(first.reviewed).toEqual([]);
+    const id = first.queue.items[0]?.id ?? '';
+    await host.setReviewed(id, true);
+    expect(shell.isOpen()).toBe(false);
+    expect((await host.planFolder('/docs')).reviewed).toEqual([id]);
+
+    delete files['bill.png'];
+    files['renamed.png'] = PNG;
+    const renamed = await host.planFolder('/docs');
+    expect(renamed.reviewed).toEqual([renamed.queue.items[0]?.id]);
+
+    await host.setReviewed(renamed.reviewed[0] ?? '', false);
+    expect((await host.planFolder('/docs')).reviewed).toEqual([]);
+  });
+
+  it('starts a re-issued document unreviewed', async () => {
+    const files: Record<string, Uint8Array> = { 'bill.png': PNG };
+    const shell = fakeShell(files);
+    const host = api(shell.invoke);
+    const first = await host.planFolder('/docs');
+    await host.setReviewed(first.queue.items[0]?.id ?? '', true);
+    files['bill.png'] = new Uint8Array([...PNG, 9]);
+    expect((await host.planFolder('/docs')).reviewed).toEqual([]);
+  });
+
+  it('refuses to save a mark for an item it did not plan, or without a store', async () => {
+    const shell = fakeShell({ 'bill.png': PNG });
+    const host = api(shell.invoke);
+    await expect(host.setReviewed('nope', true)).rejects.toThrow(/plan the folder again/);
+    const failing = fakeShell({ 'bill.png': PNG }, { storeFails: true });
+    const noStore = api(failing.invoke);
+    const planned = await noStore.planFolder('/docs');
+    await expect(noStore.setReviewed(planned.queue.items[0]?.id ?? '', true)).rejects.toThrow(
+      /Keychain refused/,
+    );
+  });
+
+  it('saves two quick ticks one after the other, since the shell holds one store', async () => {
+    const shell = fakeShell({ 'a.png': PNG, 'b.png': new Uint8Array([...PNG, 1]) });
+    const host = api(shell.invoke);
+    const planned = await host.planFolder('/docs');
+    const ids = planned.queue.items.map((i) => i.id);
+    expect(ids.length).toBeGreaterThan(1);
+    await Promise.all(ids.map((id) => host.setReviewed(id, true)));
+    expect((await host.planFolder('/docs')).reviewed.sort()).toEqual([...ids].sort());
   });
 });

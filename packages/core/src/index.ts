@@ -132,6 +132,7 @@ export {
   type RevealResult,
   revealIdentifier,
 } from './reveal.js';
+export { type ReviewTarget, reviewTargets } from './review-marks.js';
 export {
   type ClassifyStageOptions,
   type ReuseAnswer,
@@ -163,6 +164,7 @@ export {
   type StoredChunk,
   type StoredDocument,
   type StoredLabel,
+  type StoredReview,
 } from './storage-provider.js';
 export {
   decodeEmbedding,

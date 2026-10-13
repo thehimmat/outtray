@@ -12,18 +12,21 @@ import { QueueView } from './QueueView.js';
 type State =
   | { kind: 'idle' }
   | { kind: 'planning'; folder: string }
-  | { kind: 'planned'; result: PlannedFolder }
+  | { kind: 'planned'; result: PlannedFolder; run: number }
   | { kind: 'failed'; message: string };
 
 export function App({ api }: { api: OuttrayApi }) {
   const [state, setState] = useState<State>({ kind: 'idle' });
+  const [runs, setRuns] = useState(0);
 
   const choose = async () => {
     try {
       const folder = await api.chooseFolder();
       if (folder === null) return;
       setState({ kind: 'planning', folder });
-      setState({ kind: 'planned', result: await api.planFolder(folder) });
+      const result = await api.planFolder(folder);
+      setRuns((n) => n + 1);
+      setState({ kind: 'planned', result, run: runs + 1 });
     } catch (error) {
       setState({ kind: 'failed', message: error instanceof Error ? error.message : String(error) });
     }
@@ -68,7 +71,13 @@ export function App({ api }: { api: OuttrayApi }) {
               {note}
             </p>
           ))}
-          <QueueView queue={state.result.queue} />
+          <QueueView
+            // A fresh queue per plan, so its ticks start from what the host saved.
+            key={state.run}
+            queue={state.result.queue}
+            initialReviewed={state.result.reviewed}
+            onReviewedChange={(id, reviewed) => api.setReviewed(id, reviewed)}
+          />
         </>
       ) : null}
     </main>
