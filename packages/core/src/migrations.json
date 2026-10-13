@@ -1,0 +1,35 @@
+[
+  {
+    "version": 1,
+    "name": "initial-schema",
+    "note": "The three tables ADR-0011 names, plus the identifier tables its section 3 describes (#79). Embeddings are float32 BLOBs; foreign keys are declared and enforced per connection.",
+    "statements": [
+      "CREATE TABLE documents ( content_hash        TEXT PRIMARY KEY, path                TEXT NOT NULL, type                TEXT, extraction_json     TEXT, reconciliation_json TEXT, scanned_at          INTEGER NOT NULL )",
+      "CREATE TABLE chunks ( document_hash TEXT    NOT NULL REFERENCES documents(content_hash) ON DELETE CASCADE, chunk_index   INTEGER NOT NULL, page          INTEGER, text          TEXT    NOT NULL, embedding     BLOB    NOT NULL, PRIMARY KEY (document_hash, chunk_index) )",
+      "CREATE TABLE labels ( id         INTEGER PRIMARY KEY AUTOINCREMENT, type       TEXT NOT NULL, embedding  BLOB NOT NULL, provenance TEXT NOT NULL CHECK (provenance IN ('seed', 'correction')) )",
+      "CREATE TABLE identifiers ( id               INTEGER PRIMARY KEY AUTOINCREMENT, normalized_value TEXT    NOT NULL UNIQUE, value            TEXT    NOT NULL, last_four        TEXT    NOT NULL, value_length     INTEGER NOT NULL, created_at       INTEGER NOT NULL )",
+      "CREATE TABLE identifier_mentions ( identifier_id INTEGER NOT NULL REFERENCES identifiers(id) ON DELETE CASCADE, document_hash TEXT    NOT NULL REFERENCES documents(content_hash) ON DELETE CASCADE, field         TEXT    NOT NULL, PRIMARY KEY (identifier_id, document_hash, field) )"
+    ]
+  },
+  {
+    "version": 2,
+    "name": "document-version-keys",
+    "note": "ADR-0012 version keys: whether a stored extraction and its chunks can be reused. Null reads as extract again.",
+    "statements": [
+      "ALTER TABLE documents ADD COLUMN extractor_key TEXT",
+      "ALTER TABLE documents ADD COLUMN index_key TEXT"
+    ]
+  },
+  {
+    "version": 3,
+    "name": "personalization",
+    "note": "Personalization (#67, ADR-0009 amendment 2): a user-pinned type, and per-label document, tokenized text and embedding model.",
+    "statements": [
+      "ALTER TABLE documents ADD COLUMN user_type TEXT",
+      "ALTER TABLE labels ADD COLUMN document_hash TEXT",
+      "ALTER TABLE labels ADD COLUMN text TEXT",
+      "ALTER TABLE labels ADD COLUMN embed_model TEXT",
+      "CREATE INDEX labels_by_document ON labels (document_hash)"
+    ]
+  }
+]

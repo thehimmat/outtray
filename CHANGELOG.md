@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The desktop app's encrypted store, in Rust (`packages/app/store`,
+  ADR-0013), reached from core through `CommandStorage`. It passes the same
+  37-test `StorageProvider` contract suite as the CLI's store, and the two
+  read and write the same file. CI builds it and fails if it is missing.
+
 - The desktop app's first screen (Phase 3, `packages/app`): choose a folder,
   see its proposed action queue grouped as in the CLI, each item with its
   citations, review-gated items marked and a "Reviewed" note the person can
@@ -17,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the real core planner in the page; the Tauri adapters come next.
 
 ### Changed
+
+- The store's migration list now lives in one file,
+  `packages/core/src/migrations.json`, used by both the CLI's store and the
+  desktop app's Rust store, so their schemas cannot drift.
 
 - `@outtray/core` is now host-neutral so it can run inside the desktop app's
   webview (ADR-0013, accepted). Node-only pieces (the encrypted SQLite store,

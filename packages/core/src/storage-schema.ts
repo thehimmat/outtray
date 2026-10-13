@@ -11,111 +11,28 @@
  * needs a real database and is tested through the adapter.
  */
 
+import migrationsJson from './migrations.json' with { type: 'json' };
+
 /** One schema step. Versions are contiguous from 1 and never edited once shipped. */
 export interface Migration {
   version: number;
   /** Human-readable, for errors and for reading the history. */
   name: string;
+  /** What the step is for, in one or two sentences. */
+  note?: string;
   /** Statements applied in one transaction. */
   statements: readonly string[];
 }
 
 /**
- * Migration 1: the three tables ADR-0011 names, plus the identifier tables its
- * section 3 describes.
+ * Every migration, in order. Append only.
  *
- * The identifier tables are created here and filled by the identifier vault
- * work (#79): one canonical row per normalized value, referenced by every
- * document that mentions it, so a purge has one place to purge and a reveal
- * gate has something to gate. They stay empty unless the user turns identifier
- * storage on, which is off by default.
- *
- * Embeddings are float32 BLOBs, matching what the spike measured. Foreign keys
- * are declared, and the adapter turns `PRAGMA foreign_keys` on per connection
- * (SQLite defaults it off), so a chunk cannot outlive its document.
+ * The list lives in `migrations.json` so that it is one source for both
+ * stores: this TypeScript adapter imports it, and the Rust adapter the desktop
+ * app uses embeds the same file (ADR-0013). Each entry's `note` says what the
+ * step is for; the ADRs it names hold the reasoning.
  */
-const MIGRATION_1: Migration = {
-  version: 1,
-  name: 'initial-schema',
-  statements: [
-    `CREATE TABLE documents (
-      content_hash        TEXT PRIMARY KEY,
-      path                TEXT NOT NULL,
-      type                TEXT,
-      extraction_json     TEXT,
-      reconciliation_json TEXT,
-      scanned_at          INTEGER NOT NULL
-    )`,
-    `CREATE TABLE chunks (
-      document_hash TEXT    NOT NULL REFERENCES documents(content_hash) ON DELETE CASCADE,
-      chunk_index   INTEGER NOT NULL,
-      page          INTEGER,
-      text          TEXT    NOT NULL,
-      embedding     BLOB    NOT NULL,
-      PRIMARY KEY (document_hash, chunk_index)
-    )`,
-    `CREATE TABLE labels (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      type       TEXT NOT NULL,
-      embedding  BLOB NOT NULL,
-      provenance TEXT NOT NULL CHECK (provenance IN ('seed', 'correction'))
-    )`,
-    // One canonical row per identifier value (ADR-0011 section 3, #79).
-    `CREATE TABLE identifiers (
-      id               INTEGER PRIMARY KEY AUTOINCREMENT,
-      normalized_value TEXT    NOT NULL UNIQUE,
-      value            TEXT    NOT NULL,
-      last_four        TEXT    NOT NULL,
-      value_length     INTEGER NOT NULL,
-      created_at       INTEGER NOT NULL
-    )`,
-    // Which documents mention which identifier, and as which extracted field.
-    `CREATE TABLE identifier_mentions (
-      identifier_id INTEGER NOT NULL REFERENCES identifiers(id) ON DELETE CASCADE,
-      document_hash TEXT    NOT NULL REFERENCES documents(content_hash) ON DELETE CASCADE,
-      field         TEXT    NOT NULL,
-      PRIMARY KEY (identifier_id, document_hash, field)
-    )`,
-  ],
-};
-
-/**
- * Migration 2: the version keys ADR-0012 uses to decide whether a stored
- * extraction and its chunks can be reused instead of re-extracting. Both are
- * nullable: null means "unknown, extract again", which is the right reading
- * for every row written before this migration.
- */
-const MIGRATION_2: Migration = {
-  version: 2,
-  name: 'document-version-keys',
-  statements: [
-    'ALTER TABLE documents ADD COLUMN extractor_key TEXT',
-    'ALTER TABLE documents ADD COLUMN index_key TEXT',
-  ],
-};
-
-/**
- * Migration 3: the personalization loop (#67, ADR-0009 amendment 2). A
- * document can carry the type its user pinned; a correction label records
- * which document it came from, the tokenized text it was embedded from (so it
- * can be re-embedded when the embedding model changes, never holding a full
- * identifier), and which model produced its embedding. Rows written before
- * this migration read as seeds of unknown model.
- */
-const MIGRATION_3: Migration = {
-  version: 3,
-  name: 'personalization',
-  statements: [
-    'ALTER TABLE documents ADD COLUMN user_type TEXT',
-    'ALTER TABLE labels ADD COLUMN document_hash TEXT',
-    'ALTER TABLE labels ADD COLUMN text TEXT',
-    'ALTER TABLE labels ADD COLUMN embed_model TEXT',
-    'CREATE INDEX labels_by_document ON labels (document_hash)',
-  ],
-};
-
-/** Every migration, in order. Append only. */
-export const MIGRATIONS: readonly Migration[] = [MIGRATION_1, MIGRATION_2, MIGRATION_3];
+export const MIGRATIONS: readonly Migration[] = migrationsJson;
 
 /** Schema version a store is brought up to at open time. */
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;
