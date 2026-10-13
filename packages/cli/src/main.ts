@@ -52,9 +52,10 @@ Usage:
   outtray scan <dir>          Extract every document in a folder of images
   outtray actions <dir>       Scan, then propose an action queue with citations
   outtray find <dir> <query>  Retrieve the passages most relevant to a query, with citations
-  outtray reveal <file> <field>
+  outtray reveal <file> <field> [--to-pipe]
                               Print one stored ID number in full (id_number, policy_number,
-                              account_number); needs identifier storage on
+                              account_number); needs identifier storage on. --to-pipe
+                              allows output to a pipe or file
   outtray settings            Show settings and what identifier storage means
   outtray settings identifier-storage on|off [--yes]
                               Remember full ID numbers, or forget them (off by default)
@@ -299,24 +300,42 @@ export async function saveScan(
   }
 }
 
+/** `runReveal` also needs to know where stdout goes. Injected by tests. */
+export interface RevealDeps extends StoreDeps {
+  /** Whether stdout is a terminal, rather than a pipe or a file. */
+  stdoutIsTerminal: boolean;
+}
+
+function defaultRevealDeps(): RevealDeps {
+  return { ...defaultStoreDeps(), stdoutIsTerminal: Boolean(process.stdout.isTTY) };
+}
+
+/** The flag that allows `reveal` to write a full value into a pipe or file (#101). */
+const TO_PIPE_FLAG = '--to-pipe';
+
 /**
- * `outtray reveal <file> <field>`: print one vaulted identifier in full
- * (ADR-0011 section 3). The value goes to stdout alone, so it can be piped,
- * and never to stderr, which is where diagnostics and logs go.
+ * `outtray reveal <file> <field> [--to-pipe]`: print one vaulted identifier in
+ * full (ADR-0011 section 3). The value goes to stdout alone and never to
+ * stderr, which is where diagnostics and logs go. When stdout is not a
+ * terminal it refuses unless `--to-pipe` is given (#101), so an accidental
+ * redirect to a file or a logged pipeline fails closed, while a deliberate
+ * `--to-pipe | pbcopy` still works.
  *
- * Failure modes: exits 1 without opening the store for bad arguments or when
- * no store exists (opening would create one). Exits 1 when the file matches no
- * stored document, when the document carries a different field, or when
- * nothing is vaulted for it, saying which and what to do. Exits 1 if the store
- * cannot be opened. The store is closed on every path.
+ * Failure modes: exits 1 without opening the store for bad arguments, for a
+ * non-terminal stdout without `--to-pipe`, or when no store exists (opening
+ * would create one). Exits 1 when the file matches no stored document, when
+ * the document carries a different field, or when nothing is vaulted for it,
+ * saying which and what to do. Exits 1 if the store cannot be opened. The
+ * store is closed on every path.
  */
 export async function runReveal(
   args: readonly string[],
-  deps: StoreDeps | (() => StoreDeps) = defaultStoreDeps,
+  deps: RevealDeps | (() => RevealDeps) = defaultRevealDeps,
 ): Promise<number> {
-  const [file, field] = args;
+  const toPipe = args.includes(TO_PIPE_FLAG);
+  const [file, field] = args.filter((a) => a !== TO_PIPE_FLAG);
   if (!file || !field) {
-    process.stderr.write('usage: outtray reveal <file> <field>\n');
+    process.stderr.write('usage: outtray reveal <file> <field> [--to-pipe]\n');
     return 1;
   }
   if (!isIdentifierField(field)) {
@@ -328,7 +347,13 @@ export async function runReveal(
 
   let storage: StorageProvider | null = null;
   try {
-    const { configPath, databaseExists, openStorage } = resolveDeps(deps);
+    const { configPath, databaseExists, openStorage, stdoutIsTerminal } = resolveDeps(deps);
+    if (!stdoutIsTerminal && !toPipe) {
+      process.stderr.write(
+        `Not revealed: output is going to a pipe or file, not a terminal. Add ${TO_PIPE_FLAG} if that is intended (e.g. ${TO_PIPE_FLAG} | pbcopy).\n`,
+      );
+      return 1;
+    }
     if (!(await databaseExists())) {
       process.stderr.write('Nothing has been saved yet; run `outtray scan <dir>` first.\n');
       return 1;
