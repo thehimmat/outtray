@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { TypeClassifier } from './classifier.js';
 import type { EmbeddingProvider } from './embedding-provider.js';
 import type { GenerateRequest, GenerateResult, ModelProvider } from './model-provider.js';
-import { scanDirectory } from './scan.js';
+import { contentHashOf, scanDirectory } from './scan.js';
 
 const usage = { loadMs: 0, promptTokens: 1, genTokens: 1, genTokPerSec: 1, totalMs: 1 };
 
@@ -251,5 +251,12 @@ describe('scanDirectory', () => {
     expect(r?.review).toBe(true);
     // The only document is invalid, so the failing embedder is never asked to embed.
     expect(report.classifierError).toBeNull();
+  });
+});
+
+describe('contentHashOf', () => {
+  it('is the hex SHA-256 of the bytes, the key scan stores documents under', () => {
+    const bytes = Buffer.from('some bytes');
+    expect(contentHashOf(bytes)).toBe(createHash('sha256').update(bytes).digest('hex'));
   });
 });

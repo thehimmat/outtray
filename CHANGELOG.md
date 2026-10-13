@@ -20,9 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   passport, policy or account number once, in full, in its own encrypted
   table, however many documents mention it. With it off (the default, or a
   missing or unreadable file), nothing but the last four is kept, and any
-  previously stored values are purged on the next scan. The command to
-  switch it, the disclosure, and `outtray reveal` arrive in slice 3; until
-  then the file is edited by hand.
+  previously stored values are purged on the next scan.
+- `outtray settings identifier-storage on|off` switches identifier storage
+  (#79 slice 3). Turning it on shows a short disclosure and asks first (or
+  needs `--yes` without a terminal); turning it off deletes every stored
+  number at once. `outtray settings` shows the setting and the disclosure.
+- `outtray reveal <file> <field>` prints one stored ID number in full, for one
+  document and one named field, on stdout only. It finds a moved file by its
+  contents, and says why when there is nothing to show (setting off, not
+  re-scanned since turning it on, or the document carries another field).
+- The scan that creates the encrypted store says where it is and what happens
+  to ID numbers.
 
 - Storage foundation (ADR-0011): a `StorageProvider` seam in `packages/core`
   alongside `ModelProvider` and `EmbeddingProvider`, with an in-memory

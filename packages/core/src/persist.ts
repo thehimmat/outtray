@@ -81,8 +81,11 @@ export async function persistScan(
 export interface SetIdentifierStorageOptions {
   /** Where the settings live, normally `defaultConfigPath()`. */
   configPath: string;
-  /** The store to purge when switching off. */
-  storage: StorageProvider;
+  /**
+   * The store to purge when switching off, or null when no store exists yet
+   * (nothing to purge, and opening one would create it).
+   */
+  storage: StorageProvider | null;
   enabled: boolean;
 }
 
@@ -95,12 +98,13 @@ export interface SetIdentifierStorageOptions {
  * Failure modes: rejects if the settings file cannot be written, in which
  * case nothing is purged and the old setting stands. If the setting is
  * written but the purge rejects, the setting is off and the next
- * `persistScan` completes the purge.
+ * `persistScan` completes the purge. A null `storage` purges nothing, which
+ * is complete when no store exists.
  */
 export async function setIdentifierStorage(
   options: SetIdentifierStorageOptions,
 ): Promise<{ purged: number }> {
   await writeSettings(options.configPath, { identifierStorage: options.enabled });
-  if (options.enabled) return { purged: 0 };
+  if (options.enabled || options.storage === null) return { purged: 0 };
   return { purged: await options.storage.purgeIdentifiers() };
 }
