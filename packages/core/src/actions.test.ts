@@ -224,3 +224,53 @@ describe('planActions identifier redaction', () => {
     expect(everything).not.toContain('0042117789');
   });
 });
+
+describe('planActions with free-text dates (#64 findings)', () => {
+  const policy = (expiry: string, actions: DocumentExtraction['action_items'] = []) =>
+    ({
+      type: 'policy',
+      summary: 'Auto policy.',
+      action_items: actions,
+      insurer: 'Evergreen Mutual',
+      policy_number: 'POL-769782',
+      coverage_summary: 'auto',
+      expiry_date: expiry,
+    }) as DocumentExtraction;
+
+  it('reads an expiry written out in words as the same date', () => {
+    const queue = planActions(report([item('p.png', policy('January 6, 2025'))]), { today: TODAY });
+    expect(queue.items.find((i) => i.ruleId === 'flag-expired')?.date).toBe('2025-01-06');
+  });
+
+  it('normalizes a to-do due date written out in words', () => {
+    const queue = planActions(
+      report([
+        item('p.png', policy('2027-01-01', [{ text: 'Renew', due_date: 'December 16, 2026' }])),
+      ]),
+      { today: TODAY },
+    );
+    expect(queue.items.find((i) => i.kind === 'todo')?.date).toBe('2026-12-16');
+  });
+
+  it('treats a due date that is not a date as no date, never past due', () => {
+    const queue = planActions(
+      report([
+        item('p.png', policy('2027-01-01', [{ text: 'Keep for records', due_date: 'see page 2' }])),
+      ]),
+      { today: TODAY },
+    );
+    const todo = queue.items.find((i) => i.ruleId === 'todo-extracted');
+    expect(todo?.date).toBeNull();
+    expect(queue.items.some((i) => i.ruleId === 'flag-past-due')).toBe(false);
+  });
+
+  it('never shows an identifier the model put in a due date field', () => {
+    const queue = planActions(
+      report([
+        item('p.png', policy('2027-01-01', [{ text: 'Policy number', due_date: 'POL-769782' }])),
+      ]),
+      { today: TODAY },
+    );
+    expect(JSON.stringify(queue).replace(/[^0-9]/g, '')).not.toContain('769782');
+  });
+});

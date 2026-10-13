@@ -14,6 +14,7 @@
  * disclaimer (point 6).
  */
 
+import { normalizeDate } from './dates.js';
 import type { DocumentExtraction, DocumentType } from './extraction-schema.js';
 import { redactExtraction } from './identifiers.js';
 import type { ScanReport } from './scan.js';
@@ -135,9 +136,10 @@ function isoDaysFrom(today: string, days: number): string {
   return t.toISOString().slice(0, 10);
 }
 
+/** A date field as ISO, or null when absent or not a date (`normalizeDate`). */
 function readDateField(doc: DocumentExtraction, field: string): string | null {
   const raw = (doc as Record<string, unknown>)[field];
-  return typeof raw === 'string' && raw !== '' ? raw : null;
+  return typeof raw === 'string' ? normalizeDate(raw) : null;
 }
 
 /**
@@ -146,8 +148,9 @@ function readDateField(doc: DocumentExtraction, field: string): string | null {
  * Failure modes: none; pure and total. Invalid extractions become attention
  * flags rather than being dropped, and documents whose effective type is
  * `unknown` produce no retention advice (nothing is advised on an untrusted
- * label). Date comparisons are lexicographic over ISO dates; a malformed
- * extracted date simply fails its window checks rather than throwing.
+ * label). Extracted dates are normalized to ISO first (`normalizeDate`, the
+ * eval's rule), so "January 6, 2025" counts; anything that is not a date is
+ * treated as no date, never as past due, and comparisons run on ISO strings.
  */
 export function planActions(report: ScanReport, options: PlanOptions): ActionQueue {
   const windowEnd = isoDaysFrom(
@@ -217,7 +220,8 @@ export function planActions(report: ScanReport, options: PlanOptions): ActionQue
 
     // To-dos from the document's own extracted action items.
     for (const action of doc.action_items) {
-      const due = action.due_date;
+      // Not a date (a model sometimes puts other fields here) means no date.
+      const due = normalizeDate(action.due_date);
       const pastDue = due !== null && due < options.today;
       add(
         {

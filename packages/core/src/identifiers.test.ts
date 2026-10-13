@@ -235,3 +235,22 @@ describe('derivedText', () => {
     expect(canonicalIdentifier(derivedText(PASSPORT))).not.toContain('1234567');
   });
 });
+
+describe('action item due dates (#64 findings)', () => {
+  const POLICY: DocumentExtraction = {
+    type: 'policy',
+    summary: 'Auto policy.',
+    action_items: [{ text: 'Policy number', due_date: 'POL-804220' }],
+    insurer: 'Harbor Casualty',
+    policy_number: 'POL-804220',
+    coverage_summary: 'auto',
+    expiry_date: '2026-12-16',
+  };
+
+  it('redacts and tokenizes an identifier the model put in a due date', () => {
+    expect(redactExtraction(POLICY).action_items[0]?.due_date).toBe(
+      '[policy_number ending 4220, 9 chars]',
+    );
+    expect(tokenizeExtraction(POLICY).action_items[0]?.due_date).toBe('[policy_number]');
+  });
+});

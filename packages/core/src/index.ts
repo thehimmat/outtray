@@ -33,6 +33,7 @@ export {
   SEED_EXAMPLES,
   type SeedExample,
 } from './classifier-seeds.js';
+export { normalizeDate } from './dates.js';
 export {
   DATABASE_KEY_BYTES,
   type DatabaseKey,

@@ -52,7 +52,7 @@ When those conflict, favor the showcase.
   gating) with no model call in planning. Action-level eval (#64):
   `pnpm eval:actions` replays recorded extractions, plans as of 2026-07-22
   and matches against authored expectations
-  (`docs/evals/action-scoreboard.md`, CI-gated); baseline P 10/24, R 10/13.
+  (`docs/evals/action-scoreboard.md`, CI-gated); baseline P 10/24, R 10/13; after date normalization P 11/25, R 11/13.
   Follow-up: #65 (overlapping expiry-flag merge).
 - **ADR-0009 stage complete end to end** (amendment accepted, #54): two-stage
   scan with reconciliation verdicts plus one typed re-extraction on confident
