@@ -288,10 +288,28 @@ export function planActions(report: ScanReport, options: PlanOptions): ActionQue
     }
   }
 
+  // One fact flagged twice (#65): an extracted action on the same document and
+  // date as a field-derived expiry item (the model restating "Expires" as a
+  // to-do) folds into that item, keeping both citations.
+  const fieldDerived = new Map<string, ActionItem>();
+  for (const item of items) {
+    if (item.ruleId === 'flag-expired' || item.kind === 'expiry_alert') {
+      fieldDerived.set(`${item.citations[0]?.documentId}|${item.date}`, item);
+    }
+  }
+  const folded = items.filter((item) => {
+    if (item.ruleId !== 'flag-past-due' && item.ruleId !== 'todo-extracted') return true;
+    const target = fieldDerived.get(`${item.citations[0]?.documentId}|${item.date}`);
+    if (!target || item.date === null) return true;
+    target.citations.push(...item.citations);
+    target.needsReviewFirst = target.needsReviewFirst || item.needsReviewFirst;
+    return false;
+  });
+
   // Merge duplicate to-dos (same title and date across documents).
   const merged: ActionItem[] = [];
   const todoByKey = new Map<string, ActionItem>();
-  for (const item of items) {
+  for (const item of folded) {
     if (item.kind !== 'todo') {
       merged.push(item);
       continue;

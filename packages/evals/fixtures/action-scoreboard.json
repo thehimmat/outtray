@@ -2,20 +2,20 @@
   "asOf": "2026-07-22",
   "overall": {
     "tp": 11,
-    "fp": 14,
+    "fp": 11,
     "fn": 2,
     "tn": 0
   },
   "perKind": {
     "attention_flag": {
       "tp": 3,
-      "fp": 4,
+      "fp": 2,
       "fn": 0,
       "tn": 0
     },
     "todo": {
       "tp": 1,
-      "fp": 8,
+      "fp": 7,
       "fn": 0,
       "tn": 0
     },
