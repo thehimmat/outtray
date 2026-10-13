@@ -1,5 +1,4 @@
 import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
@@ -13,14 +12,8 @@ const inTauri = '__TAURI_INTERNALS__' in window;
 const api = inTauri
   ? tauriApi({
       invoke,
-      pickFolder: async () => {
-        const picked = await open({
-          directory: true,
-          multiple: false,
-          title: 'Choose a folder of documents',
-        });
-        return typeof picked === 'string' ? picked : null;
-      },
+      // The shell shows the picker and allows only what is picked there (#123).
+      pickFolder: () => invoke<string | null>('pick_folder'),
     })
   : demoApi();
 

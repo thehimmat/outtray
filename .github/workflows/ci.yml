@@ -56,5 +56,5 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: packages/app/src-tauri
-      - run: cargo fmt --check && cargo build --locked
+      - run: cargo fmt --check && cargo build --locked && cargo test --locked
         working-directory: packages/app/src-tauri

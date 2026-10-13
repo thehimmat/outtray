@@ -55,7 +55,8 @@ When those conflict, favor the showcase.
   interface. The Tauri shell (`packages/app/src-tauri`) hosts it for real:
   `tauri-api.ts` runs core's `scanWithStore` (the CLI's pipeline) against
   Rust commands for the store, the Keychain key (created natively, never
-  sent to the page) and read-only folder access; CI builds the shell on
+  sent to the page) and read-only access scoped to folders picked in the
+  native picker (#123); CI builds the shell on
   ubuntu and macOS. Not yet run on the Air (#81 tracks the Keychain).
   "Reviewed" marks persist (ADR-0010 amendment 1, migration 4 `reviews`,
   keyed by rule, document bytes and date). The Rust

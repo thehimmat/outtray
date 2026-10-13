@@ -21,6 +21,7 @@ ADR touching data flow changes.
 | Malicious document | Prompt injection: attacker-authored text steering the agent that summarizes or flags it | Delimited data blocks, verbatim-evidence UI, no destructive tools, typed boundaries (ADR-0008) |
 | Local process abusing exposed services | Ollama's unauthenticated localhost API sees every document | Loopback-only preflight; Ollama pinned and listed as trusted-but-audited; ModelProvider seam allows moving in-process (ADR-0002) |
 | Compromised dependency | Supply-chain code exfiltrating documents | Minimal dependency count (zero runtime deps in core today), automated dependency updates, lockfile in CI |
+| Compromised app page (desktop shell) | Script in the webview, for example injected through rendered extraction text, asks the shell to read files the user never chose | The shell reads only folders picked in its own native picker and the regular files directly in them, compared after resolving symlinks and `..` (`folder_scope.rs`, #123); the page holds no dialog or file-system permission and never receives the database key; CSP limits the page to IPC and local Ollama |
 
 ## Assessment: storing extracted identifiers (ADR-0011)
 
