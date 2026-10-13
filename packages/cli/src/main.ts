@@ -18,15 +18,19 @@ import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import {
   type ActionQueue,
+  buildIndex,
   defaultConfigPath,
   defaultDatabasePath,
+  type EmbeddingProvider,
+  extractorKeyFor,
   type FindResult,
-  findInDirectory,
   firstRunNotice,
   IDENTIFIER_STORAGE_DISCLOSURE,
+  indexKeyFor,
   isIdentifierField,
   KeychainKeyProvider,
   locateDocument,
+  type ModelProvider,
   OllamaEmbeddingProvider,
   OllamaProvider,
   openSqlcipherStorage,
@@ -34,17 +38,25 @@ import {
   planActions,
   readSettings,
   redactExtraction,
+  reusableDocument,
+  reusedItem,
   revealIdentifier,
   type ScanItem,
   type ScanReport,
   type StorageProvider,
   scanDirectory,
+  searchReport,
+  searchStore,
   setIdentifierStorage,
 } from '@outtray/core';
 
 // Demo embedding model. The shipped default is a later retrieval-eval ADR, the
 // way ADR-0002 chose the VLM; this is just what the `find` demo runs against.
 const EMBED_MODEL = 'nomic-embed-text';
+
+// The extraction model (ADR-0002), passed explicitly so the extractor key that
+// decides reuse (ADR-0012) names the model that actually ran.
+const EXTRACT_MODEL = 'qwen3-vl:2b';
 
 const USAGE = `outtray: point it at the pile, get an action list.
 
@@ -178,34 +190,25 @@ async function runFind(args: readonly string[]): Promise<number> {
     process.stderr.write('usage: outtray find <dir> <query>\n');
     return 1;
   }
-  try {
-    if (!(await stat(dir)).isDirectory()) {
-      process.stderr.write(`Not a directory: ${dir}\n`);
-      return 1;
-    }
-  } catch {
-    process.stderr.write(`Cannot read directory: ${dir}\n`);
+  const argError = await directoryError('find', dir);
+  if (argError !== null) {
+    process.stderr.write(`${argError}\n`);
     return 1;
   }
 
-  let result: FindResult;
+  let found: { result: FindResult; notes: string };
   try {
-    result = await findInDirectory(
-      new OllamaProvider(),
-      new OllamaEmbeddingProvider({ model: EMBED_MODEL }),
-      dir,
-      query,
-      5,
-    );
+    found = await findInFolder(dir, query, ollamaModels());
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     process.stderr.write(
-      `find failed: ${detail}\nIs Ollama running with qwen3-vl:2b and ${EMBED_MODEL} pulled?\n`,
+      `find failed: ${detail}\nIs Ollama running with ${EXTRACT_MODEL} and ${EMBED_MODEL} pulled?\n`,
     );
     return 1;
   }
 
-  process.stdout.write(formatCitations(query, result));
+  process.stdout.write(formatCitations(query, found.result));
+  process.stderr.write(found.notes);
   return 0;
 }
 
@@ -220,11 +223,18 @@ async function directoryError(command: string, dir: string | undefined): Promise
   return null;
 }
 
-/** Run the two-stage scan shared by `scan` and `actions`. */
-async function scanWithClassifier(dir: string): Promise<ScanReport> {
-  return scanDirectory(new OllamaProvider(), dir, {
-    classify: { embedder: new OllamaEmbeddingProvider({ model: EMBED_MODEL }) },
-  });
+/** The two models a scan uses. Injected by tests. */
+export interface ScanModels {
+  provider: ModelProvider;
+  embedder: EmbeddingProvider;
+}
+
+/** The local Ollama models (ADR-0002). */
+function ollamaModels(): ScanModels {
+  return {
+    provider: new OllamaProvider(),
+    embedder: new OllamaEmbeddingProvider({ model: EMBED_MODEL }),
+  };
 }
 
 /** Where the vault commands find the settings and the store. Injected by tests. */
@@ -260,44 +270,133 @@ function resolveDeps<T>(deps: T | (() => T)): T {
   return typeof deps === 'function' ? (deps as () => T)() : deps;
 }
 
+/** A scanned folder, the store it was saved to (open; the caller closes it), and what to say on stderr. */
+export interface FolderScan {
+  report: ScanReport;
+  /** The open store, or null when it could not be opened. */
+  storage: StorageProvider | null;
+  /** Lines for stderr: warnings, the first-run notice, what was saved. */
+  notes: string;
+}
+
 /**
- * Save a scan to the encrypted store and return the line to show on stderr.
- * The stored extraction is always redacted; full identifiers are vaulted only
- * when the user opted in via `config.json` (ADR-0011 and its amendment). The
- * scan that creates the store also returns the first-run notice.
+ * Scan `dir` incrementally against the encrypted store and save the result
+ * (ADR-0011, ADR-0012). Files whose bytes, model, prompts and index are
+ * unchanged are reused with no model call; the rest are extracted, chunked,
+ * embedded and saved. Stored extractions are always redacted, and full
+ * identifiers are vaulted only when the user opted in. The scan that creates
+ * the store also notes the first-run notice.
  *
- * Failure modes: never rejects. A store that cannot be opened or written (no
- * Keychain, not macOS, a key mismatch) is reported in the returned line, and
- * the scan output already printed stands; the store is a cache and a re-scan
- * rebuilds it. The store is closed whether or not the write succeeded.
+ * Failure modes: rejects only when the scan itself fails (the vision model is
+ * unreachable for a file that needs extracting), closing the store first.
+ * A store that cannot be opened or written (no Keychain, not macOS, a key
+ * mismatch) is reported in `notes` and the scan proceeds without it; the store
+ * is a cache and a re-scan rebuilds it. An embedder failure saves documents
+ * unindexed, noted, so they are read again next time.
  */
-export async function saveScan(
+export async function scanFolder(
   dir: string,
-  report: ScanReport,
+  models: ScanModels,
   deps: StoreDeps | (() => StoreDeps) = defaultStoreDeps,
-): Promise<string> {
+): Promise<FolderScan> {
   let storage: StorageProvider | null = null;
+  let identifierStorage = false;
+  let warning = '';
+  let notice = '';
+  let notes = '';
   try {
-    const { configPath, databasePath, databaseExists, openStorage } = resolveDeps(deps);
-    const { settings, warning } = await readSettings(configPath);
-    const firstRun = !(await databaseExists());
-    storage = await openStorage();
-    const summary = await persistScan(storage, report, {
-      dir,
-      identifierStorage: settings.identifierStorage,
+    const resolved = resolveDeps(deps);
+    const read = await readSettings(resolved.configPath);
+    identifierStorage = read.settings.identifierStorage;
+    if (read.warning !== null) warning = `${read.warning}\n`;
+    const firstRun = !(await resolved.databaseExists());
+    storage = await resolved.openStorage();
+    if (firstRun) notice = firstRunNotice(identifierStorage, resolved.databasePath);
+  } catch (error) {
+    notes = `Not saved to the encrypted store: ${messageOf(error)}\n`;
+  }
+
+  const keys = {
+    extractorKey: extractorKeyFor(EXTRACT_MODEL),
+    indexKey: indexKeyFor(EMBED_MODEL),
+    identifierStorage,
+  };
+  const store = storage;
+  let report: ScanReport;
+  try {
+    report = await scanDirectory(models.provider, dir, {
+      model: EXTRACT_MODEL,
+      classify: { embedder: models.embedder },
+      ...(store
+        ? {
+            reuse: async (file: string, hash: string) => {
+              const doc = await reusableDocument(store, hash, keys);
+              return doc ? reusedItem(file, doc) : null;
+            },
+          }
+        : {}),
     });
-    const ids = settings.identifierStorage
+  } catch (error) {
+    await storage?.close();
+    throw error;
+  }
+  if (store === null) return { report, storage, notes };
+
+  try {
+    const built = await buildIndex(models.embedder, report);
+    const summary = await persistScan(store, report, {
+      dir,
+      identifierStorage,
+      extractorKey: keys.extractorKey,
+      ...(built.error === null ? { index: { key: keys.indexKey, chunks: built.chunks } } : {}),
+    });
+    const ids = identifierStorage
       ? `${summary.identifiersVaulted} stored in full (identifier storage is on)`
       : 'last four only (identifier storage is off)';
-    const notice = firstRun ? firstRunNotice(settings.identifierStorage, databasePath) : '';
-    const saved = `Saved ${summary.documents} document(s) to the encrypted store. ID numbers: ${ids}.\n`;
-    return `${notice}${warning === null ? '' : `${warning}\n`}${saved}`;
+    const unchanged =
+      summary.reused > 0 ? ` (${summary.reused} unchanged since the last scan)` : '';
+    const index =
+      built.error === null
+        ? ''
+        : `Search index not updated (${built.error}); these documents are read again next time.\n`;
+    notes = `${notice}${warning}Saved ${summary.documents} document(s) to the encrypted store${unchanged}. ID numbers: ${ids}.\n${index}`;
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    return `Not saved to the encrypted store: ${detail}\n`;
+    notes = `${warning}Not saved to the encrypted store: ${messageOf(error)}\n`;
+  }
+  return { report, storage, notes };
+}
+
+/**
+ * `find`: scan `dir` incrementally, then answer `query` from the stored index
+ * (ADR-0012 section 4). Over an unchanged folder no vision model loads; only
+ * the query is embedded. Without a store it falls back to an in-memory index
+ * of this scan, as before #43.
+ *
+ * Failure modes: as `scanFolder`, plus rejects if the embedder rejects while
+ * searching. The store is closed on every path.
+ */
+export async function findInFolder(
+  dir: string,
+  query: string,
+  models: ScanModels,
+  deps: StoreDeps | (() => StoreDeps) = defaultStoreDeps,
+): Promise<{ result: FindResult; notes: string }> {
+  const { report, storage, notes } = await scanFolder(dir, models, deps);
+  try {
+    const citations = storage
+      ? await searchStore(storage, models.embedder, query, 5, {
+          documents: new Map(report.items.map((i) => [i.contentHash, i.file])),
+          indexKey: indexKeyFor(EMBED_MODEL),
+        })
+      : await searchReport(models.embedder, report, query, 5);
+    return { result: { citations, scanned: report }, notes };
   } finally {
     await storage?.close();
   }
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /** `runReveal` also needs to know where stdout goes. Injected by tests. */
@@ -534,22 +633,22 @@ async function runScan(args: readonly string[]): Promise<number> {
     return 1;
   }
 
-  let report: ScanReport;
+  let scan: FolderScan;
   try {
-    report = await scanWithClassifier(dir);
+    scan = await scanFolder(dir, ollamaModels());
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
     process.stderr.write(
-      `scan failed: ${detail}\nIs Ollama running (ollama serve) with qwen3-vl:2b pulled?\n`,
+      `scan failed: ${messageOf(error)}\nIs Ollama running (ollama serve) with ${EXTRACT_MODEL} pulled?\n`,
     );
     return 1;
   }
+  await scan.storage?.close();
 
-  process.stdout.write(formatReport(dir, report));
-  if (report.classifierError !== null) {
+  process.stdout.write(formatReport(dir, scan.report));
+  if (scan.report.classifierError !== null) {
     process.stderr.write(`Hint: the classifier needs ${EMBED_MODEL} pulled in Ollama.\n`);
   }
-  process.stderr.write(await saveScan(dir, report));
+  process.stderr.write(scan.notes);
   return 0;
 }
 
@@ -561,24 +660,25 @@ async function runActions(args: readonly string[]): Promise<number> {
     return 1;
   }
 
-  let report: ScanReport;
+  let scan: FolderScan;
   try {
-    report = await scanWithClassifier(dir);
+    scan = await scanFolder(dir, ollamaModels());
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
     process.stderr.write(
-      `actions failed: ${detail}\nIs Ollama running (ollama serve) with qwen3-vl:2b pulled?\n`,
+      `actions failed: ${messageOf(error)}\nIs Ollama running (ollama serve) with ${EXTRACT_MODEL} pulled?\n`,
     );
     return 1;
   }
+  await scan.storage?.close();
 
   const today = new Date().toISOString().slice(0, 10);
-  process.stdout.write(formatActions(dir, planActions(report, { today })));
-  if (report.classifierError !== null) {
+  process.stdout.write(formatActions(dir, planActions(scan.report, { today })));
+  if (scan.report.classifierError !== null) {
     process.stderr.write(
-      `Classifier unavailable (${report.classifierError}); type verdicts are single-stage.\n`,
+      `Classifier unavailable (${scan.report.classifierError}); type verdicts are single-stage.\n`,
     );
   }
+  process.stderr.write(scan.notes);
   return 0;
 }
 

@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `outtray scan`, `outtray actions` and `outtray find` are incremental
+  (ADR-0012, #43). A file whose contents, extraction model and prompts are
+  unchanged since its last scan is read from the encrypted store with no
+  model call, so repeating a command over the same folder is near-instant
+  and `find` over an unchanged folder only embeds the query. Changing the
+  model or a prompt version re-reads everything once. Turning identifier
+  storage on re-reads documents whose number is not stored yet. Without the
+  store (not macOS, Keychain locked), `find` still works from an in-memory
+  index, as before.
+
 - `outtray scan` now saves what it found to the encrypted store (ADR-0011,
   #79 slice 2), the store's first consumer. The first scan on a Mac creates
   the database and its Keychain key. Stored extractions always carry the

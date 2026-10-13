@@ -52,15 +52,31 @@ export async function findInDirectory(
     ...(options.model ? { model: options.model } : {}),
     ...options.scan,
   });
+  const citations = await searchReport(embedder, scanned, query, k, options.chunk);
+  return { citations, scanned };
+}
 
+/**
+ * Index a scan report in memory and return the top `k` cited passages for
+ * `query`. The fallback when the encrypted store is unavailable; with a store,
+ * `searchStore` (ADR-0012) answers from persisted chunks instead.
+ *
+ * Failure modes: rejects if the embedder rejects. Failed extractions are
+ * absent from the index; a query with nothing to match returns `[]`.
+ */
+export async function searchReport(
+  embedder: EmbeddingProvider,
+  report: ScanReport,
+  query: string,
+  k: number,
+  chunk?: ChunkOptions,
+): Promise<Citation[]> {
   const docs: DocumentText[] = [];
-  for (const item of scanned.items) {
+  for (const item of report.items) {
     const doc = item.result.document;
     // Derived text is indexed tokenized, never with a full identifier (ADR-0011).
     if (doc) docs.push({ id: item.file, text: extractionText(tokenizeExtraction(doc)) });
   }
-
-  const index = await indexDocuments(embedder, docs, options.chunk);
-  const citations = await search(index, embedder, query, k);
-  return { citations, scanned };
+  const index = await indexDocuments(embedder, docs, chunk);
+  return search(index, embedder, query, k);
 }
