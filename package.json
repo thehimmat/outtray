@@ -19,7 +19,8 @@
     "eval:record": "pnpm build && node packages/evals/scripts/eval.mjs record",
     "eval:live": "pnpm build && node packages/evals/scripts/eval.mjs live",
     "eval:replay": "pnpm build && node packages/evals/scripts/eval.mjs replay",
-    "eval:classify": "pnpm build && node packages/evals/scripts/classify.mjs"
+    "eval:classify": "pnpm build && node packages/evals/scripts/classify.mjs",
+    "eval:actions": "pnpm build && node packages/evals/scripts/actions.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
