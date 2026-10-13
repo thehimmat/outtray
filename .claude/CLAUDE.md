@@ -50,7 +50,9 @@ When those conflict, favor the showcase.
   rusqlite, proven against the shipped store in #114; native Keychain;
   Tauri file APIs) held to the shared `StorageProvider` contract suite.
   `@outtray/core` is host-neutral; Node-only adapters live behind
-  `@outtray/core/node`. Builds stay unsigned until #12.
+  `@outtray/core/node`. Builds stay unsigned until #12. `packages/app`
+  (React, Vite) renders the approval queue against an `OuttrayApi`
+  interface, backed by a demo host until the Tauri adapters land.
 - **Action layer v1 shipped (ADR-0010, accepted)**: `outtray actions <dir>`
   plans a deterministic, cited, proposed-only queue (to-dos, expiry alerts,
   keep/shred advice with rule ids + disclaimer, attention flags, review
@@ -107,8 +109,8 @@ Conventional Commits; squash-merge PRs to an always-releasable main.
 - `pnpm eval:live`, `pnpm eval:record` (land in Phase 1)
 
 Packages: `core` (pure domain logic), `evals` (harness/fixtures/scorers/
-scoreboard), `cli` (thin entry, demo surface), `app` (placeholder until
-Phase 3). Decisions live in `docs/adr/`; eval design in
+scoreboard), `cli` (thin entry, demo surface), `app` (React UI over the host-neutral
+core; Tauri shell next). Decisions live in `docs/adr/`; eval design in
 `docs/evals/METHODOLOGY.md`; threats in `docs/THREAT_MODEL.md`.
 
 ## Ownership, autonomy, and owner checkpoints

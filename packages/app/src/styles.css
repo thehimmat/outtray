@@ -1,0 +1,125 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c5c5c;
+  --line: #e2e2e2;
+  --accent: #14497a;
+  --flag: #a3320b;
+  --badge-bg: #fdf1e7;
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161616;
+    --fg: #ececec;
+    --muted: #a3a3a3;
+    --line: #2e2e2e;
+    --accent: #7fb4e6;
+    --flag: #f09a74;
+    --badge-bg: #3a2418;
+  }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+.app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  margin: 24px 0 8px;
+}
+.section-attention_flag h2 {
+  color: var(--flag);
+}
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.item {
+  border-top: 1px solid var(--line);
+  padding: 10px 0;
+}
+.item.reviewed .title {
+  color: var(--muted);
+}
+.item-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+.date,
+.citations,
+.meta,
+.note,
+.disclaimer {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.badge,
+.advice {
+  font-size: 0.8rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--badge-bg);
+}
+.citations {
+  margin-top: 4px;
+}
+.source {
+  font-family: ui-monospace, monospace;
+}
+.reviewed-toggle {
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+.error {
+  color: var(--flag);
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+}
