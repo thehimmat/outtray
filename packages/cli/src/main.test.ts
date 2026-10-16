@@ -462,6 +462,68 @@ describe('scanFolder (incremental, ADR-0012)', () => {
     expect(models.provider.calls).toBe(2);
   });
 
+  /** A recognizer that reads the bill's text and nothing else (ADR-0009 amendment 3). */
+  function fakeOcr() {
+    const files: string[] = [];
+    const factory = vi.fn(async (_dir: string) => ({
+      key: 'ocr-v1:fake',
+      async recognize(file: string) {
+        files.push(file);
+        const text = 'Dairy Co bill, amount due $12.00 by the due date, pay to avoid a late fee';
+        return {
+          contract: 'ocr-v1' as const,
+          engine: 'vision-recognize-text' as const,
+          engineRevision: 3,
+          elapsedMs: 1,
+          pages: [
+            {
+              width: 10,
+              height: 10,
+              lines: Array.from({ length: 4 }, (_, i) => ({
+                text,
+                confidence: 1,
+                box: { x: 0, y: i * 0.1, width: 0.5, height: 0.015 },
+              })),
+            },
+          ],
+        };
+      },
+    }));
+    return { factory, files };
+  }
+
+  it('with the ocr setting on, reads every new file first and keys them by the recognizer', async () => {
+    const { pile, store, deps, models } = await setup();
+    await writeSettings(deps.configPath, { ocr: true });
+    const ocr = fakeOcr();
+    await scanFolder(pile, { ...models, ocr: ocr.factory }, deps);
+    expect(ocr.factory).toHaveBeenCalledWith(pile);
+    expect(ocr.files).toEqual(['bill.png', 'passport.png']);
+    expect(
+      (await store.listDocuments()).every((d) => d.extractorKey?.includes('ocr-v1:fake')),
+    ).toBe(true);
+  });
+
+  it('with the ocr setting off, never starts the recognizer', async () => {
+    const { pile, deps, models } = await setup();
+    const ocr = fakeOcr();
+    await scanFolder(pile, { ...models, ocr: ocr.factory }, deps);
+    expect(ocr.factory).not.toHaveBeenCalled();
+  });
+
+  it('with the ocr setting on but no sidecar, fails before any model call and says how to fix it', async () => {
+    const { pile, store, deps, models } = await setup();
+    await writeSettings(deps.configPath, { ocr: true });
+    const missing = async () => {
+      throw new Error('The OCR sidecar outtray-ocr was not found.');
+    };
+    await expect(scanFolder(pile, { ...models, ocr: missing }, deps)).rejects.toThrow(
+      /cannot run here: The OCR sidecar outtray-ocr was not found\..*outtray settings ocr off/s,
+    );
+    expect(models.provider.calls).toBe(0);
+    expect(store.close).toHaveBeenCalled();
+  });
+
   it('passes on a settings warning rather than hiding why the setting is off', async () => {
     const { pile, deps, models } = await setup({ config: 'not json' });
     const { notes } = await scanFolder(pile, models, deps);
@@ -1106,6 +1168,39 @@ describe('outtray settings', () => {
     expect((await readSettings(f.deps.configPath)).settings.identifierStorage).toBe(false);
   });
 
+  it('shows the ocr setting and switches it on and off without asking', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    const out = captureStdout();
+    const deps = { ...f.deps, interactive: false, confirm: never };
+    expect(await runSettings([], deps)).toBe(0);
+    expect(out.mock.calls.join('')).toMatch(/\nocr: off\n/);
+
+    expect(await runSettings(['ocr', 'on'], deps)).toBe(0);
+    expect(out.mock.calls.join('')).toMatch(/OCR is on\..*extracted once more/s);
+    expect((await readSettings(f.deps.configPath)).settings).toEqual({
+      identifierStorage: false,
+      ocr: true,
+    });
+
+    expect(await runSettings(['ocr', 'on'], deps)).toBe(0);
+    expect(out.mock.calls.join('')).toMatch(/OCR is already on\./);
+
+    expect(await runSettings(['ocr', 'off'], deps)).toBe(0);
+    expect((await readSettings(f.deps.configPath)).settings.ocr).toBe(false);
+  });
+
+  it('switching ocr leaves identifier storage as it was', async () => {
+    const f = await vaultFixture();
+    dir = f.dir;
+    await writeSettings(f.deps.configPath, { identifierStorage: true });
+    captureStdout();
+    expect(
+      await runSettings(['ocr', 'on'], { ...f.deps, interactive: false, confirm: never }),
+    ).toBe(0);
+    expect((await readSettings(f.deps.configPath)).settings.identifierStorage).toBe(true);
+  });
+
   it('rejects an unknown setting or value', async () => {
     const f = await vaultFixture();
     dir = f.dir;
@@ -1113,6 +1208,7 @@ describe('outtray settings', () => {
     const deps = { ...f.deps, interactive: false, confirm: never };
     expect(await runSettings(['colour', 'blue'], deps)).toBe(1);
     expect(await runSettings(['identifier-storage', 'maybe'], deps)).toBe(1);
+    expect(await runSettings(['ocr', 'maybe'], deps)).toBe(1);
     expect(err.mock.calls.join('')).toMatch(/usage: outtray settings/);
   });
 });

@@ -28,6 +28,7 @@ import {
   indexKeyFor,
   isIdentifierField,
   type ModelProvider,
+  type OcrRecognizer,
   OllamaEmbeddingProvider,
   OllamaProvider,
   PINNABLE_TYPES,
@@ -51,6 +52,9 @@ import {
   openSqlcipherStorage,
   readSettings,
   setIdentifierStorage,
+  VisionOcr,
+  visionRecognizer,
+  writeSettings,
 } from '@outtray/core/node';
 
 // Demo embedding model. The shipped default is a later retrieval-eval ADR, the
@@ -76,6 +80,8 @@ Usage:
   outtray settings            Show settings and what identifier storage means
   outtray settings identifier-storage on|off [--yes]
                               Remember full ID numbers, or forget them (off by default)
+  outtray settings ocr on|off Read each document's text with the OCR sidecar first and
+                              classify from it (off by default; macOS)
   outtray --version           Print version
   outtray --help              Show this help
 `;
@@ -211,9 +217,8 @@ async function runFind(args: readonly string[]): Promise<number> {
   try {
     found = await findInFolder(dir, query, ollamaModels());
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
     process.stderr.write(
-      `find failed: ${detail}\nIs Ollama running with ${EXTRACT_MODEL} and ${EMBED_MODEL} pulled?\n`,
+      `find failed: ${messageOf(error)}${scanHint(error, `${EXTRACT_MODEL} and ${EMBED_MODEL}`)}\n`,
     );
     return 1;
   }
@@ -234,18 +239,39 @@ async function directoryError(command: string, dir: string | undefined): Promise
   return null;
 }
 
-/** The two models a scan uses. Injected by tests. */
+/** The two models a scan uses, and the OCR arm when the setting is on. Injected by tests. */
 export interface ScanModels {
   provider: ModelProvider;
   embedder: EmbeddingProvider;
+  /**
+   * The recognizer for a folder, started only when the `ocr` setting is on
+   * (ADR-0009 amendment 3). Rejects when the OCR arm cannot run here.
+   */
+  ocr?: (dir: string) => Promise<OcrRecognizer>;
 }
 
-/** The local Ollama models (ADR-0002). */
+/** The local Ollama models (ADR-0002), and the Vision sidecar (`OUTTRAY_OCR_BINARY`, else on PATH). */
 function ollamaModels(): ScanModels {
   return {
     provider: new OllamaProvider(),
     embedder: new OllamaEmbeddingProvider({ model: EMBED_MODEL }),
+    ocr: async (dir) => {
+      const binary = process.env.OUTTRAY_OCR_BINARY;
+      const vision = new VisionOcr(binary ? { binary } : {});
+      await vision.probe();
+      return visionRecognizer(dir, vision);
+    },
   };
+}
+
+/** The `ocr` setting is on and the OCR arm cannot run; nothing was scanned. */
+class OcrSettingError extends Error {}
+
+/** What to add after a failed scan: the Ollama hint, unless the OCR arm was the problem. */
+function scanHint(error: unknown, models: string): string {
+  return error instanceof OcrSettingError
+    ? ''
+    : `\nIs Ollama running (ollama serve) with ${models} pulled?`;
 }
 
 /** Where the vault commands find the settings and the store. Injected by tests. */
@@ -303,7 +329,10 @@ export interface FolderScan {
  * A store that cannot be opened or written (no Keychain, not macOS, a key
  * mismatch) is reported in `notes` and the scan proceeds without it; the store
  * is a cache and a re-scan rebuilds it. An embedder failure saves documents
- * unindexed, noted, so they are read again next time.
+ * unindexed, noted, so they are read again next time. With the `ocr` setting
+ * on, rejects before any model call when the OCR arm cannot run (not macOS,
+ * no sidecar), rather than scanning without it: that would change every
+ * document's extractor key and re-extract the whole store.
  */
 export async function scanFolder(
   dir: string,
@@ -312,6 +341,7 @@ export async function scanFolder(
 ): Promise<FolderScan> {
   let storage: StorageProvider | null = null;
   let identifierStorage = false;
+  let ocrOn = false;
   let warning = '';
   let notice = '';
   let notes = '';
@@ -321,12 +351,27 @@ export async function scanFolder(
     databasePath = resolved.databasePath;
     const read = await readSettings(resolved.configPath);
     identifierStorage = read.settings.identifierStorage;
+    ocrOn = read.settings.ocr;
     if (read.warning !== null) warning = `${read.warning}\n`;
     const firstRun = !(await resolved.databaseExists());
     storage = await resolved.openStorage();
     if (firstRun) notice = firstRunNotice(identifierStorage, resolved.databasePath);
   } catch (error) {
     notes = `Not saved to the encrypted store: ${explainStorageError(error, databasePath)}\n`;
+  }
+
+  let ocr: OcrRecognizer | undefined;
+  if (ocrOn) {
+    try {
+      if (!models.ocr) throw new Error('No OCR arm is available in this build.');
+      ocr = await models.ocr(dir);
+    } catch (error) {
+      await storage?.close();
+      throw new OcrSettingError(
+        `OCR is on and cannot run here: ${messageOf(error)} Put outtray-ocr on PATH ` +
+          '(or set OUTTRAY_OCR_BINARY), or run `outtray settings ocr off` to scan without it.',
+      );
+    }
   }
 
   let scan: ScanWithStoreResult;
@@ -339,6 +384,7 @@ export async function scanFolder(
       identifierStorage,
       extractModel: EXTRACT_MODEL,
       embedModel: EMBED_MODEL,
+      ...(ocr ? { ocr } : {}),
     });
   } catch (error) {
     await storage?.close();
@@ -580,7 +626,14 @@ function defaultSettingsDeps(): SettingsDeps {
   };
 }
 
-const SETTINGS_USAGE = 'usage: outtray settings [identifier-storage on|off [--yes]]\n';
+const SETTINGS_USAGE = 'usage: outtray settings [identifier-storage on|off [--yes] | ocr on|off]\n';
+
+/** What the `ocr` setting does, shown with it. */
+const OCR_SETTING_NOTE =
+  'ocr reads each new document with the OCR sidecar (macOS; outtray-ocr on PATH, or\n' +
+  'OUTTRAY_OCR_BINARY) before the vision model and classifies it from that text; a\n' +
+  'confidently known type gets one vision call.\n' +
+  'Off by default while its accuracy is measured. Switching it extracts every document once more.\n';
 
 /**
  * `outtray settings`: show the identifier-storage setting with its
@@ -604,7 +657,7 @@ export async function runSettings(
   const [name, value, ...flags] = args;
   if (
     name !== undefined &&
-    (name !== 'identifier-storage' || (value !== 'on' && value !== 'off'))
+    ((name !== 'identifier-storage' && name !== 'ocr') || (value !== 'on' && value !== 'off'))
   ) {
     process.stderr.write(SETTINGS_USAGE);
     return 1;
@@ -617,7 +670,24 @@ export async function runSettings(
       process.stdout.write(
         `identifier-storage: ${settings.identifierStorage ? 'on' : 'off'}\n\n` +
           `${IDENTIFIER_STORAGE_DISCLOSURE}\n` +
-          'Change it with `outtray settings identifier-storage on` or `off`.\n',
+          'Change it with `outtray settings identifier-storage on` or `off`.\n' +
+          `\nocr: ${settings.ocr ? 'on' : 'off'}\n\n${OCR_SETTING_NOTE}` +
+          'Change it with `outtray settings ocr on` or `off`.\n',
+      );
+      return 0;
+    }
+    if (name === 'ocr') {
+      const on = value === 'on';
+      if ((await readSettings(resolved.configPath)).settings.ocr === on) {
+        process.stdout.write(`OCR is already ${value}.\n`);
+        return 0;
+      }
+      // Changes nothing stored and keeps nothing more, so it asks nothing.
+      await writeSettings(resolved.configPath, { ocr: on });
+      process.stdout.write(
+        value === 'on'
+          ? 'OCR is on. Each document is extracted once more on its next scan, text first.\n'
+          : 'OCR is off. Each document is extracted once more on its next scan, as before.\n',
       );
       return 0;
     }
@@ -698,9 +768,7 @@ async function runScan(args: readonly string[]): Promise<number> {
   try {
     scan = await scanFolder(dir, ollamaModels());
   } catch (error) {
-    process.stderr.write(
-      `scan failed: ${messageOf(error)}\nIs Ollama running (ollama serve) with ${EXTRACT_MODEL} pulled?\n`,
-    );
+    process.stderr.write(`scan failed: ${messageOf(error)}${scanHint(error, EXTRACT_MODEL)}\n`);
     return 1;
   }
   await scan.storage?.close();
@@ -725,9 +793,7 @@ async function runActions(args: readonly string[]): Promise<number> {
   try {
     scan = await scanFolder(dir, ollamaModels());
   } catch (error) {
-    process.stderr.write(
-      `actions failed: ${messageOf(error)}\nIs Ollama running (ollama serve) with ${EXTRACT_MODEL} pulled?\n`,
-    );
+    process.stderr.write(`actions failed: ${messageOf(error)}${scanHint(error, EXTRACT_MODEL)}\n`);
     return 1;
   }
   await scan.storage?.close();

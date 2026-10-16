@@ -25,9 +25,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   loads and votes on its type. A confident vote sends the document straight
   to the typed prompt (one vision call; new `routed` verdict), a weak one is
   checked against the generic extraction, and a page the OCR could not read
-  is extracted and classified as before. Core only for now; the CLI setting
-  that turns it on follows, and accuracy is unmeasured until a dev-machine
-  run.
+  is extracted and classified as before. Accuracy is unmeasured until a
+  dev-machine run.
+- `outtray settings ocr on|off` turns classify-first on for `scan`,
+  `actions` and `find` (off by default; macOS with `outtray-ocr` on PATH).
+  With it on and the sidecar missing, the command stops and says so rather
+  than scanning without it, which would re-extract every document.
+
+### Changed
+
+- Writing settings keeps the keys it does not change, in the CLI and in the
+  app, which share `config.json`. Before, the app turning identifier storage
+  on or off would have dropped any other setting.
 
 - The OCR eval reads degraded pages too (#160): a simulated flatbed scan and
   a poor phone photo of every fixture, with Vision's language correction on
