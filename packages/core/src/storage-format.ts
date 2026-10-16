@@ -137,7 +137,7 @@ export function hasCleartextSqliteHeader(header: Uint8Array): boolean {
  */
 export function assertEncryptedHeader(header: Uint8Array): void {
   if (header.length < HEADER_BYTES) return;
-  const magic = Buffer.from(header.subarray(0, SQLITE_MAGIC.length)).toString('latin1');
+  const magic = String.fromCharCode(...header.subarray(0, SQLITE_MAGIC.length));
   if (magic === SQLITE_MAGIC) {
     throw new StorageFormatError(
       'The database file is not encrypted: it begins with the plaintext SQLite magic string.',

@@ -77,13 +77,15 @@ export function pendingMigrations(
 }
 
 /**
- * Encode an embedding as a float32 BLOB.
+ * Encode an embedding as a float32 BLOB. Returns a plain `Uint8Array`, not a
+ * Node `Buffer`, so it runs in the webview too (#132); SQLite drivers bind it
+ * as a BLOB.
  *
  * Failure modes: throws `RangeError` for a non-finite component, so a NaN
  * produced upstream is caught at the write rather than poisoning every later
  * cosine comparison. Accepts an empty vector.
  */
-export function encodeEmbedding(embedding: readonly number[]): Buffer {
+export function encodeEmbedding(embedding: readonly number[]): Uint8Array {
   const floats = new Float32Array(embedding.length);
   for (let i = 0; i < embedding.length; i++) {
     const value = embedding[i] as number;
@@ -92,7 +94,7 @@ export function encodeEmbedding(embedding: readonly number[]): Buffer {
     }
     floats[i] = value;
   }
-  return Buffer.from(floats.buffer, floats.byteOffset, floats.byteLength);
+  return new Uint8Array(floats.buffer, floats.byteOffset, floats.byteLength);
 }
 
 /**
