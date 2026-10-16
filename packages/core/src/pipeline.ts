@@ -14,7 +14,7 @@ import { buildIndex, extractorKeyFor, indexKeyFor } from './incremental.js';
 import type { ModelProvider } from './model-provider.js';
 import { type PersistSummary, persistScan } from './persist.js';
 import { personalClassifier, reuseOrPin } from './personalize.js';
-import { type ScanReport, scanSource } from './scan.js';
+import { type OcrRecognizer, type ScanReport, scanSource } from './scan.js';
 import type { StorageProvider } from './storage-provider.js';
 
 /** What `scanWithStore` needs from its host. */
@@ -30,6 +30,12 @@ export interface ScanWithStoreOptions {
   extractModel: string;
   /** The embedding model tag, for the index key and label embeddings. */
   embedModel: string;
+  /**
+   * Read new documents' text first and classify from it (ADR-0009 amendment
+   * 3). Omit to scan as before; turning it on or off changes the extractor
+   * key, so every stored document is extracted once more.
+   */
+  ocr?: OcrRecognizer;
 }
 
 /** What a scan did. */
@@ -55,12 +61,13 @@ export interface ScanWithStoreResult {
 export async function scanWithStore(options: ScanWithStoreOptions): Promise<ScanWithStoreResult> {
   const { provider, embedder, source, storage, identifierStorage } = options;
   const keys = {
-    extractorKey: extractorKeyFor(options.extractModel),
+    extractorKey: extractorKeyFor(options.extractModel, options.ocr?.key),
     indexKey: indexKeyFor(options.embedModel),
     identifierStorage,
   };
   const report = await scanSource(provider, source, {
     model: options.extractModel,
+    ...(options.ocr ? { ocr: options.ocr } : {}),
     classify: {
       embedder,
       // Seeds plus the user's corrections (#67), built only if needed.

@@ -141,6 +141,7 @@ export {
   type Reconciliation,
   type ReconciliationStatus,
   reconcileType,
+  routedVerdict,
   userVerdict,
 } from './reconcile.js';
 export {
@@ -161,7 +162,10 @@ export {
 export { type ReviewTarget, reviewTargets } from './review-marks.js';
 export {
   type ClassifyStageOptions,
+  type OcrOutcome,
+  type OcrRecognizer,
   type ReuseAnswer,
+  ROUTING_VERSION,
   type ScanItem,
   type ScanOptions,
   type ScanReport,

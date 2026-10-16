@@ -110,6 +110,7 @@ export {
   type OcrRunResult,
   VisionOcr,
   type VisionOcrOptions,
+  visionRecognizer,
 } from './ocr-vision.js';
 export {
   DEFAULT_SETTINGS,

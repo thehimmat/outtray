@@ -42,7 +42,13 @@ export type ReconciliationStatus =
   /** No classifier verdict: stage not configured, failed, or extraction invalid. */
   | 'unclassified'
   /** The user pinned the type with `outtray correct` (#67); it wins over both labels. */
-  | 'user';
+  | 'user'
+  /**
+   * A confident vote on the OCR text chose the type before extraction, and
+   * the typed extraction came back as it (ADR-0009 amendment 3). The VLM was
+   * told the type, not asked, so there is no VLM label.
+   */
+  | 'routed';
 
 /** The pipeline's verdict on one document's type, consumed by the action layer. */
 export interface Reconciliation {
@@ -51,7 +57,10 @@ export interface Reconciliation {
   status: ReconciliationStatus;
   /** True when a human should look before the item is trusted (ADR-0008). */
   review: boolean;
-  /** The VLM's original one-shot label (provenance), or null if extraction failed. */
+  /**
+   * The VLM's original one-shot label (provenance), or null if extraction
+   * failed or the VLM was never asked the type (`routed`).
+   */
   vlmType: DocumentType | null;
   /** The classifier's raw verdict, or null when it produced none. */
   classification: Classification | null;
@@ -143,6 +152,23 @@ export function userVerdict(
     status: 'user',
     review: vlmType === null,
     vlmType,
+    classification,
+  };
+}
+
+/**
+ * The verdict for a document routed by a confident vote on its OCR text
+ * (ADR-0009 amendment 3), once its typed extraction came back as that type.
+ * Trusted without review; the vote is kept as provenance.
+ *
+ * Failure modes: none; pure. Callers check the extraction's type first.
+ */
+export function routedVerdict(classification: Classification): Reconciliation {
+  return {
+    effectiveType: classification.type,
+    status: 'routed',
+    review: false,
+    vlmType: null,
     classification,
   };
 }

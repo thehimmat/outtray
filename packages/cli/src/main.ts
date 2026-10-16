@@ -94,6 +94,8 @@ function typeTag(doc: { type: string }, reconciliation: ScanItem['reconciliation
       return `unknown, type unclear (vlm ${doc.type} vs classifier ${c?.type} ${c?.confidence.toFixed(2)}), needs review`;
     case 'unclassified':
       return doc.type;
+    case 'routed':
+      return `${doc.type}, read from its text ${c?.confidence.toFixed(2)}`;
     case 'user':
       return reconciliation.review
         ? `${reconciliation.effectiveType}, set by you, could not be read as one yet, needs review`
