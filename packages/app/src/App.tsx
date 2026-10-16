@@ -1,7 +1,7 @@
 /**
  * The app shell's one screen for now: choose a folder, see its proposed
- * action queue, settle questioned types, and plan the same folder again to
- * see the result. The host behind `api` is the demo until the Tauri adapters
+ * action queue, settle questioned types, plan the same folder again to see
+ * the result, and search the folder's documents. The host behind `api` is the demo until the Tauri adapters
  * land (ADR-0013).
  */
 
@@ -9,6 +9,7 @@ import { FolderOpen, LoaderCircle, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import type { OuttrayApi, PlannedFolder } from './api.js';
 import { QueueView } from './QueueView.js';
+import { SearchView } from './SearchView.js';
 
 type State =
   | { kind: 'idle' }
@@ -92,6 +93,7 @@ export function App({ api }: { api: OuttrayApi }) {
             onReviewedChange={(id, reviewed) => api.setReviewed(id, reviewed)}
             onTypeChange={(id, type) => api.setDocumentType(id, type)}
           />
+          <SearchView key={`search-${state.run}`} onSearch={(query) => api.search(query)} />
         </>
       ) : null}
     </main>

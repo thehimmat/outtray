@@ -9,12 +9,14 @@
  */
 
 import {
+  type Citation,
   type CorrectionOutcome,
   correctDocument,
   type DocumentSource,
   type DocumentType,
   type EmbeddingProvider,
   explainStorageError,
+  indexKeyFor,
   type ModelProvider,
   OllamaEmbeddingProvider,
   OllamaProvider,
@@ -23,8 +25,11 @@ import {
   planActions,
   type ReviewTarget,
   reviewTargets,
+  type ScanReport,
   type StorageProvider,
   scanWithStore,
+  searchReport,
+  searchStore,
 } from '@outtray/core';
 import type { OuttrayApi, PlannedFolder } from './api.js';
 
@@ -54,9 +59,22 @@ export function tauriFolderSource(invoke: Invoke, folder: string): DocumentSourc
   };
 }
 
+/** How many passages a search shows, as `outtray find` does. */
+const SEARCH_RESULTS = 5;
+
 function isUnreachable(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /fetch|ECONNREFUSED|network|Failed to fetch|Load failed/i.test(message);
+}
+
+/** An unreachable model in plain words; any other failure as an Error. */
+function plainModelError(error: unknown): Error {
+  if (isUnreachable(error)) {
+    return new Error(
+      `The local model is not running. Start Ollama (ollama serve) with ${EXTRACT_MODEL} and ${EMBED_MODEL} pulled, then try again. (${error instanceof Error ? error.message : String(error)})`,
+    );
+  }
+  return error instanceof Error ? error : new Error(String(error));
 }
 
 /**
@@ -68,6 +86,9 @@ function isUnreachable(error: unknown): boolean {
  * `setReviewed` rejects with a plain-language Error when the mark cannot be
  * saved; marks are read back only for documents this plan saved.
  * `setDocumentType` rejects the same way when the pin cannot be saved.
+ * `search` rejects before any plan, and with the plain-language model error
+ * when the embedding model is unreachable; it reads the store when the last
+ * plan saved to it and the last plan's report in memory otherwise.
  */
 export function tauriApi(deps: TauriApiDeps): OuttrayApi {
   const today = deps.today ?? (() => new Date().toISOString().slice(0, 10));
@@ -77,6 +98,13 @@ export function tauriApi(deps: TauriApiDeps): OuttrayApi {
     );
   /** Where each item of the last planned queue keeps its mark. */
   let targets = new Map<string, ReviewTarget>();
+  /** The last plan's scan, and whether its documents reached the store. */
+  let last: { report: ScanReport; saved: boolean } | null = null;
+  const models = () =>
+    deps.models ?? {
+      provider: new OllamaProvider(),
+      embedder: new OllamaEmbeddingProvider({ model: EMBED_MODEL }),
+    };
   // The shell holds one open store, so store work runs one call at a time:
   // two overlapping calls would each open it and the first close would end both.
   let tail: Promise<unknown> = Promise.resolve();
@@ -90,13 +118,10 @@ export function tauriApi(deps: TauriApiDeps): OuttrayApi {
     planFolder: (folder) => exclusive(() => plan(folder)),
     setReviewed: (itemId, reviewed) => exclusive(() => mark(itemId, reviewed)),
     setDocumentType: (itemId, type) => exclusive(() => pin(itemId, type)),
+    search: (query) => exclusive(() => find(query)),
   };
 
   async function plan(folder: string): Promise<PlannedFolder> {
-    const models = deps.models ?? {
-      provider: new OllamaProvider(),
-      embedder: new OllamaEmbeddingProvider({ model: EMBED_MODEL }),
-    };
     const notes: string[] = [];
     let storage: StorageProvider | null = null;
     try {
@@ -111,7 +136,7 @@ export function tauriApi(deps: TauriApiDeps): OuttrayApi {
     );
     try {
       const scan = await scanWithStore({
-        ...models,
+        ...models(),
         source: tauriFolderSource(deps.invoke, folder),
         storage,
         identifierStorage,
@@ -133,6 +158,7 @@ export function tauriApi(deps: TauriApiDeps): OuttrayApi {
           `Classifier unavailable (${scan.report.classifierError}); types are single-stage.`,
         );
       }
+      last = { report: scan.report, saved: scan.saved !== null };
       const queue = planActions(scan.report, { today: today() });
       targets = reviewTargets(queue, scan.report);
       const reviewed: string[] = [];
@@ -155,14 +181,27 @@ export function tauriApi(deps: TauriApiDeps): OuttrayApi {
         reviewed,
       };
     } catch (error) {
-      if (isUnreachable(error)) {
-        throw new Error(
-          `The local model is not running. Start Ollama (ollama serve) with ${EXTRACT_MODEL} and ${EMBED_MODEL} pulled, then try again. (${error instanceof Error ? error.message : String(error)})`,
-        );
-      }
-      throw error instanceof Error ? error : new Error(String(error));
+      throw plainModelError(error);
     } finally {
       await storage?.close();
+    }
+  }
+
+  async function find(query: string): Promise<Citation[]> {
+    if (!last) throw new Error('Plan a folder first; search looks through its documents.');
+    if (query.trim() === '') return [];
+    const { report, saved } = last;
+    const { embedder } = models();
+    try {
+      if (!saved) return await searchReport(embedder, report, query, SEARCH_RESULTS);
+      return await withStore((storage) =>
+        searchStore(storage, embedder, query, SEARCH_RESULTS, {
+          documents: new Map(report.items.map((i) => [i.contentHash, i.file])),
+          indexKey: indexKeyFor(EMBED_MODEL),
+        }),
+      );
+    } catch (error) {
+      throw plainModelError(error);
     }
   }
 

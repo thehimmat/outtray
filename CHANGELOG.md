@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The desktop app searches the planned folder's documents, as `outtray find`
+  does: type a question below the queue and see the best-matching passages,
+  each naming its document. Passages come from the encrypted store (or the
+  last plan, if the store could not be opened) and never show a full ID
+  number. A blank search does not load the model.
+
 - The desktop app settles a questioned document type in the queue. On a
   "Type disputed" or "Type unclear" flag, pick the right type and Outtray pins
   it, as `outtray correct` does: the pin wins over the classifier from then
