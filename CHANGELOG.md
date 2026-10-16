@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The OCR eval reads degraded pages too (#160): a simulated flatbed scan and
+  a poor phone photo of every fixture, with Vision's language correction on
+  and off. Scans lose nothing; the phone-photo pages drop to 8 of 36 fields
+  because Vision does not detect their body text, and its confidence stays
+  at 1.0 on lines it misreads. The macOS CI job now records new readings
+  itself and commits them to the pull request.
+
 - The Apple Vision OCR arm (ADR-0002 amendment 2, #8): `outtray-ocr`, a
   small Swift sidecar in `packages/ocr-vision`, reads one page image and
   prints its text, line confidences and positions as an `ocr-v1` JSON object

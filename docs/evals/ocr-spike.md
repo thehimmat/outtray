@@ -51,8 +51,39 @@ read as a bullet.
   has no M2 scaler driver, so the Neural Engine may not be in use; the Air
   could be faster. The cost on the Air is part of the next on-device
   session (#149 or its successor).
-- **Ten clean synthetic pages.** Skew, noise, low contrast, multi-page PDFs
-  and handwriting are the cases that matter and are not in the fixture set.
+- **Synthetic pages.** The degraded copies (below) are simulated; real
+  scans, multi-page PDFs and handwriting are not in the fixture set.
+
+## Degraded pages (#160)
+
+Two simulated degradations of every fixture (`fixtures/degraded`, parameters
+in its manifest), each read with Vision's language correction on and off.
+Full table in `docs/evals/ocr-scoreboard.md`.
+
+| Pages | Fields | Identifiers exact | Words |
+| --- | --- | --- | --- |
+| clean | 36/36 | 4/4 | 373/375 |
+| scan (skew 1.5 deg, blur, noise, JPEG 55) | 36/36 | 4/4 | 373/375 |
+| harsh (half resolution, skew 3.5 deg, uneven light, heavy noise, JPEG 35) | 8/36 | 0/4 | 45/375 |
+
+What this shows:
+
+- **A flatbed scan costs nothing.** Every field and identifier survives.
+- **The harsh pages fail by omission, not misreading.** Vision finds the
+  large headings and amounts and does not detect the body text at all. The
+  failure is a cliff, not a slope; where it starts between the two levels is
+  unmeasured.
+- **Confidence does not flag misreads.** "Harbor Casuaily" and "orate of
+  Calfornia" both came back at confidence 1.0. Vision's line confidence
+  cannot be the OCR arm's contribution to field confidence (ADR-0002's
+  cross-arm agreement); agreement with the VLM has to be measured on the
+  text itself.
+- **Language correction barely matters.** It changed one field on one page
+  (a sender on a harsh page, read only with correction off) and never an
+  identifier. Default stays on; no reason found to change it.
+- **Reading order** now pairs a label with a taller value on its baseline
+  and keeps a tall heading from swallowing the lines beside it (XCTest in
+  `packages/ocr-vision/Tests`).
 
 ## What it unlocks
 
@@ -68,5 +99,5 @@ read as a bullet.
 ## Follow-ups
 
 - #159: OCR text into `scan`, classify-first routing (ADR-0009 section 1).
-- #160: noisy-scan fixtures, language correction on or off, reading order
-  and `RecognizeDocumentsRequest`, and timing on the Air.
+- #160: degraded pages, language correction and reading order (done, below);
+  `RecognizeDocumentsRequest` and timing on the Air remain.

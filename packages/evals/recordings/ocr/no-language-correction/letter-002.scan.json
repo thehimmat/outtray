@@ -1,0 +1,130 @@
+{
+  "page": "letter-002.scan",
+  "variant": "no-language-correction",
+  "imageSha256": "2c17f3a35a3c842a18b9df6c2329e3e6daac205cf19f8d094a98470c872dd8d4",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1807,
+    "pages": [
+      {
+        "width": 1632,
+        "height": 2000,
+        "lines": [
+          {
+            "text": "August 5, 2026",
+            "confidence": 1,
+            "box": {
+              "x": 0.79,
+              "y": 0.0523,
+              "width": 0.1174,
+              "height": 0.0177
+            }
+          },
+          {
+            "text": "Northgate Property Mgmt",
+            "confidence": 1,
+            "box": {
+              "x": 0.0636,
+              "y": 0.0656,
+              "width": 0.2731,
+              "height": 0.0252
+            }
+          },
+          {
+            "text": "Jordan Mbeki",
+            "confidence": 1,
+            "box": {
+              "x": 0.0641,
+              "y": 0.1265,
+              "width": 0.1085,
+              "height": 0.0145
+            }
+          },
+          {
+            "text": "7041 Cedar Hollow Rd",
+            "confidence": 1,
+            "box": {
+              "x": 0.0655,
+              "y": 0.1449,
+              "width": 0.1768,
+              "height": 0.0177
+            }
+          },
+          {
+            "text": "Fair Oaks, CA 95628",
+            "confidence": 1,
+            "box": {
+              "x": 0.0658,
+              "y": 0.167,
+              "width": 0.1619,
+              "height": 0.019
+            }
+          },
+          {
+            "text": "Notice of annual inspection",
+            "confidence": 1,
+            "box": {
+              "x": 0.0694,
+              "y": 0.1919,
+              "width": 0.3523,
+              "height": 0.0262
+            }
+          },
+          {
+            "text": "Dear Jordan,",
+            "confidence": 1,
+            "box": {
+              "x": 0.0693,
+              "y": 0.2468,
+              "width": 0.1015,
+              "height": 0.015
+            }
+          },
+          {
+            "text": "We are writing to inform you regarding the matter noted above. Please review the enclosed details and",
+            "confidence": 1,
+            "box": {
+              "x": 0.069,
+              "y": 0.2518,
+              "width": 0.7838,
+              "height": 0.0337
+            }
+          },
+          {
+            "text": "contact our office with any questions.",
+            "confidence": 1,
+            "box": {
+              "x": 0.069,
+              "y": 0.284,
+              "width": 0.2925,
+              "height": 0.0224
+            }
+          },
+          {
+            "text": "Sincerely,",
+            "confidence": 1,
+            "box": {
+              "x": 0.0712,
+              "y": 0.311,
+              "width": 0.0765,
+              "height": 0.0145
+            }
+          },
+          {
+            "text": "Northgate Property Mgmt",
+            "confidence": 1,
+            "box": {
+              "x": 0.0712,
+              "y": 0.3285,
+              "width": 0.2011,
+              "height": 0.0175
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "page": "id_document-002.harsh",
+  "variant": "default",
+  "imageSha256": "edc67efca3fc7ae47562ea83be9e7f6e9db4e06a64c603232fc632f92b3015d7",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1251.7,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "orate of Calfornia",
+            "confidence": 1,
+            "box": {
+              "x": 0.1103,
+              "y": 0.046,
+              "width": 0.1936,
+              "height": 0.022
+            }
+          },
+          {
+            "text": "Identilication Card",
+            "confidence": 1,
+            "box": {
+              "x": 0.1016,
+              "y": 0.1014,
+              "width": 0.2452,
+              "height": 0.0338
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

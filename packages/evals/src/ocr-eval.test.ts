@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OCR_CONTRACT, type OcrResult } from '@outtray/core';
@@ -7,10 +7,17 @@ import { fixturesRoot, type ManifestEntry } from './fixtures/load.js';
 import {
   findField,
   htmlVisibleText,
+  loadOcrPages,
+  OCR_VARIANTS,
+  type OcrPage,
+  ocrRecordingsDir,
+  recordingPath,
   replayRecognizer,
   runOcrReport,
   scoreOcrFixture,
+  summarizeByLevel,
   summarizeOcr,
+  verifyDegradedManifest,
   wordRecall,
 } from './ocr-eval.js';
 
@@ -128,13 +135,28 @@ describe('scoreOcrFixture', () => {
   });
 });
 
+describe('identifiers are matched character for character', () => {
+  const labels = { type: 'id_document' as const, id_number: 'C4821983' };
+  const idFound = (line: string) =>
+    scoreOcrFixture('x', labels, '', ocr(line)).fields.find((f) => f.field === 'id_number')?.found;
+
+  it('finds the identifier as printed', () => {
+    expect(idFound('License number C4821983')).toBe(true);
+  });
+
+  it('misses it in another case or with a space inside', () => {
+    expect(idFound('License number c4821983')).toBe(false);
+    expect(idFound('License number C482 1983')).toBe(false);
+  });
+});
+
 describe('summarizeOcr', () => {
-  it('totals field and word recall and takes the median time', () => {
+  it('totals field, identifier and word recall and takes the median time', () => {
     const a = {
       id: 'a',
       fields: [
         { field: 'x', expected: '1', found: true },
-        { field: 'y', expected: '2', found: false },
+        { field: 'id_number', expected: 'D1', found: false },
       ],
       words: { found: 9, total: 10 },
       lines: 4,
@@ -144,7 +166,7 @@ describe('summarizeOcr', () => {
     const b = {
       ...a,
       id: 'b',
-      fields: [{ field: 'x', expected: '1', found: true }],
+      fields: [{ field: 'policy_number', expected: 'P1', found: true }],
       elapsedMs: 300,
     };
     const c = { ...a, id: 'c', fields: [], elapsedMs: 200 };
@@ -154,55 +176,123 @@ describe('summarizeOcr', () => {
       fieldsTotal: 3,
       wordsFound: 27,
       wordsTotal: 30,
+      identifiersFound: 1,
+      identifiersTotal: 2,
       medianMs: 200,
-      misses: [{ id: 'a', field: 'y', expected: '2' }],
+      misses: [{ id: 'a', field: 'id_number', expected: 'D1' }],
     });
   });
 });
 
-describe('replayRecognizer', () => {
-  const entry = {
-    id: 'bill-001',
-    files: { png: { path: 'synthetic/bill-001.png', sha256: 'abc' } },
-  } as ManifestEntry;
-
-  it('returns the recorded result for an unchanged image', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'ocr-rec-'));
-    const result = ocr('Metro Electric');
-    await writeFile(
-      join(dir, 'bill-001.json'),
-      JSON.stringify({ fixture: 'bill-001', pngSha256: 'abc', host: 'macOS 15', result }),
-    );
-    await expect(replayRecognizer(dir)(entry, 'unused')).resolves.toEqual(result);
-  });
-
-  it('refuses a recording made from a different image', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'ocr-rec-'));
-    await writeFile(
-      join(dir, 'bill-001.json'),
-      JSON.stringify({ fixture: 'bill-001', pngSha256: 'old', host: 'x', result: ocr('x') }),
-    );
-    await expect(replayRecognizer(dir)(entry, 'unused')).rejects.toThrow(/different image/);
-  });
-
-  it('reports a corrupt recording as corrupt, not missing', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'ocr-rec-'));
-    await writeFile(join(dir, 'bill-001.json'), '<<<<<<< HEAD\n{');
-    await expect(replayRecognizer(dir)(entry, 'unused')).rejects.toThrow(/not valid JSON/);
-  });
-
-  it('names the missing fixture and how to record it', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'ocr-rec-'));
-    await expect(replayRecognizer(dir)(entry, 'unused')).rejects.toThrow(/bill-001.*record/);
+describe('summarizeByLevel', () => {
+  it('summarizes each level that has rows, in level order', () => {
+    const row = (id: string, level: 'clean' | 'harsh') => ({
+      id,
+      level,
+      fields: [],
+      words: { found: 1, total: 1 },
+      lines: 1,
+      minConfidence: 1,
+      elapsedMs: 1,
+    });
+    const out = summarizeByLevel([row('a.harsh', 'harsh'), row('a', 'clean')]);
+    expect(Object.keys(out)).toEqual(['clean', 'harsh']);
+    expect(out.harsh?.fixtures).toBe(1);
   });
 });
 
-describe('runOcrReport (replay) matches the committed OCR snapshot', () => {
-  it('replays every fixture recording and reproduces fixtures/ocr.json', async () => {
-    const { rows } = await runOcrReport(replayRecognizer());
+describe('loadOcrPages', () => {
+  it('lists each clean fixture, then its degraded copies scored against the same labels', async () => {
+    const pages = await loadOcrPages();
+    expect(pages.filter((p) => p.level === 'clean')).toHaveLength(10);
+    const harsh = pages.find((p) => p.id === 'bill-001.harsh');
+    expect(harsh?.source.id).toBe('bill-001');
+    expect(harsh?.imagePath).toBe('degraded/bill-001.harsh.jpg');
+  });
+
+  it('every degraded image matches its manifest checksum', async () => {
+    expect(await verifyDegradedManifest()).toEqual([]);
+  });
+});
+
+describe('replayRecognizer', () => {
+  const page = {
+    id: 'bill-001',
+    level: 'clean',
+    source: {} as ManifestEntry,
+    imagePath: 'synthetic/bill-001.png',
+    imageSha256: 'abc',
+  } as OcrPage;
+
+  async function dirWith(name: string, body: string): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), 'ocr-rec-'));
+    await mkdir(join(dir, 'default'));
+    await writeFile(join(dir, 'default', name), body);
+    return dir;
+  }
+
+  it('returns the recorded result for an unchanged image', async () => {
+    const result = ocr('Metro Electric');
+    const dir = await dirWith(
+      'bill-001.json',
+      JSON.stringify({
+        page: 'bill-001',
+        variant: 'default',
+        imageSha256: 'abc',
+        host: 'x',
+        result,
+      }),
+    );
+    await expect(replayRecognizer('default', dir)(page, 'unused')).resolves.toEqual(result);
+  });
+
+  it('refuses a recording made from a different image', async () => {
+    const dir = await dirWith(
+      'bill-001.json',
+      JSON.stringify({ page: 'bill-001', imageSha256: 'old', host: 'x', result: ocr('x') }),
+    );
+    await expect(replayRecognizer('default', dir)(page, 'unused')).rejects.toThrow(
+      /different image/,
+    );
+  });
+
+  it('reports a corrupt recording as corrupt, not missing', async () => {
+    const dir = await dirWith('bill-001.json', '<<<<<<< HEAD\n{');
+    await expect(replayRecognizer('default', dir)(page, 'unused')).rejects.toThrow(
+      /not valid JSON/,
+    );
+  });
+
+  it('names the variant, the missing page and how to record it', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'ocr-rec-'));
+    await expect(replayRecognizer('no-language-correction', dir)(page, 'unused')).rejects.toThrow(
+      /no-language-correction.*bill-001.*record/,
+    );
+  });
+});
+
+describe('the committed OCR recordings and snapshot', () => {
+  it('every page has a recording in every variant', async () => {
+    const pages = await loadOcrPages();
+    const missing: string[] = [];
+    for (const variant of OCR_VARIANTS) {
+      for (const p of pages) {
+        try {
+          await readFile(join(ocrRecordingsDir(), recordingPath(variant, p.id)));
+        } catch {
+          missing.push(`${variant}/${p.id}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it('replaying them reproduces fixtures/ocr.json', async () => {
     const snapshot = JSON.parse(await readFile(join(fixturesRoot(), 'ocr.json'), 'utf8'));
-    expect(rows.length).toBe(10);
-    expect(rows).toEqual(snapshot.rows);
-    expect(summarizeOcr(rows)).toEqual(snapshot.summary);
+    for (const variant of OCR_VARIANTS) {
+      const { rows } = await runOcrReport(replayRecognizer(variant));
+      expect(rows).toEqual(snapshot.variants[variant].rows);
+      expect(summarizeByLevel(rows)).toEqual(snapshot.variants[variant].byLevel);
+    }
   });
 });

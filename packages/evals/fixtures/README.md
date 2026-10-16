@@ -36,3 +36,20 @@ pnpm build && pnpm --filter @outtray/evals fixtures:build
 
 The generator lives in `src/fixtures/generate.ts` and is deterministic from the
 seed in the manifest.
+
+## Degraded pages (OCR only)
+
+`degraded/` holds two degraded copies of each clean render, a flatbed `scan`
+and a poor phone photo (`harsh`), for the OCR eval (#160). They are images
+only: each is scored against its source fixture's labels and HTML, and
+`degraded/manifest.json` lists every image with its source, level and
+SHA-256 (a test fails on any unlisted image or checksum mismatch). The
+degradation parameters live in the manifest. Regenerate with Pillow and NumPy
+(dev only, never CI):
+
+```
+python3 -I packages/evals/scripts/degrade-fixtures.py
+```
+
+The VLM eval does not read these pages yet, so they need no extraction
+recordings.

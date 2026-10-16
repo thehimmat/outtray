@@ -1,0 +1,120 @@
+{
+  "page": "policy-002",
+  "variant": "no-language-correction",
+  "imageSha256": "6263898f81447ec1ef549c607b9d4a6d167b3f26d63d89e6735a6964f063978c",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 998.7,
+    "pages": [
+      {
+        "width": 1632,
+        "height": 2000,
+        "lines": [
+          {
+            "text": "Evergreen Mutual",
+            "confidence": 1,
+            "box": {
+              "x": 0.0783,
+              "y": 0.0625,
+              "width": 0.1868,
+              "height": 0.0175
+            }
+          },
+          {
+            "text": "Policy POL-769782",
+            "confidence": 1,
+            "box": {
+              "x": 0.7705,
+              "y": 0.061,
+              "width": 0.1512,
+              "height": 0.0146
+            }
+          },
+          {
+            "text": "Insurance Policy Declarations",
+            "confidence": 1,
+            "box": {
+              "x": 0.0747,
+              "y": 0.1235,
+              "width": 0.3861,
+              "height": 0.0205
+            }
+          },
+          {
+            "text": "Policy number",
+            "confidence": 1,
+            "box": {
+              "x": 0.089,
+              "y": 0.1759,
+              "width": 0.1121,
+              "height": 0.0131
+            }
+          },
+          {
+            "text": "POL-769782",
+            "confidence": 1,
+            "box": {
+              "x": 0.8113,
+              "y": 0.1754,
+              "width": 0.0999,
+              "height": 0.0155
+            }
+          },
+          {
+            "text": "Coverage",
+            "confidence": 1,
+            "box": {
+              "x": 0.0872,
+              "y": 0.2107,
+              "width": 0.0766,
+              "height": 0.0147
+            }
+          },
+          {
+            "text": "Comprehensive auto, $500 deductible",
+            "confidence": 1,
+            "box": {
+              "x": 0.6174,
+              "y": 0.2093,
+              "width": 0.2936,
+              "height": 0.0174
+            }
+          },
+          {
+            "text": "Expiration date",
+            "confidence": 1,
+            "box": {
+              "x": 0.089,
+              "y": 0.244,
+              "width": 0.1157,
+              "height": 0.0135
+            }
+          },
+          {
+            "text": "January 6, 2025",
+            "confidence": 1,
+            "box": {
+              "x": 0.7811,
+              "y": 0.244,
+              "width": 0.1299,
+              "height": 0.0162
+            }
+          },
+          {
+            "text": "This policy provides the coverage described above for the policy period ending January 6, 2025.",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.2863,
+              "width": 0.7402,
+              "height": 0.0162
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

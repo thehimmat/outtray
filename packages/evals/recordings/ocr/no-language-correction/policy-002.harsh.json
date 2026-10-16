@@ -1,0 +1,40 @@
+{
+  "page": "policy-002.harsh",
+  "variant": "no-language-correction",
+  "imageSha256": "6d7d4a9f8ead3b1aaf5e209cee389293e383aef0ae8e1e156dc727569b8eb3e4",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1249.3,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Evergrenn Mutuai",
+            "confidence": 1,
+            "box": {
+              "x": 0.1064,
+              "y": 0.0409,
+              "width": 0.1937,
+              "height": 0.0325
+            }
+          },
+          {
+            "text": "Insurance Poliey Declarations",
+            "confidence": 1,
+            "box": {
+              "x": 0.1015,
+              "y": 0.0945,
+              "width": 0.3901,
+              "height": 0.0548
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

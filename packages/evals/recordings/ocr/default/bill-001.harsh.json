@@ -1,0 +1,60 @@
+{
+  "page": "bill-001.harsh",
+  "variant": "default",
+  "imageSha256": "7b0627b67385cb923a80d4829ab92d4530780402c89a67310b68dbdfb5297e90",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1667.4,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Metro Electric",
+            "confidence": 1,
+            "box": {
+              "x": 0.1078,
+              "y": 0.044,
+              "width": 0.152,
+              "height": 0.022
+            }
+          },
+          {
+            "text": "Amount Due Notice",
+            "confidence": 1,
+            "box": {
+              "x": 0.1017,
+              "y": 0.1156,
+              "width": 0.2551,
+              "height": 0.035
+            }
+          },
+          {
+            "text": "$91.00",
+            "confidence": 1,
+            "box": {
+              "x": 0.8123,
+              "y": 0.3792,
+              "width": 0.096,
+              "height": 0.0276
+            }
+          },
+          {
+            "text": "SHAL CHE N",
+            "confidence": 0.3,
+            "box": {
+              "x": 0.5098,
+              "y": 0.43,
+              "width": 0.0809,
+              "height": 0.014
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

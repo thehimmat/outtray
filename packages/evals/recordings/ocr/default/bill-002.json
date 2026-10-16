@@ -1,0 +1,160 @@
+{
+  "page": "bill-002",
+  "variant": "default",
+  "imageSha256": "1f20d71e537be01856088233d056a5167187b288b5ae06c58c3f9e6211cc6d39",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1784.2,
+    "pages": [
+      {
+        "width": 1632,
+        "height": 2000,
+        "lines": [
+          {
+            "text": "Regional Gas Co",
+            "confidence": 1,
+            "box": {
+              "x": 0.0783,
+              "y": 0.0625,
+              "width": 0.1762,
+              "height": 0.0175
+            }
+          },
+          {
+            "text": "Statement",
+            "confidence": 1,
+            "box": {
+              "x": 0.838,
+              "y": 0.0609,
+              "width": 0.0837,
+              "height": 0.0148
+            }
+          },
+          {
+            "text": "Account 540222",
+            "confidence": 1,
+            "box": {
+              "x": 0.7918,
+              "y": 0.0814,
+              "width": 0.1281,
+              "height": 0.0146
+            }
+          },
+          {
+            "text": "Amount Due Notice",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.1365,
+              "width": 0.2544,
+              "height": 0.019
+            }
+          },
+          {
+            "text": "Diego Rivera",
+            "confidence": 1,
+            "box": {
+              "x": 0.0801,
+              "y": 0.1845,
+              "width": 0.0961,
+              "height": 0.0146
+            }
+          },
+          {
+            "text": "7160 Cedar Hollow Rd",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.2064,
+              "width": 0.1762,
+              "height": 0.0131
+            }
+          },
+          {
+            "text": "Providence, RI 02906",
+            "confidence": 1,
+            "box": {
+              "x": 0.0783,
+              "y": 0.2265,
+              "width": 0.1655,
+              "height": 0.015
+            }
+          },
+          {
+            "text": "Service period",
+            "confidence": 1,
+            "box": {
+              "x": 0.089,
+              "y": 0.2689,
+              "width": 0.1103,
+              "height": 0.0116
+            }
+          },
+          {
+            "text": "Q3 2026",
+            "confidence": 1,
+            "box": {
+              "x": 0.8434,
+              "y": 0.2674,
+              "width": 0.0676,
+              "height": 0.0146
+            }
+          },
+          {
+            "text": "Payment due date",
+            "confidence": 1,
+            "box": {
+              "x": 0.089,
+              "y": 0.3023,
+              "width": 0.1406,
+              "height": 0.0132
+            }
+          },
+          {
+            "text": "March 25, 2025",
+            "confidence": 1,
+            "box": {
+              "x": 0.7847,
+              "y": 0.3023,
+              "width": 0.1263,
+              "height": 0.0162
+            }
+          },
+          {
+            "text": "Total amount due",
+            "confidence": 1,
+            "box": {
+              "x": 0.0996,
+              "y": 0.3675,
+              "width": 0.1352,
+              "height": 0.015
+            }
+          },
+          {
+            "text": "$453.00",
+            "confidence": 1,
+            "box": {
+              "x": 0.7881,
+              "y": 0.363,
+              "width": 0.1106,
+              "height": 0.0269
+            }
+          },
+          {
+            "text": "Payments received after the due date incur a late fee of $45.00. Do not mail cash.",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.4273,
+              "width": 0.6263,
+              "height": 0.0162
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

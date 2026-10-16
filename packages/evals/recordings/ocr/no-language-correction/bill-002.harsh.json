@@ -1,0 +1,50 @@
+{
+  "page": "bill-002.harsh",
+  "variant": "no-language-correction",
+  "imageSha256": "c3e74c9236163a8f63906bb97c19bf9c50f7e05d76a68c12e536dbcd4f56aae1",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1136.3,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Regional Gas Co",
+            "confidence": 1,
+            "box": {
+              "x": 0.1064,
+              "y": 0.0411,
+              "width": 0.184,
+              "height": 0.0304
+            }
+          },
+          {
+            "text": "Amount Due Notice",
+            "confidence": 1,
+            "box": {
+              "x": 0.1017,
+              "y": 0.1153,
+              "width": 0.2554,
+              "height": 0.036
+            }
+          },
+          {
+            "text": "$453.00",
+            "confidence": 1,
+            "box": {
+              "x": 0.798,
+              "y": 0.3803,
+              "width": 0.1143,
+              "height": 0.0252
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

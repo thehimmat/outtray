@@ -19,12 +19,18 @@
  * "February 16, 2027".
  */
 
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type OcrResult, ocrPlainText, parseOcrOutput } from '@outtray/core';
 import { SCORED_FIELDS } from './field-kinds.js';
 import type { FixtureLabels } from './fixtures/generate.js';
-import { fixturesRoot, loadManifest, type ManifestEntry } from './fixtures/load.js';
+import {
+  fixturesRoot,
+  loadManifest,
+  type ManifestEntry,
+  type ManifestFile,
+} from './fixtures/load.js';
+import { sha256Hex } from './hash.js';
 import { type FieldKind, normalizeAmount, normalizeDate, normalizeText } from './normalize.js';
 
 /** Fields not scored for OCR: the discriminant, and free text no page states verbatim. */
@@ -63,6 +69,19 @@ export function findField(kind: FieldKind, expected: string, text: string): bool
   return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`, 'u').test(
     normalizeText(flat),
   );
+}
+
+/**
+ * Is `expected` in `text` exactly as written: same case, no inserted spaces,
+ * not inside a longer token? This is how identifiers are matched, since #97
+ * needs them read character for character.
+ *
+ * Failure modes: none; an empty value is never found.
+ */
+export function findExact(expected: string, text: string): boolean {
+  if (expected === '') return false;
+  const escaped = expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`, 'u').test(text);
 }
 
 const ENTITIES: Record<string, string> = {
@@ -151,7 +170,10 @@ export function scoreOcrFixture(
   for (const [field, kind] of Object.entries(kinds)) {
     const expected = labels[field];
     if (UNSCORED.has(field) || expected == null) continue;
-    fields.push({ field, expected, found: findField(kind, expected, text) });
+    const found = IDENTIFIER_FIELDS.has(field)
+      ? findExact(expected, text)
+      : findField(kind, expected, text);
+    fields.push({ field, expected, found });
   }
   const lines = result.pages.flatMap((p) => p.lines);
   return {
@@ -170,6 +192,9 @@ export interface OcrSummary {
   fieldsTotal: number;
   wordsFound: number;
   wordsTotal: number;
+  /** Identifier fields (`IDENTIFIER_FIELDS`) read exactly. */
+  identifiersFound: number;
+  identifiersTotal: number;
   medianMs: number;
   misses: { id: string; field: string; expected: string }[];
 }
@@ -188,12 +213,15 @@ export function summarizeOcr(rows: readonly OcrFixtureScore[]): OcrSummary {
       : times.length % 2 === 1
         ? (times[mid] as number)
         : ((times[mid - 1] as number) + (times[mid] as number)) / 2;
+  const ids = rows.flatMap((r) => r.fields.filter((f) => IDENTIFIER_FIELDS.has(f.field)));
   return {
     fixtures: rows.length,
     fieldsFound: rows.reduce((n, r) => n + r.fields.filter((f) => f.found).length, 0),
     fieldsTotal: rows.reduce((n, r) => n + r.fields.length, 0),
     wordsFound: rows.reduce((n, r) => n + r.words.found, 0),
     wordsTotal: rows.reduce((n, r) => n + r.words.total, 0),
+    identifiersFound: ids.filter((f) => f.found).length,
+    identifiersTotal: ids.length,
     medianMs,
     misses: rows.flatMap((r) =>
       r.fields
@@ -203,78 +231,212 @@ export function summarizeOcr(rows: readonly OcrFixtureScore[]): OcrSummary {
   };
 }
 
-/** One fixture's committed OCR output, and what it was produced from. */
+/** How degraded a page is: the clean render, or a copy made by `degrade-fixtures.py`. */
+export const OCR_LEVELS = ['clean', 'scan', 'harsh'] as const;
+export type OcrLevel = (typeof OCR_LEVELS)[number];
+
+/** Sidecar settings a run is recorded under (#160 compares them). */
+export const OCR_VARIANTS = ['default', 'no-language-correction'] as const;
+export type OcrVariant = (typeof OCR_VARIANTS)[number];
+
+/** Labelled fields that are identifiers, the ones #97 needs read exactly. */
+export const IDENTIFIER_FIELDS: ReadonlySet<string> = new Set(['id_number', 'policy_number']);
+
+/** A page the OCR eval reads: a fixture's clean render or a degraded copy of it. */
+export interface OcrPage {
+  /** `bill-001` for a clean render, `bill-001.harsh` for a degraded copy. */
+  id: string;
+  level: OcrLevel;
+  /** The fixture whose labels and HTML score this page. */
+  source: ManifestEntry;
+  /** Image path relative to `fixtures/`. */
+  imagePath: string;
+  imageSha256: string;
+}
+
+/** The degraded-page manifest written by `scripts/degrade-fixtures.py`. */
+export interface DegradedManifest {
+  seed: number;
+  levels: Record<string, Record<string, unknown>>;
+  count: number;
+  pages: { id: string; source: string; level: OcrLevel; image: ManifestFile }[];
+}
+
+/** Read `fixtures/degraded/manifest.json`. */
+export async function loadDegradedManifest(): Promise<DegradedManifest> {
+  const raw = await readFile(join(fixturesRoot(), 'degraded', 'manifest.json'), 'utf8');
+  return JSON.parse(raw) as DegradedManifest;
+}
+
+/**
+ * Every page the OCR eval reads: each clean fixture, then its degraded copies,
+ * in manifest order.
+ *
+ * Failure modes: rejects when a manifest cannot be read, or when a degraded
+ * page names a source fixture the clean manifest does not have or a level
+ * other than the degraded ones in `OCR_LEVELS`.
+ */
+export async function loadOcrPages(): Promise<OcrPage[]> {
+  const clean = await loadManifest();
+  const degraded = await loadDegradedManifest();
+  const byId = new Map(clean.fixtures.map((e) => [e.id, e]));
+  const pages: OcrPage[] = clean.fixtures.map((e) => ({
+    id: e.id,
+    level: 'clean',
+    source: e,
+    imagePath: e.files.png.path,
+    imageSha256: e.files.png.sha256,
+  }));
+  for (const p of degraded.pages) {
+    const source = byId.get(p.source);
+    if (!source) throw new Error(`Degraded page ${p.id} names unknown fixture ${p.source}`);
+    if (!(OCR_LEVELS as readonly string[]).includes(p.level) || p.level === 'clean') {
+      throw new Error(`Degraded page ${p.id} has unknown level ${JSON.stringify(p.level)}`);
+    }
+    pages.push({
+      id: p.id,
+      level: p.level,
+      source,
+      imagePath: p.image.path,
+      imageSha256: p.image.sha256,
+    });
+  }
+  return pages;
+}
+
+/**
+ * Check every degraded image against its manifest checksum, and that no image
+ * in `degraded/` is missing from the manifest.
+ *
+ * Failure modes: never throws for a bad file; returns the problems (empty when
+ * clean). Rejects only when the manifest itself cannot be read.
+ */
+export async function verifyDegradedManifest(): Promise<string[]> {
+  const manifest = await loadDegradedManifest();
+  const root = fixturesRoot();
+  const problems: string[] = [];
+  const listed = new Set(manifest.pages.map((p) => p.image.path));
+  for (const p of manifest.pages) {
+    try {
+      const sha = sha256Hex(await readFile(join(root, p.image.path)));
+      if (sha !== p.image.sha256) problems.push(`${p.image.path}: checksum mismatch`);
+    } catch {
+      problems.push(`${p.image.path}: missing`);
+    }
+  }
+  for (const name of await readdir(join(root, 'degraded'))) {
+    if (name.endsWith('.jpg') && !listed.has(`degraded/${name}`)) {
+      problems.push(`degraded/${name}: not in the manifest`);
+    }
+  }
+  if (manifest.count !== manifest.pages.length) problems.push('count does not match pages');
+  return problems;
+}
+
+/** One page's committed OCR output, and what it was produced from. */
 export interface OcrRecording {
-  fixture: string;
-  /** SHA-256 of the page image the sidecar read; a regenerated fixture makes this stale. */
-  pngSha256: string;
+  page: string;
+  variant: OcrVariant;
+  /** SHA-256 of the image the sidecar read; a regenerated page makes this stale. */
+  imageSha256: string;
   /** The OS the sidecar ran on (Vision's models ship with the OS). */
   host: string;
   result: OcrResult;
 }
 
-/** Recognizes one fixture page. `entry` gives the image path and checksum. */
-export type FixtureRecognizer = (entry: ManifestEntry, pngPath: string) => Promise<OcrResult>;
+/** Recognizes one page; `imagePath` is absolute. */
+export type PageRecognizer = (page: OcrPage, imagePath: string) => Promise<OcrResult>;
 
 /** The OCR recording directory, `packages/evals/recordings/ocr`. */
 export function ocrRecordingsDir(): string {
   return join(fixturesRoot(), '..', 'recordings', 'ocr');
 }
 
+/** Where one page's recording lives, relative to the recordings directory. */
+export function recordingPath(variant: OcrVariant, pageId: string): string {
+  return join(variant, `${pageId}.json`);
+}
+
 /**
- * A recognizer that replays committed recordings, so the OCR numbers are
- * reproducible on any platform (the sidecar itself needs macOS).
+ * A recognizer that replays committed recordings of one variant, so the OCR
+ * numbers are reproducible on any platform (the sidecar itself needs macOS).
  *
- * Failure modes: the returned function rejects when a fixture has no
- * recording, when the recording is not valid JSON, or when the recording was made from a different image than the
- * manifest now lists (re-record on macOS with `pnpm eval:ocr record`).
+ * Failure modes: the returned function rejects when a page has no recording,
+ * when the recording is not valid JSON, or when it was made from a different
+ * image than the manifest now lists (re-record on macOS, or let the `ocr` CI
+ * job record it).
  */
-export function replayRecognizer(dir: string = ocrRecordingsDir()): FixtureRecognizer {
-  return async (entry) => {
+export function replayRecognizer(
+  variant: OcrVariant = 'default',
+  dir: string = ocrRecordingsDir(),
+): PageRecognizer {
+  return async (page) => {
     let raw: string;
     try {
-      raw = await readFile(join(dir, `${entry.id}.json`), 'utf8');
+      raw = await readFile(join(dir, recordingPath(variant, page.id)), 'utf8');
     } catch {
       throw new Error(
-        `No OCR recording for ${entry.id}; record it on macOS with pnpm eval:ocr record`,
+        `No ${variant} OCR recording for ${page.id}; record it on macOS with pnpm eval:ocr record`,
       );
     }
     let recording: OcrRecording;
     try {
       recording = JSON.parse(raw) as OcrRecording;
     } catch (error) {
-      throw new Error(`The OCR recording for ${entry.id} is not valid JSON: ${String(error)}`);
+      throw new Error(`The OCR recording for ${page.id} is not valid JSON: ${String(error)}`);
     }
-    if (recording.pngSha256 !== entry.files.png.sha256) {
+    if (recording.imageSha256 !== page.imageSha256) {
       throw new Error(
-        `The OCR recording for ${entry.id} was made from a different image; re-record it on macOS`,
+        `The OCR recording for ${page.id} was made from a different image; re-record it on macOS`,
       );
     }
     return parseOcrOutput(JSON.stringify(recording.result));
   };
 }
 
+/** A scored page, with its level. */
+export interface OcrPageScore extends OcrFixtureScore {
+  level: OcrLevel;
+}
+
 /**
- * Run `recognize` over every manifest fixture and score it.
+ * Run `recognize` over `pages` (default: every page) and score each against
+ * its source fixture's labels and HTML.
  *
- * Failure modes: rejects when the manifest or a fixture file cannot be read,
- * or when `recognize` rejects.
+ * Failure modes: rejects when a manifest or fixture file cannot be read, or
+ * when `recognize` rejects.
  */
 export async function runOcrReport(
-  recognize: FixtureRecognizer,
-): Promise<{ rows: OcrFixtureScore[]; results: Map<string, OcrResult> }> {
-  const manifest = await loadManifest();
+  recognize: PageRecognizer,
+  pages?: readonly OcrPage[],
+): Promise<{ rows: OcrPageScore[]; results: Map<string, OcrResult> }> {
   const root = fixturesRoot();
-  const rows: OcrFixtureScore[] = [];
+  const rows: OcrPageScore[] = [];
   const results = new Map<string, OcrResult>();
-  for (const entry of manifest.fixtures) {
+  for (const page of pages ?? (await loadOcrPages())) {
     const labels = JSON.parse(
-      await readFile(join(root, entry.files.labels.path), 'utf8'),
+      await readFile(join(root, page.source.files.labels.path), 'utf8'),
     ) as FixtureLabels;
-    const html = await readFile(join(root, entry.files.html.path), 'utf8');
-    const result = await recognize(entry, join(root, entry.files.png.path));
-    results.set(entry.id, result);
-    rows.push(scoreOcrFixture(entry.id, labels, html, result));
+    const html = await readFile(join(root, page.source.files.html.path), 'utf8');
+    const result = await recognize(page, join(root, page.imagePath));
+    results.set(page.id, result);
+    rows.push({ ...scoreOcrFixture(page.id, labels, html, result), level: page.level });
   }
   return { rows, results };
+}
+
+/**
+ * `summarizeOcr` per level, in `OCR_LEVELS` order, for the levels present.
+ *
+ * Failure modes: none.
+ */
+export function summarizeByLevel(
+  rows: readonly OcrPageScore[],
+): Partial<Record<OcrLevel, OcrSummary>> {
+  const out: Partial<Record<OcrLevel, OcrSummary>> = {};
+  for (const level of OCR_LEVELS) {
+    const at = rows.filter((r) => r.level === level);
+    if (at.length > 0) out[level] = summarizeOcr(at);
+  }
+  return out;
 }

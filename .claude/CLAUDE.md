@@ -101,9 +101,14 @@ When those conflict, favor the showcase.
   `pnpm eval:ocr` (`docs/evals/ocr-scoreboard.md`): 36/36 labelled values
   present, 373/375 words, about 2 s and 207 MB per page on the CI Mac. The
   `ocr` CI job (macos-latest) builds it and fails if a field it read is
-  missed. Swift cannot be built in the cloud container; iterate through
-  that job and harvest its OCR-RECORDING log lines. Not wired into `scan`
-  yet; classify-first (ADR-0009 section 1) and #97 build on it.
+  missed. Swift cannot be built in the cloud container: push, and on a
+  same-repo PR the `ocr` job records every page in both variants and
+  commits changed recordings to the branch (a workflow-token push starts
+  no CI, so push again after pulling it). Degraded pages (#160,
+  `fixtures/degraded`, `scripts/degrade-fixtures.py`): scan 36/36, harsh
+  8/36 (body text undetected), confidence 1.0 on misreads, language
+  correction immaterial. Not wired into `scan` yet; classify-first
+  (ADR-0009 section 1) and #97 build on it.
 - **Competitive teardown** (`docs/research/competitive-teardown.md`, #155,
   #156, from vendor sites and repos): paperless-ngx v3 has opt-in local AI;
   paperless-ai is unmaintained; Paperspell (cloud) shows per-document

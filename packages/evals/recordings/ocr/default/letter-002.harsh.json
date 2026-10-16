@@ -1,0 +1,60 @@
+{
+  "page": "letter-002.harsh",
+  "variant": "default",
+  "imageSha256": "0cf9621ba90631bfd1d2897e28dede380572f2b264593ed1a5d3f570ca4c1513",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1082.1,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Northgate Property Mgmi",
+            "confidence": 1,
+            "box": {
+              "x": 0.1086,
+              "y": 0.041,
+              "width": 0.2723,
+              "height": 0.0366
+            }
+          },
+          {
+            "text": "Notice of annual inspection",
+            "confidence": 1,
+            "box": {
+              "x": 0.0966,
+              "y": 0.1693,
+              "width": 0.3583,
+              "height": 0.0422
+            }
+          },
+          {
+            "text": "able clace belly",
+            "confidence": 0.3,
+            "box": {
+              "x": 0.1266,
+              "y": 0.2611,
+              "width": 0.1462,
+              "height": 0.0231
+            }
+          },
+          {
+            "text": "mano to sion yaregating the man note",
+            "confidence": 0.5,
+            "box": {
+              "x": 0.156,
+              "y": 0.2432,
+              "width": 0.3545,
+              "height": 0.0309
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

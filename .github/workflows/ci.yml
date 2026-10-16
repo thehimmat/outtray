@@ -59,14 +59,31 @@ jobs:
       - run: cargo fmt --check && cargo build --locked && cargo test --locked
         working-directory: packages/app/src-tauri
 
-  # The Apple Vision OCR sidecar (issue #8), built and run live where Vision
-  # exists. Fails if a field the committed OCR snapshot read is now missed, and
-  # logs each result as an OCR-RECORDING line. Peak memory is logged by
-  # /usr/bin/time on one page.
+  # The Apple Vision OCR sidecar (#8, #160), built, unit-tested and run live
+  # where Vision exists. On a PR from this repository it records every page
+  # and commits any recording whose reading changed back to the PR branch, so
+  # recordings never have to be copied out of a log; a commit pushed with the
+  # workflow token does not start another run. It fails, and writes nothing,
+  # if a field the committed snapshot read is now missed. Elsewhere (main, fork
+  # PRs) it only checks.
   ocr:
     runs-on: macos-latest
+    permissions:
+      contents: write
+    # A newer push to the same PR cancels this one's recording.
+    concurrency:
+      group: ocr-${{ github.head_ref || github.run_id }}
+      cancel-in-progress: true
+    env:
+      # Dependabot's token is read-only whatever `permissions` says, so its
+      # PRs only check.
+      SAME_REPO_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The PR's own head commit (not the merge commit) on a same-repo
+          # PR, so a recording commit lands on top of exactly what was read.
+          ref: ${{ env.SAME_REPO_PR == 'true' && github.event.pull_request.head.sha || '' }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -74,9 +91,25 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: swift build -c release --package-path packages/ocr-vision
+      - run: swift test --package-path packages/ocr-vision
       - run: test "$(packages/ocr-vision/.build/release/outtray-ocr --contract)" = ocr-v1
       - run: sw_vers && /usr/bin/time -l packages/ocr-vision/.build/release/outtray-ocr packages/evals/fixtures/synthetic/bill-001.png > /dev/null
-      - run: pnpm eval:ocr check
+      - if: env.SAME_REPO_PR != 'true'
+        run: pnpm eval:ocr check
+      - if: env.SAME_REPO_PR == 'true'
+        name: Record, and commit changed recordings to the PR branch
+        run: |
+          pnpm eval:ocr record
+          if [ -z "$(git status --porcelain -- packages/evals/recordings/ocr packages/evals/fixtures/ocr.json)" ]; then
+            echo "Recordings unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/evals/recordings/ocr packages/evals/fixtures/ocr.json docs/evals/ocr-scoreboard.md
+          git commit -m "chore(evals): record OCR on the CI Mac"
+          # Fails rather than overwrite if the branch moved since this run began.
+          git push origin "HEAD:refs/heads/${GITHUB_HEAD_REF}"
 
   # The minimum Rust both crates declare (`rust-version`, #131). CI's other
   # jobs use latest stable, so without this a lockfile bump could raise the
