@@ -279,7 +279,10 @@ issue, containing:
 ## Working conventions
 
 - TDD where outputs are verifiable: failing test first. Model-dependent
-  tests use recorded fixtures only; CI never runs a model.
+  tests use recorded fixtures only; CI never runs a model through Ollama or
+  a cloud provider. The one exception is the `ocr` job, which runs the
+  OS's own Vision OCR live on macOS as a build check and a no-regression
+  gate (ADR-0002 amendment 2); the numbers still come from recordings.
 - Every public function in core documents its failure modes in its docstring.
 - ADR for every consequential decision (next number: 0014). CHANGELOG (Keep a
   Changelog) updated with user-visible changes.

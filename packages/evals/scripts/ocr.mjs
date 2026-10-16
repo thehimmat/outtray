@@ -16,33 +16,31 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { VisionOcr } from '@outtray/core/node';
-import { ocrRecordingsDir, replayRecognizer, runOcrReport, summarizeOcr } from '../dist/index.js';
+import {
+  loadManifest,
+  ocrRecordingsDir,
+  replayRecognizer,
+  runOcrReport,
+  summarizeOcr,
+} from '../dist/index.js';
 
 const MODE = process.argv[2] ?? 'replay';
 const flag = process.argv.indexOf('--binary');
+const here = dirname(fileURLToPath(import.meta.url));
 const binary =
   flag > 0
     ? process.argv[flag + 1]
-    : join(
-        dirname(fileURLToPath(import.meta.url)),
-        '..',
-        '..',
-        'ocr-vision',
-        '.build',
-        'release',
-        'outtray-ocr',
-      );
-
-const here = dirname(fileURLToPath(import.meta.url));
+    : join(here, '..', '..', 'ocr-vision', '.build', 'release', 'outtray-ocr');
 const evalsRoot = join(here, '..');
 const snapshotPath = join(evalsRoot, 'fixtures', 'ocr.json');
 const mdPath = join(evalsRoot, '..', '..', 'docs', 'evals', 'ocr-scoreboard.md');
 const recordings = ocrRecordingsDir();
 
-const host = () =>
-  process.platform === 'darwin'
-    ? `macOS ${execSync('sw_vers -productVersion').toString().trim()} (${process.arch})`
-    : process.platform;
+/** Exit once everything written to stdout has flushed (pipes are asynchronous on macOS). */
+async function exitAfterFlush(code) {
+  await new Promise((resolve) => process.stdout.write('', resolve));
+  process.exit(code);
+}
 
 function liveRecognizer() {
   const ocr = new VisionOcr({ binary });
@@ -52,11 +50,15 @@ function liveRecognizer() {
 if (MODE === 'record' || MODE === 'check') {
   const { rows, results } = await runOcrReport(liveRecognizer());
   const summary = summarizeOcr(rows);
-  const manifest = JSON.parse(readFileSync(join(evalsRoot, 'fixtures', 'manifest.json'), 'utf8'));
+  const manifest = await loadManifest();
+  const host =
+    process.platform === 'darwin'
+      ? `macOS ${execSync('sw_vers -productVersion').toString().trim()} (${process.arch})`
+      : process.platform;
   const recordingOf = (entry) => ({
     fixture: entry.id,
     pngSha256: entry.files.png.sha256,
-    host: host(),
+    host,
     result: results.get(entry.id),
   });
   if (MODE === 'record') {
@@ -72,7 +74,7 @@ if (MODE === 'record' || MODE === 'check') {
       process.stdout.write(`OCR-RECORDING ${JSON.stringify(recordingOf(entry))}\n`);
     }
     process.stdout.write(
-      `OCR live on ${host()}: fields ${summary.fieldsFound}/${summary.fieldsTotal}, ` +
+      `OCR live on ${host}: fields ${summary.fieldsFound}/${summary.fieldsTotal}, ` +
         `words ${summary.wordsFound}/${summary.wordsTotal}, median ${summary.medianMs} ms\n`,
     );
     for (const m of summary.misses) {
@@ -88,10 +90,10 @@ if (MODE === 'record' || MODE === 'check') {
       );
       if (regressed.length > 0) {
         process.stderr.write(`OCR regressed against fixtures/ocr.json: ${regressed.join(', ')}\n`);
-        process.exit(1);
+        await exitAfterFlush(1);
       }
     }
-    process.exit(0);
+    await exitAfterFlush(0);
   }
 }
 

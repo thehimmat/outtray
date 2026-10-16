@@ -30,7 +30,8 @@ import { type FieldKind, normalizeAmount, normalizeDate, normalizeText } from '.
 /** Fields not scored for OCR: the discriminant, and free text no page states verbatim. */
 const UNSCORED = new Set(['type', 'coverage_summary']);
 
-const AMOUNT = /-?[$€£]?\s?\d(?:[\d.,]*\d)?/g;
+/** A money amount: a currency symbol, or cents. A bare number (a day, a year) is not one. */
+const AMOUNT = /-?[$€£]\s?\d(?:[\d.,]*\d)?|\b\d[\d,]*\.\d{2}\b/g;
 const DATES = [
   /[A-Za-z]+\.?\s+\d{1,2},?\s+\d{4}/g,
   /\d{1,2}\s+[A-Za-z]+\.?\s+\d{4}/g,
@@ -57,7 +58,11 @@ export function findField(kind: FieldKind, expected: string, text: string): bool
     );
   }
   const want = normalizeText(expected);
-  return want !== '' && normalizeText(flat).includes(want);
+  if (want === '') return false;
+  const escaped = want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`, 'u').test(
+    normalizeText(flat),
+  );
 }
 
 const ENTITIES: Record<string, string> = {
@@ -221,18 +226,24 @@ export function ocrRecordingsDir(): string {
  * reproducible on any platform (the sidecar itself needs macOS).
  *
  * Failure modes: the returned function rejects when a fixture has no
- * recording, or when the recording was made from a different image than the
+ * recording, when the recording is not valid JSON, or when the recording was made from a different image than the
  * manifest now lists (re-record on macOS with `pnpm eval:ocr record`).
  */
 export function replayRecognizer(dir: string = ocrRecordingsDir()): FixtureRecognizer {
   return async (entry) => {
-    let recording: OcrRecording;
+    let raw: string;
     try {
-      recording = JSON.parse(await readFile(join(dir, `${entry.id}.json`), 'utf8')) as OcrRecording;
+      raw = await readFile(join(dir, `${entry.id}.json`), 'utf8');
     } catch {
       throw new Error(
         `No OCR recording for ${entry.id}; record it on macOS with pnpm eval:ocr record`,
       );
+    }
+    let recording: OcrRecording;
+    try {
+      recording = JSON.parse(raw) as OcrRecording;
+    } catch (error) {
+      throw new Error(`The OCR recording for ${entry.id} is not valid JSON: ${String(error)}`);
     }
     if (recording.pngSha256 !== entry.files.png.sha256) {
       throw new Error(

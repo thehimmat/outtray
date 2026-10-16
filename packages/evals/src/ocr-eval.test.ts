@@ -50,6 +50,17 @@ describe('findField', () => {
     expect(findField('amount', '$56.00', text)).toBe(false);
   });
 
+  it('does not take a bare number, such as part of a date, for an amount', () => {
+    expect(findField('amount', '$16.00', text)).toBe(false);
+    expect(findField('amount', '2027', text)).toBe(false);
+  });
+
+  it('matches text only on word boundaries', () => {
+    expect(findField('text', 'A1234', 'License A12345')).toBe(false);
+    expect(findField('text', 'Ann Lee', 'Joann Leeds')).toBe(false);
+    expect(findField('text', 'Ann Lee', 'Dear Ann Lee,')).toBe(true);
+  });
+
   it('finds an amount that ends a sentence', () => {
     expect(findField('amount', '$56.00', 'incur a late fee of $56.00. Do not mail cash.')).toBe(
       true,
@@ -172,6 +183,12 @@ describe('replayRecognizer', () => {
       JSON.stringify({ fixture: 'bill-001', pngSha256: 'old', host: 'x', result: ocr('x') }),
     );
     await expect(replayRecognizer(dir)(entry, 'unused')).rejects.toThrow(/different image/);
+  });
+
+  it('reports a corrupt recording as corrupt, not missing', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'ocr-rec-'));
+    await writeFile(join(dir, 'bill-001.json'), '<<<<<<< HEAD\n{');
+    await expect(replayRecognizer(dir)(entry, 'unused')).rejects.toThrow(/not valid JSON/);
   });
 
   it('names the missing fixture and how to record it', async () => {

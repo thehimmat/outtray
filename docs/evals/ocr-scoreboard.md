@@ -6,7 +6,7 @@ Regenerate with `pnpm eval:ocr`; CI replays it and fails on drift, and the
 macOS CI job runs the sidecar live and fails if a field it used to read is
 missed.
 
-Generated at commit `acf8acbb7a29` from recordings made on macOS 26.6.2 (arm64),
+Generated at commit `e3aabd00998a` from recordings made on macOS 26.6.2 (arm64),
 engine `vision-recognize-text` revision 3.
 
 ## Headline
