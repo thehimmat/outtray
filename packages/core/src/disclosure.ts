@@ -8,17 +8,15 @@
  * ADR requires, so rewording cannot quietly drop one.
  */
 
-/**
- * The full disclosure, shown before identifier storage is turned on and by
- * `outtray settings`.
- */
-export const IDENTIFIER_STORAGE_DISCLOSURE = `Outtray can remember your ID numbers (passport, policy and account numbers)
+/** The disclosure, with how this host shows one remembered number. */
+function disclosure(revealHow: string): string {
+  return `Outtray can remember your ID numbers (passport, policy and account numbers)
 so you can look one up later, or it can forget them and only ever show the
 last four. It forgets them: this is off unless you turn it on.
 
 If you turn it on:
 - Each number is kept once, in full, in the encrypted database on this Mac,
-  and shown only when you ask for that one number with \`outtray reveal\`.
+  and shown only when you ask for that one number ${revealHow}.
 - Numbers are remembered from the next scan of each document, not before.
 - Turning it off deletes every number it remembered.
 
@@ -26,6 +24,21 @@ Either way, Outtray removes ID numbers from the other text it keeps and shows.
 That is best effort: a number the model rewrote can slip through. Names and
 addresses stay in the encrypted database as ordinary text.
 `;
+}
+
+/**
+ * The full disclosure, shown before identifier storage is turned on and by
+ * `outtray settings`.
+ */
+export const IDENTIFIER_STORAGE_DISCLOSURE = disclosure('with `outtray reveal`');
+
+/**
+ * The same disclosure for the desktop app, where a number is shown in its own
+ * window from the document's Reveal button (ADR-0013 amendment 1).
+ */
+export const APP_IDENTIFIER_STORAGE_DISCLOSURE = disclosure(
+  'with the Reveal button beside its\n  document, in a window of its own',
+);
 
 /**
  * The short notice shown the first time a scan creates the store.

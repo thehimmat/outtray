@@ -22,7 +22,11 @@ export {
   type SeedExample,
 } from './classifier-seeds.js';
 export { normalizeDate } from './dates.js';
-export { firstRunNotice, IDENTIFIER_STORAGE_DISCLOSURE } from './disclosure.js';
+export {
+  APP_IDENTIFIER_STORAGE_DISCLOSURE,
+  firstRunNotice,
+  IDENTIFIER_STORAGE_DISCLOSURE,
+} from './disclosure.js';
 export { type DocumentSource, extensionOf } from './document-source.js';
 export {
   type EmbeddingProvider,

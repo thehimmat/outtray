@@ -25,6 +25,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { useState } from 'react';
+import { TYPE_LABEL } from './labels.js';
 
 const SECTIONS: Array<{ kind: ActionKind; heading: string; icon: LucideIcon }> = [
   { kind: 'attention_flag', heading: 'Attention', icon: TriangleAlert },
@@ -34,18 +35,6 @@ const SECTIONS: Array<{ kind: ActionKind; heading: string; icon: LucideIcon }> =
 ];
 
 const ADVICE_LABEL = { keep: 'Keep', shred: 'Shred', trash: 'Trash' } as const;
-
-/** Plain names for the types a person can pin. */
-const TYPE_LABEL: Record<DocumentType, string> = {
-  bill: 'bill',
-  letter: 'letter',
-  receipt: 'receipt',
-  id_document: 'ID document',
-  contract: 'contract',
-  policy: 'policy',
-  statement: 'statement',
-  unknown: 'unknown',
-};
 
 /** The flags that question a document's type, where a person can settle it. */
 const TYPE_QUESTIONS = new Set(['flag-disputed', 'flag-type-unclear']);

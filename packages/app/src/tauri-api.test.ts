@@ -20,15 +20,28 @@ const BILL = {
   late_fee: null,
 };
 
+const POLICY = {
+  type: 'policy',
+  summary: 'Harbor Casualty auto policy POL-804220.',
+  action_items: [],
+  insurer: 'Harbor Casualty',
+  policy_number: 'POL-804220',
+  coverage_summary: 'Comprehensive auto',
+  expiry_date: '2027-12-16',
+};
+
 class FakeProvider implements ModelProvider {
   readonly name = 'fake';
   calls = 0;
-  constructor(private readonly failure: Error | null = null) {}
+  constructor(
+    private readonly failure: Error | null = null,
+    private readonly json: unknown = BILL,
+  ) {}
   async generate(): Promise<GenerateResult> {
     this.calls += 1;
     if (this.failure) throw this.failure;
     return {
-      json: BILL,
+      json: this.json,
       jsonChannel: 'content',
       content: '',
       thinking: '',
@@ -76,9 +89,14 @@ const ARGS: Record<string, string[]> = {
  * The shell's commands, in memory: the store is a `MemoryStorage` that
  * survives close and reopen, like the file on disk.
  */
-function fakeShell(files: Record<string, Uint8Array>, options: { storeFails?: boolean } = {}) {
+function fakeShell(
+  files: Record<string, Uint8Array>,
+  options: { storeFails?: boolean; declineTurnOn?: boolean } = {},
+) {
   const store = new MemoryStorage();
   const log: string[] = [];
+  const settings = { identifierStorage: false };
+  const revealed: Record<string, unknown>[] = [];
   let open = false;
   const invoke = (async (command: string, args: Record<string, unknown> = {}) => {
     log.push(command === 'store_command' ? `store:${String(args.op)}` : command);
@@ -90,6 +108,9 @@ function fakeShell(files: Record<string, Uint8Array>, options: { storeFails?: bo
       case 'store_command': {
         if (!open) throw { kind: 'storage', message: 'Storage is closed.' };
         const op = String(args.op);
+        // The shell refuses this one to the page (ADR-0013 amendment 1).
+        if (op === 'getIdentifier')
+          throw { kind: 'denied', message: 'The page may not run getIdentifier.' };
         const named = (args.args ?? {}) as Record<string, unknown>;
         if (op === 'close') {
           open = false;
@@ -108,12 +129,25 @@ function fakeShell(files: Record<string, Uint8Array>, options: { storeFails?: bo
         return bytes.slice().buffer;
       }
       case 'read_settings':
-        return { identifierStorage: false };
+        return { identifierStorage: settings.identifierStorage };
+      case 'write_settings':
+        // The shell's native confirmation, answered by the test.
+        if (args.identifierStorage && options.declineTurnOn) {
+          return { identifierStorage: settings.identifierStorage, purged: 0 };
+        }
+        settings.identifierStorage = Boolean(args.identifierStorage);
+        return {
+          identifierStorage: settings.identifierStorage,
+          purged: settings.identifierStorage ? 0 : 2,
+        };
+      case 'reveal_identifier':
+        revealed.push(args);
+        return { status: 'shown' };
       default:
         throw new Error(`unknown command ${command}`);
     }
   }) as Invoke;
-  return { invoke, store, log, isOpen: () => open };
+  return { invoke, store, log, settings, revealed, isOpen: () => open };
 }
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
@@ -333,6 +367,64 @@ describe('tauriApi', () => {
       );
       await broken.planFolder('/docs').catch(() => undefined);
       await expect(broken.search('bill')).rejects.toThrow(/Start Ollama/);
+    });
+  });
+
+  describe('identifiers (ADR-0013 amendment 1)', () => {
+    it('lists the documents read, with ID numbers only in redacted form', async () => {
+      const shell = fakeShell({ 'policy.png': PNG });
+      const host = api(shell.invoke, new FakeProvider(null, POLICY));
+      const planned = await host.planFolder('/docs');
+      expect(planned.documents).toEqual([
+        {
+          file: 'policy.png',
+          type: 'policy',
+          identifier: { field: 'policy_number', redacted: '[policy_number ending 4220, 9 chars]' },
+        },
+      ]);
+      expect(JSON.stringify(planned)).not.toMatch(/804220/);
+    });
+
+    it('reveals through the shell command, which receives the hash and field, never the page', async () => {
+      const shell = fakeShell({ 'policy.png': PNG });
+      const host = api(shell.invoke, new FakeProvider(null, POLICY));
+      await host.planFolder('/docs');
+      expect(await host.revealIdentifier('policy.png')).toBe('shown');
+      const [doc] = await shell.store.listDocuments();
+      expect(shell.revealed).toEqual([
+        { documentHash: doc?.contentHash, field: 'policy_number', label: 'policy.png' },
+      ]);
+      expect(shell.log).not.toContain('store:getIdentifier');
+    });
+
+    it('refuses to reveal for a document without an ID number, or one it did not plan', async () => {
+      const shell = fakeShell({ 'bill.png': PNG });
+      const host = api(shell.invoke);
+      await host.planFolder('/docs');
+      await expect(host.revealIdentifier('bill.png')).rejects.toThrow(/no ID number/);
+      await expect(host.revealIdentifier('other.png')).rejects.toThrow(/plan the folder again/);
+    });
+
+    it('reads and writes the setting through the shell, which purges when it is turned off', async () => {
+      const shell = fakeShell({ 'bill.png': PNG });
+      const host = api(shell.invoke);
+      expect(await host.readSettings()).toEqual({ identifierStorage: false });
+      expect(await host.setIdentifierStorage(true)).toEqual({ identifierStorage: true, purged: 0 });
+      expect(await host.readSettings()).toEqual({ identifierStorage: true });
+      expect(await host.setIdentifierStorage(false)).toEqual({
+        identifierStorage: false,
+        purged: 2,
+      });
+    });
+
+    it('reports the setting unchanged when the person declines the native confirmation', async () => {
+      const shell = fakeShell({}, { declineTurnOn: true });
+      const host = api(shell.invoke);
+      expect(await host.setIdentifierStorage(true)).toEqual({
+        identifierStorage: false,
+        purged: 0,
+      });
+      expect(await host.readSettings()).toEqual({ identifierStorage: false });
     });
   });
 });

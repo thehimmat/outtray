@@ -61,10 +61,14 @@ When those conflict, favor the showcase.
   six checks done; qwen3-vl:2b peaks about 1.85 GB, the app about 236 MB.
   CI tests core only under Node, so WebKit-only bugs slip through (#135
   fixed unbound `fetch` and `for await` over streams; #132 tracks a `Buffer`
-  export). The CLI shows a Keychain password dialog per command when the app
+  export, fixed in #141). The CLI shows a Keychain password dialog per command when the app
   created the key: accepted and documented, lasting fix waits on #12 (#134).
   "Reviewed" marks persist (ADR-0010 amendment 1, migration 4 `reviews`,
-  keyed by rule, document bytes and date). The Rust
+  keyed by rule, document bytes and date). The app now covers every CLI
+  command: settle a questioned type (#145, `correctDocument`), search the
+  planned folder (#146), and the identifier setting and reveal (ADR-0013
+  amendment 1: the page cannot read the vault; `store_command` refuses
+  `getIdentifier`, reveal is a Rust command showing a native dialog). The Rust
   store (`packages/app/store`: a `handle(op, args)` command layer plus a
   stdio binary for tests) passes the shared contract suite through
   `CommandStorage`; schema is one file, `core/src/migrations.json`, embedded

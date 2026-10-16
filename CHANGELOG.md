@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixture. Median 31.8 s per document, 89% of it reading the prompt and page
   image rather than writing the answer. CI replays it and fails on drift.
 
+- The desktop app has the identifier setting and reveal (ADR-0013 amendment
+  1). Settings shows the same disclosure as `outtray settings` before
+  remembering ID numbers can be turned on, and turning it off deletes every
+  remembered number. "Documents read" lists each document with its type and,
+  for a passport, policy or account number, only the redacted form. Reveal
+  shows the full number in a separate system window: the app's page never
+  receives it.
+
 - The desktop app searches the planned folder's documents, as `outtray find`
   does: type a question below the queue and see the best-matching passages,
   each naming its document. Passages come from the encrypted store (or the
@@ -113,6 +121,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   folds into it, keeping both citations. Action precision 11/25 to 11/22.
 
 ### Security
+
+- The desktop app's page can no longer read a remembered ID number: the
+  store bridge refuses that operation, and a number is shown only by the Rust
+  side in a native window (ADR-0013 amendment 1, `docs/THREAT_MODEL.md`).
 
 - Identifier redaction also catches a value the model rewrote slightly: a
   run one edit away (a dropped, added, changed or swapped character), or of
