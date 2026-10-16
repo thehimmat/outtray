@@ -49,6 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The action queue no longer lists field headings the model copies into its
+  action items ("Policy number", "Coverage", "Expiration date") as to-dos.
+  A heading that names a deadline with a real date ("Payment due date") is
+  kept, since that is the document saying when something is due. Action
+  eval precision 11/22 to 11/17, recall unchanged at 11/13 (#133).
+
 - The desktop app can reach the local model. Core called `fetch` detached
   from the page and read Ollama's reply with `for await`; both work under
   Node but throw in WebKit, the macOS webview, so every scan failed with
