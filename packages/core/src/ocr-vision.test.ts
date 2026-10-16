@@ -6,7 +6,7 @@ import {
   type OcrResult,
   OcrUnavailableError,
 } from './ocr-contract.js';
-import { DEFAULT_OCR_BINARY, type OcrRunner, VisionOcr } from './ocr-vision.js';
+import { DEFAULT_OCR_BINARY, type OcrRunner, VisionOcr, visionRecognizer } from './ocr-vision.js';
 
 const result: OcrResult = {
   contract: OCR_CONTRACT,
@@ -81,5 +81,45 @@ describe('VisionOcr', () => {
     const { run } = runner({ status: 0, stdout: '{"contract":"ocr-v9"}', stderr: '' });
     const ocr = new VisionOcr({ run, platform: 'darwin' });
     await expect(ocr.recognize('a.png')).rejects.toThrow(OcrContractError);
+  });
+});
+
+describe('VisionOcr as a scan recognizer (ADR-0009 amendment 3)', () => {
+  it('names its contract and flags in its key', () => {
+    const run: OcrRunner = async () => ({ status: 0, stdout: '', stderr: '' });
+    expect(new VisionOcr({ run }).key).toBe(`${OCR_CONTRACT}:vision`);
+    expect(new VisionOcr({ run, languageCorrection: false, enhance: true }).key).toBe(
+      `${OCR_CONTRACT}:vision:no-language-correction:enhance`,
+    );
+  });
+
+  it('probes the sidecar with --contract and accepts a matching version', async () => {
+    const { run, calls } = runner({ status: 0, stdout: `${OCR_CONTRACT}\n`, stderr: '' });
+    await expect(new VisionOcr({ run, platform: 'darwin' }).probe()).resolves.toBeUndefined();
+    expect(calls[0]?.args).toEqual(['--contract']);
+  });
+
+  it('fails the probe off macOS, when the binary is missing, or on another contract', async () => {
+    const ok = runner({ status: 0, stdout: OCR_CONTRACT, stderr: '' });
+    await expect(new VisionOcr({ run: ok.run, platform: 'linux' }).probe()).rejects.toThrow(
+      OcrUnavailableError,
+    );
+    expect(ok.calls).toEqual([]);
+    const missing = runner({ status: -1, stdout: '', stderr: 'ENOENT', notFound: true });
+    await expect(new VisionOcr({ run: missing.run, platform: 'darwin' }).probe()).rejects.toThrow(
+      OcrUnavailableError,
+    );
+    const stale = runner({ status: 0, stdout: 'ocr-v0', stderr: '' });
+    await expect(new VisionOcr({ run: stale.run, platform: 'darwin' }).probe()).rejects.toThrow(
+      /speaks "ocr-v0"/,
+    );
+  });
+
+  it('recognizes a listed file inside its folder', async () => {
+    const { run, calls } = runner({ status: 0, stdout: JSON.stringify(result), stderr: '' });
+    const recognizer = visionRecognizer('/pile', new VisionOcr({ run, platform: 'darwin' }));
+    expect(recognizer.key).toBe(`${OCR_CONTRACT}:vision`);
+    await expect(recognizer.recognize('bill.png')).resolves.toEqual(result);
+    expect(calls[0]?.args).toEqual(['/pile/bill.png']);
   });
 });

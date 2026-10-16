@@ -221,3 +221,90 @@ Status: **accepted 2026-10-13 by Claude** under the project's autonomy rules
 - When labels become mutable like this, a classifier version belongs in the
   ADR-0012 reuse rule; today a correction affects only documents classified
   after it, which is the intended behavior.
+
+## Amendment 3 (2026-10-16): classify first when OCR text exists
+
+Status: **accepted 2026-10-16 by Claude** under the project's autonomy rules
+(`.claude/CLAUDE.md`). It builds the order this ADR's decision describes,
+which amendment 1 deferred until an OCR arm existed (issue #159). The OCR
+arm now exists (#8, ADR-0002 amendment 2) and so does a check that it read
+the page (#163). Nothing above is reversed: without OCR the pipeline runs in
+amendment 1's order, unchanged.
+
+### Decision
+
+- **A scan given an OCR recognizer reads each new document's text first.**
+  It runs before any model loads, costs about 2 s and no model memory per
+  page, and its text is never stored or chunked: it is only embedded for
+  the vote. Chunks and stored text still come from the extraction.
+- **Only a page the OCR actually read is classified from its text.**
+  `assessReadability` (#163) decides. An unreadable page, or one the OCR
+  failed on, takes amendment 1's path: extract, classify the extraction,
+  reconcile, re-extract once on a confident dispute.
+- **A confident vote routes.** At or above the confidence threshold the
+  document goes straight to the typed prompt for the classifier's type, one
+  vision call instead of up to two. A new reconciliation status, `routed`,
+  records it: trusted, no review, the classifier verdict kept as provenance,
+  and no VLM label, because the VLM was told the type rather than asked.
+- **A typed extraction that does not come back as that type falls back** to
+  the generic prompt, and the two labels are reconciled as usual. If they
+  then disagree the item stays `disputed` for review without another typed
+  attempt: it has had its one.
+- **A vote below the threshold is a reconciliation input.** The document is
+  extracted with the generic prompt and its label reconciled against the
+  OCR vote: `confirmed` when they agree, `low_confidence` and review when
+  they do not.
+- **OCR joins the reuse key.** With OCR on, the extractor key (ADR-0012)
+  adds the recognizer's key (contract, engine and flags) and a routing
+  version, `classify-first-v1`, to bump when the readability thresholds or
+  the routing rules change. Turning OCR on or off re-extracts every document
+  once; that is the price of a key that says what an extraction depends on.
+- **Opt-in until measured.** OCR routing is off unless the host turns it on.
+  The CLI exposes it as a setting next to identifier storage; the app does
+  not yet, since the sidecar is not packaged with it (#12).
+
+### Options considered
+
+1. **Route on a confident vote, reconcile otherwise (recommended).** Pros:
+   it is the order this ADR accepted; a confidently known type gets its
+   typed schema on the first call, so a bill mislabeled `statement` never
+   needs the second call amendment 1 spends on it. Cons: on the routed path
+   nothing checks the classifier. The VLM is told the type and cannot
+   object, so a confident wrong vote costs that document's fields until
+   someone corrects it. That risk is why it waits for a measurement before
+   it becomes the default.
+2. **Use the OCR vote only as a reconciliation input.** Always extract with
+   the generic prompt, then reconcile against a vote taken from the OCR
+   text. Pros: two independent labels on every document, where today the
+   classifier embeds the VLM's own extraction and shares its mistakes. Cons:
+   saves no vision call and keeps the second call on every dispute; it does
+   not do what the ADR decided.
+3. **Feed the OCR text into the extraction prompt.** Pros: likely the
+   largest accuracy gain, since the small VLM would read printed text it now
+   has to recognize itself. Cons: a new prompt that must be recorded and
+   measured on the dev machine, and a longer prompt where prefill is already
+   89% of the time (`docs/evals/cost-dashboard.md`). A separate experiment,
+   not part of routing.
+4. **Turn it on automatically whenever the sidecar is found.** Pros: no
+   setting. Cons: building the sidecar for the OCR eval would silently
+   change every scan and re-extract the whole store. Opt-in keeps that a
+   choice until the numbers are in.
+
+### Consequences
+
+- Queries and examples are no longer the same kind of text on the OCR path:
+  the query is raw OCR text, the seeds are keyword lists and the user's
+  corrections are `derivedText` (amendment 2). Whether the vote holds up
+  across that gap is the first thing to measure, on the dev machine with
+  live embeddings, before routing becomes the default. If it does not,
+  corrections can also keep the OCR text they were made from.
+- OCR text is embedded with full identifiers in it, because tokenizing
+  needs the extracted value and none exists yet. The embedding goes to the
+  loopback-only local runtime that already sees the image, and neither the
+  text nor its vector is stored, so the threat model does not change.
+- Engine revision (the OS's Vision version) is not in the key, since it is
+  known only after OCR runs; an OS update does not invalidate stored
+  extractions.
+- Stage order with OCR: OCR, embedder (vote), VLM (extract), embedder
+  (vote on what OCR could not read), VLM (typed retries), embedder (index).
+  Still batched by model; never two resident at once.

@@ -21,17 +21,20 @@ import { derivedText } from './extraction-text.js';
 import { IDENTIFIER_FIELDS, TOKENIZER_VERSION } from './identifiers.js';
 import { reconcileType } from './reconcile.js';
 import type { Citation } from './retrieval.js';
-import type { ScanItem, ScanReport } from './scan.js';
+import { ROUTING_VERSION, type ScanItem, type ScanReport } from './scan.js';
 import type { StorageProvider, StoredChunk, StoredDocument } from './storage-provider.js';
 import { rankBySimilarity } from './vector.js';
 
 /**
- * The extractor key for a model tag: the model plus both prompt versions.
+ * The extractor key for a model tag: the model plus both prompt versions,
+ * and with OCR routing on, the recognizer's key and the routing version
+ * (ADR-0009 amendment 3), since those decide which prompt a document gets.
  *
  * Failure modes: none; pure.
  */
-export function extractorKeyFor(model: string): string {
-  return `${model}|${PROMPT_VERSION}|${TYPED_PROMPT_VERSION}`;
+export function extractorKeyFor(model: string, ocrKey?: string): string {
+  const base = `${model}|${PROMPT_VERSION}|${TYPED_PROMPT_VERSION}`;
+  return ocrKey === undefined ? base : `${base}|${ocrKey}|${ROUTING_VERSION}`;
 }
 
 /**

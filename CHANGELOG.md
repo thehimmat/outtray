@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   flags all 10 that lost fields and none of the 20 that did not (thresholds
   set on those same pages; real scans unmeasured). Routing such pages to the
   VLM or a rescan prompt follows with #159.
+- Classify first when OCR text exists (#159, ADR-0009 amendment 3): given
+  an OCR recognizer, a scan reads each new document's text before any model
+  loads and votes on its type. A confident vote sends the document straight
+  to the typed prompt (one vision call; new `routed` verdict), a weak one is
+  checked against the generic extraction, and a page the OCR could not read
+  is extracted and classified as before. Core only for now; the CLI setting
+  that turns it on follows, and accuracy is unmeasured until a dev-machine
+  run.
 
 - The OCR eval reads degraded pages too (#160): a simulated flatbed scan and
   a poor phone photo of every fixture, with Vision's language correction on
