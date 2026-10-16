@@ -68,4 +68,20 @@ describe('OllamaEmbeddingProvider', () => {
     });
     await expect(provider.embed(['a', 'b'])).rejects.toThrow(/count/i);
   });
+
+  it('calls the default fetch with the global as receiver (WebKit rejects any other)', async () => {
+    const res = jsonResponse({ embeddings: [[0.1, 0.2]] });
+    vi.stubGlobal('fetch', function (this: unknown) {
+      if (this !== undefined && this !== globalThis) {
+        throw new TypeError('Can only call Window.fetch on instances of Window');
+      }
+      return Promise.resolve(res);
+    });
+    try {
+      const provider = new OllamaEmbeddingProvider({ model: 'nomic-embed-text' });
+      await expect(provider.embed(['a'])).resolves.toEqual([[0.1, 0.2]]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

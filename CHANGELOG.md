@@ -49,6 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The desktop app can reach the local model. Core called `fetch` detached
+  from the page and read Ollama's reply with `for await`; both work under
+  Node but throw in WebKit, the macOS webview, so every scan failed with
+  "the local model is not running". The app's error now also names the
+  underlying cause, so a misdiagnosis like this one shows itself.
+
 - A damaged encrypted store now says so in plain terms (it is only a cache,
   your documents are untouched, delete it and re-scan) instead of a SQLite
   error, and a file cut off mid-page is no longer misreported as a wrong

@@ -22,11 +22,14 @@ function mockResponse(lines: unknown[], init: MockInit = {}) {
     ok,
     status: init.status ?? (ok ? 200 : 500),
     text: async () => init.text ?? '',
-    body: (async function* () {
-      for (let i = 0; i < bytes.length; i += size) {
-        yield bytes.subarray(i, i + size);
-      }
-    })(),
+    body: new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (let i = 0; i < bytes.length; i += size) {
+          controller.enqueue(bytes.subarray(i, i + size));
+        }
+        controller.close();
+      },
+    }),
   };
 }
 
@@ -148,5 +151,30 @@ describe('OllamaProvider', () => {
     const fetch = fetchReturning(mockResponse([], { ok: false, status: 500, text: 'boom' }));
     const provider = new OllamaProvider({ fetch });
     await expect(provider.generate({ prompt: 'x' })).rejects.toThrow(/500/);
+  });
+
+  it('calls the default fetch with the global as receiver (WebKit rejects any other)', async () => {
+    const res = mockResponse(thinkingChannelStream());
+    vi.stubGlobal('fetch', function (this: unknown) {
+      if (this !== undefined && this !== globalThis) {
+        throw new TypeError('Can only call Window.fetch on instances of Window');
+      }
+      return Promise.resolve(res);
+    });
+    try {
+      await expect(
+        new OllamaProvider().generate({ prompt: 'x', format: {} }),
+      ).resolves.toBeDefined();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('reads the stream without async iteration (WebKit streams are not async iterable)', async () => {
+    const res = mockResponse(thinkingChannelStream(), { chunkSize: 7 });
+    Object.defineProperty(res.body, Symbol.asyncIterator, { value: undefined });
+    const provider = new OllamaProvider({ fetch: fetchReturning(res) });
+    const result = await provider.generate({ prompt: 'x', format: {} });
+    expect(result.json).toEqual(BILL_JSON);
   });
 });
