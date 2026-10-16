@@ -59,6 +59,25 @@ jobs:
       - run: cargo fmt --check && cargo build --locked && cargo test --locked
         working-directory: packages/app/src-tauri
 
+  # The Apple Vision OCR sidecar (issue #8), built and run live where Vision
+  # exists. Fails if a field the committed OCR snapshot read is now missed, and
+  # logs each result as an OCR-RECORDING line. Peak memory is logged by
+  # /usr/bin/time on one page.
+  ocr:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: swift build -c release --package-path packages/ocr-vision
+      - run: test "$(packages/ocr-vision/.build/release/outtray-ocr --contract)" = ocr-v1
+      - run: sw_vers && /usr/bin/time -l packages/ocr-vision/.build/release/outtray-ocr packages/evals/fixtures/synthetic/bill-001.png > /dev/null
+      - run: pnpm eval:ocr check
+
   # The minimum Rust both crates declare (`rust-version`, #131). CI's other
   # jobs use latest stable, so without this a lockfile bump could raise the
   # real minimum and only a contributor on an older toolchain would notice.

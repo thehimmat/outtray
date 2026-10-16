@@ -4,7 +4,8 @@
  * `@outtray/core` is host-neutral so it runs in the Tauri webview as well as
  * under Node. Everything that needs Node lives here instead: the folder
  * source, the SQLCipher store (a native module), the Keychain key provider
- * (spawns `security`), the settings file and the app paths. The CLI imports
+ * (spawns `security`), the Vision OCR sidecar runner, the settings file and
+ * the app paths. The CLI imports
  * both entries; the app imports only the neutral one and supplies its own
  * Rust-backed adapters.
  */
@@ -103,6 +104,13 @@ export {
   type SecurityRunner,
   StaticKeyProvider,
 } from './db-key.js';
+export {
+  DEFAULT_OCR_BINARY,
+  type OcrRunner,
+  type OcrRunResult,
+  VisionOcr,
+  type VisionOcrOptions,
+} from './ocr-vision.js';
 export {
   DEFAULT_SETTINGS,
   readSettings,

@@ -93,6 +93,18 @@ export type {
   ModelProvider,
 } from './model-provider.js';
 export {
+  OCR_CONTRACT,
+  OCR_ENGINES,
+  OcrContractError,
+  OcrError,
+  type OcrLine,
+  type OcrResult,
+  OcrResultSchema,
+  OcrUnavailableError,
+  ocrPlainText,
+  parseOcrOutput,
+} from './ocr-contract.js';
+export {
   NonLoopbackHostError,
   OllamaProvider,
   type OllamaProviderOptions,
