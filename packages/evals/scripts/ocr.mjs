@@ -136,6 +136,9 @@ async function replay() {
     if (variant === 'default') readability = scoreReadability(rows, results);
   }
   writeFileSync(snapshotPath, `${JSON.stringify({ variants, readability }, null, 2)}\n`);
+  // Biome lays JSON out differently from JSON.stringify (short arrays on one
+  // line); format here so a snapshot written by the CI bot passes lint.
+  execSync(`pnpm exec biome format --write ${snapshotPath}`, { stdio: 'ignore' });
   writeFileSync(mdPath, markdown(variants, readability));
   const d = variants.default.byLevel;
   process.stdout.write(
