@@ -1,0 +1,50 @@
+{
+  "page": "id_document-001.harsh",
+  "variant": "default",
+  "imageSha256": "687e3cc6d38892714064d7fff655cb46f7618f1f966b0a0d2eac7fbb1da802ee",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1259.4,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "State or vi",
+            "confidence": 1,
+            "box": {
+              "x": 0.1064,
+              "y": 0.0429,
+              "width": 0.1129,
+              "height": 0.0244
+            }
+          },
+          {
+            "text": "@shington",
+            "confidence": 1,
+            "box": {
+              "x": 0.2132,
+              "y": 0.05,
+              "width": 0.1103,
+              "height": 0.02
+            }
+          },
+          {
+            "text": "Identitication Card",
+            "confidence": 1,
+            "box": {
+              "x": 0.1015,
+              "y": 0.1009,
+              "width": 0.2454,
+              "height": 0.0343
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

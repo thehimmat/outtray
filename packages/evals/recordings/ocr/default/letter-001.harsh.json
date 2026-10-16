@@ -1,0 +1,40 @@
+{
+  "page": "letter-001.harsh",
+  "variant": "default",
+  "imageSha256": "991cee3b849826b8847ee446ba72749f02e9c8175610e3691d13450113aa8eb6",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1358.5,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Cascade Crudit Union",
+            "confidence": 1,
+            "box": {
+              "x": 0.1091,
+              "y": 0.0419,
+              "width": 0.2375,
+              "height": 0.0314
+            }
+          },
+          {
+            "text": "Notice of annual inspection",
+            "confidence": 1,
+            "box": {
+              "x": 0.0968,
+              "y": 0.1709,
+              "width": 0.358,
+              "height": 0.0381
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

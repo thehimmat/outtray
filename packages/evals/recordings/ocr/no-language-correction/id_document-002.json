@@ -1,0 +1,120 @@
+{
+  "page": "id_document-002",
+  "variant": "no-language-correction",
+  "imageSha256": "889223e74773c5f36b24d54460f890301a019847ca2061c0e857adb2ced2c2a7",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1849.5,
+    "pages": [
+      {
+        "width": 1632,
+        "height": 2000,
+        "lines": [
+          {
+            "text": "State of California",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.0625,
+              "width": 0.1922,
+              "height": 0.016
+            }
+          },
+          {
+            "text": "Driver License",
+            "confidence": 1,
+            "box": {
+              "x": 0.8096,
+              "y": 0.061,
+              "width": 0.1121,
+              "height": 0.0131
+            }
+          },
+          {
+            "text": "Identification Card",
+            "confidence": 1,
+            "box": {
+              "x": 0.0747,
+              "y": 0.1205,
+              "width": 0.2438,
+              "height": 0.0205
+            }
+          },
+          {
+            "text": "Name",
+            "confidence": 1,
+            "box": {
+              "x": 0.089,
+              "y": 0.1758,
+              "width": 0.0463,
+              "height": 0.0117
+            }
+          },
+          {
+            "text": "Wei Reyes",
+            "confidence": 1,
+            "box": {
+              "x": 0.8237,
+              "y": 0.1753,
+              "width": 0.0875,
+              "height": 0.0157
+            }
+          },
+          {
+            "text": "License number",
+            "confidence": 1,
+            "box": {
+              "x": 0.089,
+              "y": 0.2108,
+              "width": 0.1246,
+              "height": 0.0102
+            }
+          },
+          {
+            "text": "C4821983",
+            "confidence": 1,
+            "box": {
+              "x": 0.8291,
+              "y": 0.2088,
+              "width": 0.0821,
+              "height": 0.0155
+            }
+          },
+          {
+            "text": "Expires",
+            "confidence": 1,
+            "box": {
+              "x": 0.0871,
+              "y": 0.2438,
+              "width": 0.059,
+              "height": 0.0152
+            }
+          },
+          {
+            "text": "July 23, 2026",
+            "confidence": 1,
+            "box": {
+              "x": 0.8042,
+              "y": 0.2441,
+              "width": 0.1068,
+              "height": 0.0163
+            }
+          },
+          {
+            "text": "This card remains the property of State of California.",
+            "confidence": 1,
+            "box": {
+              "x": 0.0783,
+              "y": 0.2863,
+              "width": 0.4021,
+              "height": 0.0132
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

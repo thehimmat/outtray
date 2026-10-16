@@ -1,0 +1,50 @@
+{
+  "page": "receipt-001.harsh",
+  "variant": "default",
+  "imageSha256": "b105ed6b53fffb7beb480976504ed948d68ff095297f4cca368230773f418308",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1303.2,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Northside Grocers",
+            "confidence": 1,
+            "box": {
+              "x": 0.1091,
+              "y": 0.0422,
+              "width": 0.196,
+              "height": 0.0282
+            }
+          },
+          {
+            "text": "Sales Receipt",
+            "confidence": 1,
+            "box": {
+              "x": 0.1016,
+              "y": 0.1148,
+              "width": 0.1845,
+              "height": 0.0351
+            }
+          },
+          {
+            "text": "$36.49",
+            "confidence": 1,
+            "box": {
+              "x": 0.8162,
+              "y": 0.336,
+              "width": 0.0956,
+              "height": 0.026
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

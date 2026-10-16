@@ -1,0 +1,50 @@
+{
+  "page": "policy-001.harsh",
+  "variant": "no-language-correction",
+  "imageSha256": "d544f0fbe1b74ce0bf3272bbbc786ed9a9cc27965f0efb4cf095f028282c2354",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1228.2,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Harbor Canuaily",
+            "confidence": 1,
+            "box": {
+              "x": 0.1088,
+              "y": 0.0399,
+              "width": 0.1772,
+              "height": 0.0312
+            }
+          },
+          {
+            "text": "Insurance Policy Declarations",
+            "confidence": 1,
+            "box": {
+              "x": 0.1013,
+              "y": 0.0947,
+              "width": 0.3906,
+              "height": 0.0549
+            }
+          },
+          {
+            "text": "M gedka",
+            "confidence": 0.3,
+            "box": {
+              "x": 0.8101,
+              "y": 0.2224,
+              "width": 0.0858,
+              "height": 0.0231
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
