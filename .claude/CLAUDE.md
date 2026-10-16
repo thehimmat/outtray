@@ -57,7 +57,12 @@ When those conflict, favor the showcase.
   Rust commands for the store, the Keychain key (created natively, never
   sent to the page) and read-only access scoped to folders picked in the
   native picker (#123); CI builds the shell on
-  ubuntu and macOS. Not yet run on the Air (#81 tracks the Keychain).
+  ubuntu and macOS. Run end to end on the Air (#127, closed 2026-10-15): all
+  six checks done; qwen3-vl:2b peaks about 1.85 GB, the app about 236 MB.
+  CI tests core only under Node, so WebKit-only bugs slip through (#135
+  fixed unbound `fetch` and `for await` over streams; #132 tracks a `Buffer`
+  export). The CLI shows a Keychain password dialog per command when the app
+  created the key: accepted and documented, lasting fix waits on #12 (#134).
   "Reviewed" marks persist (ADR-0010 amendment 1, migration 4 `reviews`,
   keyed by rule, document bytes and date). The Rust
   store (`packages/app/store`: a `handle(op, args)` command layer plus a
