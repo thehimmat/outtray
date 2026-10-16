@@ -5,15 +5,16 @@
 **Point it at the pile. Get an action list.**
 
 Outtray is a local-first desktop assistant for the documents you have been
-meaning to deal with: scans, PDFs, images, exported emails. It ingests a whole
-folder of unsorted mess and produces the short list of things that actually
-need your attention:
+meaning to deal with: scans and photos of paperwork today, with PDFs and
+exported emails planned. It reads a whole folder of unsorted mess and
+produces the short list of things that actually need your attention:
 
 - **To-dos**: respond, pay, renew, submit, with deadlines.
-- **Expiry alerts**: ID documents, policies, permits, trial periods.
-- **Retention advice**: keep, shred, or trash, with a stated reason.
-- **Attention flags**: probable phishing, unfavorable term changes, duplicate
-  charges.
+- **Expiry alerts**: ID documents, policies, contracts.
+- **Retention advice**: keep, shred, or trash, with the rule behind it.
+- **Attention flags**: past-due items, expired documents, and anything
+  Outtray could not read or classify with confidence. Planned: probable
+  phishing, unfavorable term changes, duplicate charges.
 
 Every proposed item shows its reasoning, a verbatim snippet, and a link to the
 exact source page. Nothing acts without your approval, and in v1 the app
