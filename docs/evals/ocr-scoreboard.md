@@ -7,7 +7,7 @@ Regenerate with `pnpm eval:ocr`; CI replays it and fails on drift. The
 read is missed, and records and commits new recordings when the sidecar or
 the pages change.
 
-Generated at commit `db104f21fe21` from recordings made on macOS 26.6.2 (arm64),
+Generated at commit `0cf57cb2ac9d` from recordings made on macOS 26.6.2 (arm64),
 engine `vision-recognize-text` revision 3.
 
 ## Pages
