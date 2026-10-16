@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Core's host-neutral entry no longer touches Node's `Buffer`: the
+  embedding encoder returns a plain `Uint8Array` and the encrypted-header
+  check decodes bytes without it, so neither throws in the webview. A test
+  now fails if any module the webview loads names a Node global (#132).
+
 - The desktop app can reach the local model. Core called `fetch` detached
   from the page and read Ollama's reply with `for await`; both work under
   Node but throw in WebKit, the macOS webview, so every scan failed with
