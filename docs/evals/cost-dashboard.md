@@ -7,7 +7,7 @@ recorded. Load and generating are reported by the runtime; **prefill**
 by difference. Regenerate with `pnpm eval:cost`; CI replays it and fails on
 drift.
 
-Generated at commit `1eda040520f4` over 10 fixture extractions with `qwen3-vl:2b`.
+Generated at commit `e6a937ed8dd5` over 10 fixture extractions with `qwen3-vl:2b`.
 
 ## Headline
 
