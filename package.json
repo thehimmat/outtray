@@ -21,7 +21,8 @@
     "eval:replay": "pnpm build && node packages/evals/scripts/eval.mjs replay",
     "eval:classify": "pnpm build && node packages/evals/scripts/classify.mjs",
     "eval:actions": "pnpm build && node packages/evals/scripts/actions.mjs",
-    "eval:cost": "pnpm build && node packages/evals/scripts/cost.mjs"
+    "eval:cost": "pnpm build && node packages/evals/scripts/cost.mjs",
+    "eval:noise": "pnpm build && node packages/evals/scripts/noise.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
