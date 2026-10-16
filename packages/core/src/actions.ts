@@ -130,6 +130,67 @@ const KIND_ORDER: Record<ActionKind, number> = {
   retention_advice: 3,
 };
 
+/**
+ * First words that make a short action item an instruction rather than a
+ * field heading. Only consulted for label-shaped text (`isFieldLabel`).
+ */
+const IMPERATIVE_VERBS = new Set([
+  'activate',
+  'apply',
+  'attend',
+  'book',
+  'bring',
+  'call',
+  'cancel',
+  'check',
+  'complete',
+  'confirm',
+  'contact',
+  'email',
+  'enroll',
+  'file',
+  'follow',
+  'keep',
+  'mail',
+  'notify',
+  'pay',
+  'read',
+  'register',
+  'renew',
+  'replace',
+  'reply',
+  'report',
+  'request',
+  'respond',
+  'return',
+  'review',
+  'schedule',
+  'send',
+  'shred',
+  'sign',
+  'store',
+  'submit',
+  'update',
+  'upload',
+  'verify',
+  'visit',
+]);
+
+/**
+ * True when an extracted action item is a field heading the model copied into
+ * `action_items` ("Policy number", "Coverage", "Expiration date"; #133), not
+ * something the document asks for. Label-shaped means at most three words, no
+ * digits, and not led by an imperative verb. One exception stays: a heading
+ * that names a deadline ("Payment due date") with a real date in its due slot
+ * is the document stating when something is due, so it is kept.
+ */
+function isFieldLabel(text: string, due: string | null): boolean {
+  const words = text.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0 || words.length > 3 || /\d/.test(text)) return false;
+  if (IMPERATIVE_VERBS.has(words[0] ?? '')) return false;
+  return !(words.includes('due') && due !== null);
+}
+
 function isoDaysFrom(today: string, days: number): string {
   const t = new Date(`${today}T00:00:00Z`);
   t.setUTCDate(t.getUTCDate() + days);
@@ -151,6 +212,8 @@ function readDateField(doc: DocumentExtraction, field: string): string | null {
  * label). Extracted dates are normalized to ISO first (`normalizeDate`, the
  * eval's rule), so "January 6, 2025" counts; anything that is not a date is
  * treated as no date, never as past due, and comparisons run on ISO strings.
+ * Field headings the model lists as action items are dropped (`isFieldLabel`),
+ * after lending their citation to any expiry item they restate.
  */
 export function planActions(report: ScanReport, options: PlanOptions): ActionQueue {
   const windowEnd = isoDaysFrom(
@@ -158,6 +221,9 @@ export function planActions(report: ScanReport, options: PlanOptions): ActionQue
     options.expiryWindowDays ?? DEFAULT_EXPIRY_WINDOW_DAYS,
   );
   const items: ActionItem[] = [];
+  // Field headings (#133): planned so they can still lend a citation to the
+  // expiry item they restate (#65), then dropped.
+  const labels = new Set<ActionItem>();
   const add = (item: Omit<ActionItem, 'id' | 'status'>, documentId: string) => {
     items.push({ ...item, id: `${item.ruleId}:${documentId}`, status: 'proposed' });
   };
@@ -235,6 +301,8 @@ export function planActions(report: ScanReport, options: PlanOptions): ActionQue
         },
         file,
       );
+      const planned = items[items.length - 1];
+      if (planned && isFieldLabel(action.text, due)) labels.add(planned);
     }
 
     // Expiry alerts and expired flags from type-specific date fields.
@@ -300,7 +368,7 @@ export function planActions(report: ScanReport, options: PlanOptions): ActionQue
   const folded = items.filter((item) => {
     if (item.ruleId !== 'flag-past-due' && item.ruleId !== 'todo-extracted') return true;
     const target = fieldDerived.get(`${item.citations[0]?.documentId}|${item.date}`);
-    if (!target || item.date === null) return true;
+    if (!target || item.date === null) return !labels.has(item);
     target.citations.push(...item.citations);
     target.needsReviewFirst = target.needsReviewFirst || item.needsReviewFirst;
     return false;
