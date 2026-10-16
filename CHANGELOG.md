@@ -54,6 +54,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Both crates declare `rust-version = "1.90"` and CI checks them on exactly
   that toolchain (#131).
 
+- Core's host-neutral entry no longer touches Node's `Buffer`: the
+  embedding encoder returns a plain `Uint8Array` and the encrypted-header
+  check decodes bytes without it, so neither throws in the webview. A test
+  now fails if any module the webview loads names a Node global (#132).
+
+- The action queue no longer lists field headings the model copies into its
+  action items ("Policy number", "Coverage", "Expiration date") as to-dos.
+  A heading that names a deadline with a real date ("Payment due date") is
+  kept, since that is the document saying when something is due. Action
+  eval precision 11/22 to 11/17, recall unchanged at 11/13 (#133).
+
 - The desktop app can reach the local model. Core called `fetch` detached
   from the page and read Ollama's reply with `for await`; both work under
   Node but throw in WebKit, the macOS webview, so every scan failed with
