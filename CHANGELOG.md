@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The desktop app settles a questioned document type in the queue. On a
+  "Type disputed" or "Type unclear" flag, pick the right type and Outtray pins
+  it, as `outtray correct` does: the pin wins over the classifier from then
+  on, and the correction becomes an example it learns from. A new "Plan
+  again" button re-plans the same folder, which reads the document again
+  under the pinned type. Nothing changes on disk except the encrypted store.
+
 - "Reviewed" marks in the desktop app are saved in the encrypted store and
   come back on the next scan (ADR-0010 amendment 1). A mark follows the
   document's contents, so a moved file keeps it and a re-issued bill starts

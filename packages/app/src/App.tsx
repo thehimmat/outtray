@@ -1,10 +1,11 @@
 /**
  * The app shell's one screen for now: choose a folder, see its proposed
- * action queue. The host behind `api` is the demo until the Tauri adapters
+ * action queue, settle questioned types, and plan the same folder again to
+ * see the result. The host behind `api` is the demo until the Tauri adapters
  * land (ADR-0013).
  */
 
-import { FolderOpen, LoaderCircle } from 'lucide-react';
+import { FolderOpen, LoaderCircle, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import type { OuttrayApi, PlannedFolder } from './api.js';
 import { QueueView } from './QueueView.js';
@@ -19,26 +20,38 @@ export function App({ api }: { api: OuttrayApi }) {
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [runs, setRuns] = useState(0);
 
-  const choose = async () => {
+  const plan = async (folder: string) => {
+    setState({ kind: 'planning', folder });
+    const result = await api.planFolder(folder);
+    setRuns((n) => n + 1);
+    setState({ kind: 'planned', result, run: runs + 1 });
+  };
+  const run = async (pick: () => Promise<string | null>) => {
     try {
-      const folder = await api.chooseFolder();
-      if (folder === null) return;
-      setState({ kind: 'planning', folder });
-      const result = await api.planFolder(folder);
-      setRuns((n) => n + 1);
-      setState({ kind: 'planned', result, run: runs + 1 });
+      const folder = await pick();
+      if (folder !== null) await plan(folder);
     } catch (error) {
       setState({ kind: 'failed', message: error instanceof Error ? error.message : String(error) });
     }
   };
+  const choose = () => run(() => api.chooseFolder());
+  const lastFolder = state.kind === 'planned' ? state.result.folder : null;
+  const again = () => run(async () => lastFolder);
 
   return (
     <main className="app">
       <header>
         <h1>Outtray</h1>
-        <button type="button" onClick={choose} disabled={state.kind === 'planning'}>
-          <FolderOpen aria-hidden="true" size={18} /> Choose a folder
-        </button>
+        <div className="header-actions">
+          <button type="button" onClick={choose} disabled={state.kind === 'planning'}>
+            <FolderOpen aria-hidden="true" size={18} /> Choose a folder
+          </button>
+          {lastFolder !== null ? (
+            <button type="button" onClick={again}>
+              <RefreshCw aria-hidden="true" size={18} /> Plan again
+            </button>
+          ) : null}
+        </div>
       </header>
       {state.kind === 'idle' ? (
         <p className="intro">
@@ -77,6 +90,7 @@ export function App({ api }: { api: OuttrayApi }) {
             queue={state.result.queue}
             initialReviewed={state.result.reviewed}
             onReviewedChange={(id, reviewed) => api.setReviewed(id, reviewed)}
+            onTypeChange={(id, type) => api.setDocumentType(id, type)}
           />
         </>
       ) : null}

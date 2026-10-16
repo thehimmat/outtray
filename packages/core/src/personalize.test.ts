@@ -3,7 +3,7 @@ import type { EmbeddingProvider } from './embedding-provider.js';
 import type { DocumentExtraction } from './extraction-schema.js';
 import { derivedText } from './extraction-text.js';
 import { redactExtraction } from './identifiers.js';
-import { correctDocument, personalClassifier, reuseOrPin } from './personalize.js';
+import { correctDocument, PINNABLE_TYPES, personalClassifier, reuseOrPin } from './personalize.js';
 import { MemoryStorage } from './storage-memory.js';
 import type { StoredDocument } from './storage-provider.js';
 
@@ -216,5 +216,19 @@ describe('personalClassifier', () => {
     const classifier = await personalClassifier(store, embedder, 'm1');
     const [query] = await embedder.embed([derivedText(BILL)]);
     expect(classifier.classify(query ?? [], 1)?.type).toBe('statement');
+  });
+});
+
+describe('PINNABLE_TYPES', () => {
+  it('is every document type a person can pin, which excludes unknown', () => {
+    expect(PINNABLE_TYPES).toEqual([
+      'letter',
+      'bill',
+      'receipt',
+      'id_document',
+      'contract',
+      'policy',
+      'statement',
+    ]);
   });
 });

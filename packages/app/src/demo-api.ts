@@ -6,7 +6,16 @@
  * fixtures; no real document is ever bundled.
  */
 
-import { type DocumentExtraction, planActions, reconcileType, type ScanItem } from '@outtray/core';
+import {
+  type Classification,
+  type DocumentExtraction,
+  type DocumentType,
+  PINNABLE_TYPES,
+  planActions,
+  reconcileType,
+  type ScanItem,
+  userVerdict,
+} from '@outtray/core';
 import type { OuttrayApi, PlannedFolder } from './api.js';
 
 const usage = { loadMs: 0, promptTokens: 0, genTokens: 0, genTokPerSec: null, totalMs: 0 };
@@ -62,35 +71,75 @@ const DEMO: Array<[string, DocumentExtraction]> = [
   ],
 ];
 
-function item(file: string, doc: DocumentExtraction): ScanItem {
+/**
+ * A document the extractor and the classifier disagree on, so the demo shows
+ * a type question a person can settle.
+ */
+const DISPUTED: [string, DocumentExtraction, Classification] = [
+  'water-bill.png',
+  {
+    type: 'statement',
+    summary: 'City Water account summary.',
+    action_items: [],
+    institution: 'City Water',
+    account_number: '4410-2287-19',
+    period_start: '2026-06-01',
+    period_end: '2026-06-30',
+    balance: '$42.10',
+  },
+  { type: 'bill', confidence: 0.82, votes: { bill: 4, statement: 1 } },
+];
+
+function item(
+  file: string,
+  doc: DocumentExtraction,
+  classification: Classification | null,
+  pinned: DocumentType | undefined,
+): ScanItem {
   return {
     file,
     contentHash: file,
     result: { valid: true, jsonChannel: 'content', raw: doc, usage, error: null, document: doc },
-    reconciliation: reconcileType(doc.type, null),
+    reconciliation: pinned
+      ? userVerdict(pinned, doc.type, classification)
+      : reconcileType(doc.type, classification),
   };
 }
 
 /**
  * The demo host. `today` is injectable so the queue is deterministic in tests.
  *
- * Failure modes: none; it never touches a real folder.
+ * Failure modes: `setDocumentType` rejects for an item not in the last plan
+ * or a type that cannot be pinned; nothing else rejects, and it never touches
+ * a real folder. Marks and pins last for the page's lifetime.
  */
 export function demoApi(
   today: () => string = () => new Date().toISOString().slice(0, 10),
 ): OuttrayApi {
   // Kept for the page's lifetime only: the demo has no store.
   const reviewed = new Set<string>();
+  const pins = new Map<string, DocumentType>();
+  const files = new Map<string, string>();
   return {
     async chooseFolder() {
       return 'Demo documents';
     },
     async planFolder(folder: string): Promise<PlannedFolder> {
-      const items = DEMO.map(([file, doc]) => item(file, doc));
+      const items = [
+        ...DEMO.map(([file, doc]) => item(file, doc, null, pins.get(file))),
+        item(DISPUTED[0], DISPUTED[1], DISPUTED[2], pins.get(DISPUTED[0])),
+      ];
       const queue = planActions(
         { scanned: items.map((i) => i.file), skipped: [], items, classifierError: null },
         { today: today() },
       );
+      files.clear();
+      for (const action of queue.items) {
+        const source = items.find((i) =>
+          action.id.slice(action.ruleId.length + 1).startsWith(i.file),
+        );
+        if (source) files.set(action.id, source.file);
+      }
       return {
         folder,
         queue,
@@ -103,6 +152,15 @@ export function demoApi(
     async setReviewed(itemId: string, on: boolean) {
       if (on) reviewed.add(itemId);
       else reviewed.delete(itemId);
+    },
+    async setDocumentType(itemId: string, type: DocumentType) {
+      const file = files.get(itemId);
+      if (!file) throw new Error('This item is not in the last plan; plan the folder again.');
+      if (!PINNABLE_TYPES.includes(type)) throw new Error(`The type ${type} cannot be pinned.`);
+      pins.set(file, type);
+      const extracted = [...DEMO, DISPUTED].find(([name]) => name === file)?.[1];
+      // The demo cannot read a document again; the real host does (#67).
+      return { reextract: extracted?.type !== type, learned: true };
     },
   };
 }

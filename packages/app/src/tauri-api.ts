@@ -9,13 +9,17 @@
  */
 
 import {
+  type CorrectionOutcome,
+  correctDocument,
   type DocumentSource,
+  type DocumentType,
   type EmbeddingProvider,
   explainStorageError,
   type ModelProvider,
   OllamaEmbeddingProvider,
   OllamaProvider,
   openCommandStorage,
+  PINNABLE_TYPES,
   planActions,
   type ReviewTarget,
   reviewTargets,
@@ -63,6 +67,7 @@ function isUnreachable(error: unknown): boolean {
  * be opened or written does not fail the plan; it becomes a note.
  * `setReviewed` rejects with a plain-language Error when the mark cannot be
  * saved; marks are read back only for documents this plan saved.
+ * `setDocumentType` rejects the same way when the pin cannot be saved.
  */
 export function tauriApi(deps: TauriApiDeps): OuttrayApi {
   const today = deps.today ?? (() => new Date().toISOString().slice(0, 10));
@@ -84,6 +89,7 @@ export function tauriApi(deps: TauriApiDeps): OuttrayApi {
     chooseFolder: deps.pickFolder,
     planFolder: (folder) => exclusive(() => plan(folder)),
     setReviewed: (itemId, reviewed) => exclusive(() => mark(itemId, reviewed)),
+    setDocumentType: (itemId, type) => exclusive(() => pin(itemId, type)),
   };
 
   async function plan(folder: string): Promise<PlannedFolder> {
@@ -161,10 +167,44 @@ export function tauriApi(deps: TauriApiDeps): OuttrayApi {
   }
 
   async function mark(itemId: string, reviewed: boolean): Promise<void> {
+    const target = targetOf(itemId);
+    await withStore(async (storage) => {
+      if (reviewed) {
+        await storage.setReview({ ...target, reviewedAt: Date.now() });
+      } else {
+        await storage.clearReview(target.key);
+      }
+    });
+  }
+
+  async function pin(itemId: string, type: DocumentType): Promise<CorrectionOutcome> {
+    if (!PINNABLE_TYPES.includes(type)) {
+      throw new Error(
+        `The type ${type} cannot be pinned; choose one of ${PINNABLE_TYPES.join(', ')}.`,
+      );
+    }
+    const target = targetOf(itemId);
+    return withStore(async (storage) => {
+      const document = await storage.getDocument(target.documentHash);
+      if (!document) {
+        throw new Error(
+          'This document was not saved to the encrypted store; plan the folder again.',
+        );
+      }
+      return correctDocument(storage, document, type);
+    });
+  }
+
+  function targetOf(itemId: string): ReviewTarget {
     const target = targets.get(itemId);
     if (!target) {
       throw new Error('This item is not in the last plan; plan the folder again.');
     }
+    return target;
+  }
+
+  /** Open the store, run `work`, close it; every failure becomes a plain-language Error. */
+  async function withStore<T>(work: (storage: StorageProvider) => Promise<T>): Promise<T> {
     let storage: StorageProvider;
     try {
       storage = await openStore();
@@ -172,11 +212,7 @@ export function tauriApi(deps: TauriApiDeps): OuttrayApi {
       throw new Error(explainStorageError(error, 'the encrypted store'));
     }
     try {
-      if (reviewed) {
-        await storage.setReview({ ...target, reviewedAt: Date.now() });
-      } else {
-        await storage.clearReview(target.key);
-      }
+      return await work(storage);
     } catch (error) {
       throw new Error(explainStorageError(error, 'the encrypted store'));
     } finally {

@@ -162,4 +162,91 @@ describe('QueueView', () => {
     const labels = screen.queryAllByRole('button').map((b) => b.textContent?.toLowerCase() ?? '');
     expect(labels.filter((l) => /delete|shred|move|trash/.test(l))).toEqual([]);
   });
+
+  describe('type questions (#67 in the app)', () => {
+    const DISPUTED = action({
+      id: 'flag-disputed:water.png',
+      kind: 'attention_flag',
+      ruleId: 'flag-disputed',
+      title: 'Type disputed for water.png: extractor says statement, classifier says bill',
+      date: null,
+      needsReviewFirst: true,
+      citations: [{ documentId: 'water.png', snippet: 'type: statement' }],
+    });
+
+    it('offers a type choice only on items that question the type', () => {
+      render(
+        <QueueView
+          queue={queue([DISPUTED, action({ id: 'b' })])}
+          onTypeChange={async () => ({ reextract: true, learned: true })}
+        />,
+      );
+      const flag = screen.getByRole('listitem', { name: /Type disputed/ });
+      expect(within(flag).getByRole('combobox', { name: /Document type/ })).toBeTruthy();
+      const todo = screen.getByRole('listitem', { name: /Pay Metro Electric/ });
+      expect(within(todo).queryByRole('combobox')).toBeNull();
+    });
+
+    it('offers no type choice when the host cannot save one', () => {
+      render(<QueueView queue={queue([DISPUTED])} />);
+      expect(screen.queryByRole('combobox')).toBeNull();
+    });
+
+    it('hands the chosen type to the host and says what happens next', async () => {
+      const user = userEvent.setup();
+      const pinned: Array<[string, string]> = [];
+      render(
+        <QueueView
+          queue={queue([DISPUTED])}
+          onTypeChange={async (id, type) => {
+            pinned.push([id, type]);
+            return { reextract: true, learned: true };
+          }}
+        />,
+      );
+      const flag = screen.getByRole('listitem', { name: /Type disputed/ });
+      await user.selectOptions(
+        within(flag).getByRole('combobox', { name: /Document type/ }),
+        'bill',
+      );
+      await user.click(within(flag).getByRole('button', { name: /Set type/ }));
+      expect(pinned).toEqual([['flag-disputed:water.png', 'bill']]);
+      expect((await within(flag).findByRole('status')).textContent).toBe(
+        'Marked as bill. It will be read again as bill when you plan the folder again, and Outtray will use it as an example for documents like it.',
+      );
+    });
+
+    it('says so when the host could not save the type', async () => {
+      const user = userEvent.setup();
+      render(
+        <QueueView
+          queue={queue([DISPUTED])}
+          onTypeChange={async () => {
+            throw new Error('Storage is closed.');
+          }}
+        />,
+      );
+      const flag = screen.getByRole('listitem', { name: /Type disputed/ });
+      await user.selectOptions(
+        within(flag).getByRole('combobox', { name: /Document type/ }),
+        'bill',
+      );
+      await user.click(within(flag).getByRole('button', { name: /Set type/ }));
+      expect((await screen.findByRole('alert')).textContent).toBe(
+        'Could not set the type: Storage is closed.',
+      );
+    });
+
+    it('does not offer unknown as a type to pin', () => {
+      render(
+        <QueueView
+          queue={queue([DISPUTED])}
+          onTypeChange={async () => ({ reextract: false, learned: true })}
+        />,
+      );
+      const options = screen.getAllByRole('option').map((o) => (o as HTMLOptionElement).value);
+      expect(options).not.toContain('unknown');
+      expect(options).toContain('statement');
+    });
+  });
 });
