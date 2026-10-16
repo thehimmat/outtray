@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Building the desktop app on a Rust older than 1.90 now stops with Cargo's
+  own message naming the minimum, instead of failing inside a dependency.
+  Both crates declare `rust-version = "1.90"` and CI checks them on exactly
+  that toolchain (#131).
+
 - Receipts no longer raise "Past due: Pay $36.49" flags. A receipt records a
   payment already made, so a payment action on a document whose trusted type
   is receipt is dropped; other receipt actions (a return window) stay. Action
