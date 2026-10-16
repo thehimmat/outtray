@@ -31,6 +31,21 @@ export {
   normalizeValue,
 } from './normalize.js';
 export {
+  type FixtureRecognizer,
+  findField,
+  htmlVisibleText,
+  type OcrFieldScore,
+  type OcrFixtureScore,
+  type OcrRecording,
+  type OcrSummary,
+  ocrRecordingsDir,
+  replayRecognizer,
+  runOcrReport,
+  scoreOcrFixture,
+  summarizeOcr,
+  wordRecall,
+} from './ocr-eval.js';
+export {
   RecordingProvider,
   type RecordingProviderOptions,
   type RecordMode,

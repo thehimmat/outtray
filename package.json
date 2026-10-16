@@ -22,7 +22,8 @@
     "eval:classify": "pnpm build && node packages/evals/scripts/classify.mjs",
     "eval:actions": "pnpm build && node packages/evals/scripts/actions.mjs",
     "eval:cost": "pnpm build && node packages/evals/scripts/cost.mjs",
-    "eval:noise": "pnpm build && node packages/evals/scripts/noise.mjs"
+    "eval:noise": "pnpm build && node packages/evals/scripts/noise.mjs",
+    "eval:ocr": "pnpm build && node packages/evals/scripts/ocr.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
