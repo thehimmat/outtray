@@ -2215,5 +2215,195 @@
         }
       ]
     }
+  },
+  "readability": {
+    "counts": {
+      "flaggedUnreadable": 10,
+      "falseAlarm": 0,
+      "missedUnreadable": 0,
+      "passedReadable": 20
+    },
+    "pages": [
+      {
+        "id": "bill-001",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "receipt-001",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "letter-001",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "id_document-001",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "policy-001",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "bill-002",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "receipt-002",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "letter-002",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "id_document-002",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "policy-002",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "bill-001.scan",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "bill-001.harsh",
+        "unreadable": true,
+        "flagged": true,
+        "reasons": ["too-little-text", "only-large-text"]
+      },
+      {
+        "id": "receipt-001.scan",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "receipt-001.harsh",
+        "unreadable": true,
+        "flagged": true,
+        "reasons": ["too-little-text", "only-large-text"]
+      },
+      {
+        "id": "letter-001.scan",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "letter-001.harsh",
+        "unreadable": true,
+        "flagged": true,
+        "reasons": ["too-little-text", "only-large-text"]
+      },
+      {
+        "id": "id_document-001.scan",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "id_document-001.harsh",
+        "unreadable": true,
+        "flagged": true,
+        "reasons": ["too-little-text", "only-large-text"]
+      },
+      {
+        "id": "policy-001.scan",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "policy-001.harsh",
+        "unreadable": true,
+        "flagged": true,
+        "reasons": ["too-little-text", "only-large-text"]
+      },
+      {
+        "id": "bill-002.scan",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "bill-002.harsh",
+        "unreadable": true,
+        "flagged": true,
+        "reasons": ["too-little-text", "only-large-text"]
+      },
+      {
+        "id": "receipt-002.scan",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "receipt-002.harsh",
+        "unreadable": true,
+        "flagged": true,
+        "reasons": ["too-little-text", "only-large-text"]
+      },
+      {
+        "id": "letter-002.scan",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "letter-002.harsh",
+        "unreadable": true,
+        "flagged": true,
+        "reasons": ["too-little-text", "only-large-text"]
+      },
+      {
+        "id": "id_document-002.scan",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "id_document-002.harsh",
+        "unreadable": true,
+        "flagged": true,
+        "reasons": ["too-little-text", "only-large-text"]
+      },
+      {
+        "id": "policy-002.scan",
+        "unreadable": false,
+        "flagged": false,
+        "reasons": []
+      },
+      {
+        "id": "policy-002.harsh",
+        "unreadable": true,
+        "flagged": true,
+        "reasons": ["too-little-text", "only-large-text"]
+      }
+    ]
   }
 }

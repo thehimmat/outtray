@@ -85,6 +85,17 @@ What this shows:
   and keeps a tall heading from swallowing the lines beside it (XCTest in
   `packages/ocr-vision/Tests`).
 
+## Telling a page was not read (#163)
+
+`assessReadability` (core) judges each page from the OCR result alone: fewer
+than 130 characters, or a median line height above 0.021 of the page (only
+large text found), means unreadable. On the 30 recorded pages it flags all
+10 where the OCR missed over a quarter of the fields and none of the other
+20 (scoreboard section "Readability detector"). The thresholds sit midway
+in gaps measured on these same pages, so this shows the signal separates
+them, not that it generalizes. It leans toward flagging: a false alarm costs
+one VLM call, a miss loses fields silently.
+
 ## What it unlocks
 
 - **Classify-first routing (ADR-0009 section 1).** The classifier can run on

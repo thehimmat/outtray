@@ -17,6 +17,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { READABILITY_THRESHOLDS } from '@outtray/core';
 import { VisionOcr } from '@outtray/core/node';
 import {
   loadOcrPages,
@@ -26,7 +27,9 @@ import {
   recordingPath,
   replayRecognizer,
   runOcrReport,
+  scoreReadability,
   summarizeByLevel,
+  UNREADABLE_MISS_SHARE,
 } from '../dist/index.js';
 
 const MODE = process.argv[2] ?? 'replay';
@@ -121,12 +124,14 @@ function sameReading(path, page, result) {
 
 async function replay() {
   const variants = {};
+  let readability;
   for (const variant of OCR_VARIANTS) {
-    const { rows } = await runOcrReport(replayRecognizer(variant));
+    const { rows, results } = await runOcrReport(replayRecognizer(variant));
     variants[variant] = { byLevel: summarizeByLevel(rows), rows };
+    if (variant === 'default') readability = scoreReadability(rows, results);
   }
-  writeFileSync(snapshotPath, `${JSON.stringify({ variants }, null, 2)}\n`);
-  writeFileSync(mdPath, markdown(variants));
+  writeFileSync(snapshotPath, `${JSON.stringify({ variants, readability }, null, 2)}\n`);
+  writeFileSync(mdPath, markdown(variants, readability));
   const d = variants.default.byLevel;
   process.stdout.write(
     `OCR (default): ${OCR_LEVELS.filter((l) => d[l])
@@ -135,7 +140,7 @@ async function replay() {
   );
 }
 
-function markdown(variants) {
+function markdown(variants, readability) {
   const all = OCR_VARIANTS.flatMap((v) =>
     variants[v].rows.map((r) => readRecording(join(recordings, recordingPath(v, r.id)))),
   );
@@ -219,6 +224,23 @@ ${headline}
 ## Where language correction changes the result
 
 ${diffs.length === 0 ? 'Nowhere: both variants read the same fields on every page.' : diffs.join('\n')}
+
+## Readability detector (#163)
+
+Does the OCR result itself show that a page was not read? \`assessReadability\`
+(core) calls a page unreadable when it has fewer than
+${READABILITY_THRESHOLDS.minCharacters} characters or a median line height
+above ${READABILITY_THRESHOLDS.maxMedianLineHeight} of the page (only large
+text found). Ground truth: the OCR text missed more than
+${Math.round(UNREADABLE_MISS_SHARE * 100)}% of the page's labelled fields. Default variant.
+
+| | Truly unreadable | Truly readable |
+| --- | --- | --- |
+| Flagged unreadable | ${readability.counts.flaggedUnreadable} | ${readability.counts.falseAlarm} (false alarm: one extra VLM call) |
+| Passed as readable | ${readability.counts.missedUnreadable} (fields silently lost) | ${readability.counts.passedReadable} |
+
+The thresholds were set on these same pages, so this shows the signal
+separates them, not how it generalizes; real scans are unmeasured.
 
 ## Per page (default variant)
 
