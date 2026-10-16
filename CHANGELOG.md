@@ -90,8 +90,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   run one edit away (a dropped, added, changed or swapped character), or of
   similar length ending in the same last four, is redacted like the value
   itself, for values of 8 or more characters (#97). The tokenizer version is
-  now `tokenize-v2`, so the next scan re-extracts each stored document once
-  (#106 would make that a re-embed only).
+  now `tokenize-v2`, so the next scan re-extracts each stored document once:
+  the store keeps only redacted extractions, so it cannot re-tokenize without
+  the model.
 
 - The desktop app reads only folders you pick in its folder picker, and only
   the files directly inside them. The picker now runs in the native shell, so
