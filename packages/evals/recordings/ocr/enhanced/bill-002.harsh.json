@@ -1,0 +1,80 @@
+{
+  "page": "bill-002.harsh",
+  "variant": "enhanced",
+  "imageSha256": "c3e74c9236163a8f63906bb97c19bf9c50f7e05d76a68c12e536dbcd4f56aae1",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 2158.3,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Regional Gas Co",
+            "confidence": 1,
+            "box": {
+              "x": 0.1096,
+              "y": 0.0416,
+              "width": 0.1802,
+              "height": 0.0263
+            }
+          },
+          {
+            "text": "Amount Due Notice",
+            "confidence": 1,
+            "box": {
+              "x": 0.1038,
+              "y": 0.1138,
+              "width": 0.256,
+              "height": 0.0362
+            }
+          },
+          {
+            "text": "7100",
+            "confidence": 0.5,
+            "box": {
+              "x": 0.0998,
+              "y": 0.186,
+              "width": 0.0374,
+              "height": 0.0131
+            }
+          },
+          {
+            "text": "Sayice perca",
+            "confidence": 0.5,
+            "box": {
+              "x": 0.1034,
+              "y": 0.2485,
+              "width": 0.1141,
+              "height": 0.0175
+            }
+          },
+          {
+            "text": "Potent ence",
+            "confidence": 0.3,
+            "box": {
+              "x": 0.1007,
+              "y": 0.2814,
+              "width": 0.1444,
+              "height": 0.0226
+            }
+          },
+          {
+            "text": "$453.00",
+            "confidence": 1,
+            "box": {
+              "x": 0.7986,
+              "y": 0.3794,
+              "width": 0.1105,
+              "height": 0.0276
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

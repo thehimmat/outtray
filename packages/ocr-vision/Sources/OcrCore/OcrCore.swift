@@ -97,3 +97,14 @@ func sameRow(_ a: Line, _ b: Line) -> Bool {
   let baseline = abs(bottom(a) - bottom(b)) <= min(a.box.height, b.box.height) / 2
   return mutual || baseline
 }
+
+/// The scale `--enhance` applies to an image: up to 1600 px wide when it is
+/// narrower, never past 4000 px on its longer side (a long receipt photo
+/// would otherwise grow without bound), never down.
+public func enhanceScale(width: Int, height: Int) -> Double {
+  let targetWidth = 1600.0
+  let maxSide = 4000.0
+  guard width > 0, height > 0, Double(width) < targetWidth else { return 1 }
+  let scale = min(targetWidth / Double(width), maxSide / Double(max(width, height)))
+  return max(1, scale)
+}

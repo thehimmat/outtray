@@ -1,0 +1,50 @@
+{
+  "page": "policy-001.harsh",
+  "variant": "enhanced",
+  "imageSha256": "d544f0fbe1b74ce0bf3272bbbc786ed9a9cc27965f0efb4cf095f028282c2354",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 2312.8,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Harbor Castaity",
+            "confidence": 0.5,
+            "box": {
+              "x": 0.1091,
+              "y": 0.0378,
+              "width": 0.1776,
+              "height": 0.0329
+            }
+          },
+          {
+            "text": "Insurance Policy Declarations",
+            "confidence": 0.5,
+            "box": {
+              "x": 0.1019,
+              "y": 0.0966,
+              "width": 0.3898,
+              "height": 0.0488
+            }
+          },
+          {
+            "text": "Pomsta",
+            "confidence": 0.3,
+            "box": {
+              "x": 0.1105,
+              "y": 0.1555,
+              "width": 0.0766,
+              "height": 0.016
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

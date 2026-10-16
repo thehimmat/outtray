@@ -1,0 +1,120 @@
+{
+  "page": "id_document-001",
+  "variant": "enhanced",
+  "imageSha256": "9fa9debddac473ac2899e5c0538de9879c8418934f6967b356b824b803c936d3",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1578.2,
+    "pages": [
+      {
+        "width": 1632,
+        "height": 2000,
+        "lines": [
+          {
+            "text": "State of Washington",
+            "confidence": 1,
+            "box": {
+              "x": 0.0763,
+              "y": 0.0594,
+              "width": 0.2158,
+              "height": 0.0225
+            }
+          },
+          {
+            "text": "Driver License",
+            "confidence": 1,
+            "box": {
+              "x": 0.8096,
+              "y": 0.061,
+              "width": 0.1121,
+              "height": 0.0131
+            }
+          },
+          {
+            "text": "Identification Card",
+            "confidence": 1,
+            "box": {
+              "x": 0.0747,
+              "y": 0.1205,
+              "width": 0.2438,
+              "height": 0.022
+            }
+          },
+          {
+            "text": "Name",
+            "confidence": 1,
+            "box": {
+              "x": 0.087,
+              "y": 0.1754,
+              "width": 0.0484,
+              "height": 0.014
+            }
+          },
+          {
+            "text": "Nina Nguyen",
+            "confidence": 1,
+            "box": {
+              "x": 0.806,
+              "y": 0.1742,
+              "width": 0.1051,
+              "height": 0.018
+            }
+          },
+          {
+            "text": "License number",
+            "confidence": 1,
+            "box": {
+              "x": 0.0872,
+              "y": 0.2093,
+              "width": 0.1263,
+              "height": 0.0147
+            }
+          },
+          {
+            "text": "D8923829",
+            "confidence": 1,
+            "box": {
+              "x": 0.8292,
+              "y": 0.2093,
+              "width": 0.0819,
+              "height": 0.0145
+            }
+          },
+          {
+            "text": "Expires",
+            "confidence": 1,
+            "box": {
+              "x": 0.0871,
+              "y": 0.2439,
+              "width": 0.059,
+              "height": 0.0152
+            }
+          },
+          {
+            "text": "January 19, 2026",
+            "confidence": 1,
+            "box": {
+              "x": 0.7722,
+              "y": 0.244,
+              "width": 0.1388,
+              "height": 0.0162
+            }
+          },
+          {
+            "text": "This card remains the property of State of Washington.",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.2849,
+              "width": 0.4217,
+              "height": 0.0161
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -107,7 +107,10 @@ When those conflict, favor the showcase.
   no CI, so push again after pulling it). Degraded pages (#160,
   `fixtures/degraded`, `scripts/degrade-fixtures.py`): scan 36/36, harsh
   8/36 (body text undetected), confidence 1.0 on misreads, language
-  correction immaterial. Not wired into `scan` yet; classify-first
+  correction immaterial; `--enhance` preprocessing takes harsh from 8 to
+  11/36 (4 gained, 1 lost, no identifier), so it is off by default. The bot's push
+  sends no event to this session: after a recording run, fetch the branch
+  instead of waiting. Not wired into `scan` yet; classify-first
   (ADR-0009 section 1) and #97 build on it.
 - **Competitive teardown** (`docs/research/competitive-teardown.md`, #155,
   #156, from vendor sites and repos): paperless-ngx v3 has opt-in local AI;

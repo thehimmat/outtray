@@ -235,8 +235,12 @@ export function summarizeOcr(rows: readonly OcrFixtureScore[]): OcrSummary {
 export const OCR_LEVELS = ['clean', 'scan', 'harsh'] as const;
 export type OcrLevel = (typeof OCR_LEVELS)[number];
 
-/** Sidecar settings a run is recorded under (#160 compares them). */
-export const OCR_VARIANTS = ['default', 'no-language-correction'] as const;
+/**
+ * Sidecar settings a run is recorded under (#160 compares them): `default`
+ * (language correction on), `no-language-correction`, and `enhanced`
+ * (language correction on, image preprocessed with `--enhance`).
+ */
+export const OCR_VARIANTS = ['default', 'no-language-correction', 'enhanced'] as const;
 export type OcrVariant = (typeof OCR_VARIANTS)[number];
 
 /** Labelled fields that are identifiers, the ones #97 needs read exactly. */
