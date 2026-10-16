@@ -109,6 +109,23 @@ When those conflict, favor the showcase.
   8/36 (body text undetected), confidence 1.0 on misreads, language
   correction immaterial. Not wired into `scan` yet; classify-first
   (ADR-0009 section 1) and #97 build on it.
+- **Handoff (2026-10-16, cloud session)**: in flight when the session
+  ended, both owned by Claude and both self-mergeable when green:
+  - #162 (`feat/ocr-enhance`): `--enhance` preprocessing as a third OCR
+    variant; harsh 8 to 11/36, off by default. Merge when the head's CI is
+    green and the `ocr` job recorded nothing new (fetch the branch: the bot's
+    recording push sends no event and starts no CI; if it pushed, pull, run
+    `pnpm eval:ocr`, commit and push to get CI on top).
+  - #163 (`feat/ocr-readability`, PR opened as draft): `assessReadability`
+    in core plus its eval (10/10 unreadable pages flagged, 0 false alarms,
+    in-sample). After #162 merges, merge main into it, resolve
+    `scripts/ocr.mjs` (keep both: three variants and the readability
+    section), regenerate with `pnpm eval:ocr`, run the four checks,
+    self-review, and merge when green.
+  - Then: #159 (OCR text into `scan`, classify-first, routing unreadable
+    pages to the VLM per #163) is the next substantive cloud-doable item;
+    its accuracy measurement needs the Air. #160 keeps
+    `RecognizeDocumentsRequest` and timing on the Air.
 - **Competitive teardown** (`docs/research/competitive-teardown.md`, #155,
   #156, from vendor sites and repos): paperless-ngx v3 has opt-in local AI;
   paperless-ai is unmaintained; Paperspell (cloud) shows per-document
