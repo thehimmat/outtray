@@ -85,6 +85,29 @@ What this shows:
   and keeps a tall heading from swallowing the lines beside it (XCTest in
   `packages/ocr-vision/Tests`).
 
+## Preprocessing (#160)
+
+Can cheap image preprocessing recover the harsh pages? `outtray-ocr
+--enhance` upscales an image narrower than 1600 px (Lanczos), reduces noise
+and raises contrast with Core Image before Vision runs, recorded as the
+`enhanced` variant.
+
+| Harsh pages | Fields | Identifiers exact | Words | Median time |
+| --- | --- | --- | --- | --- |
+| default | 8/36 | 0/4 | 45/375 | 1.3 s |
+| enhanced | 11/36 | 0/4 | 52/375 | 2.2 s |
+
+- **It is not the fix.** Four fields gained, one lost (a merchant read
+  without it and missed with it), no identifier recovered, about 70% more
+  time per page. Clean and scan pages are unchanged at 36/36.
+- **Decision: off by default**, kept as an option and an eval variant so
+  better preprocessing can be measured against it.
+- **The lever is routing, not repair.** A page where Vision finds a few
+  large lines and no body text is detectable from the OCR result itself
+  (few lines, little text for the page area). Such a page should go to the
+  VLM, which reads the image directly, or be flagged for a rescan. Filed as
+  a follow-up.
+
 ## What it unlocks
 
 - **Classify-first routing (ADR-0009 section 1).** The classifier can run on
