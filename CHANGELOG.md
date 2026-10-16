@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Receipts no longer raise "Past due: Pay $36.49" flags. A receipt records a
+  payment already made, so a payment action on a document whose trusted type
+  is receipt is dropped; other receipt actions (a return window) stay. Action
+  eval precision 11/17 to 11/15, attention flags 3/5 to 3/3 (#140).
+
 - The action queue no longer lists field headings the model copies into its
   action items ("Policy number", "Coverage", "Expiration date") as to-dos.
   A heading that names a deadline with a real date ("Payment due date") is
