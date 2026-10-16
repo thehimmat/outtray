@@ -96,6 +96,19 @@ pnpm typecheck   # tsc project references
 pnpm build
 ```
 
+The desktop app (`packages/app`) needs Rust 1.90 or newer, macOS, and Ollama
+running with `qwen3-vl:2b` and `nomic-embed-text` pulled:
+
+```sh
+pnpm build && pnpm --filter @outtray/app tauri dev
+```
+
+The app and the CLI share one encrypted store and one Keychain key. When the
+app created the key (its first run), the CLI shows a macOS password dialog
+each time it reads it, and the reverse is expected when the CLI created it.
+Enter your password; do not choose "Always Allow" (why:
+[threat model](docs/THREAT_MODEL.md#who-may-read-the-database-key), #134).
+
 Model-dependent evals run on a dev machine with Ollama (`pnpm eval:live`,
 lands in Phase 1); CI replays recorded model outputs and never runs a model.
 
