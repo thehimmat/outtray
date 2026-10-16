@@ -6,14 +6,15 @@
 //   outtray-ocr --contract         print the contract version
 //
 // Exit status: 0 on success, 64 on bad usage, 65 when the image cannot be
-// read, 70 when Vision fails. Errors go to stderr, never to stdout, so stdout
+// read, 70 when preprocessing (--enhance) or Vision fails. Errors go to stderr, never to stdout, so stdout
 // is either a complete result or empty.
 //
 // Engine: VNRecognizeTextRequest at the accurate level. Language correction
 // is on by default; --no-language-correction turns it off, because it can
 // rewrite identifier-like tokens toward dictionary words (#160 measures both).
 // --enhance preprocesses the image first (upscale a small image, reduce noise,
-// raise contrast), for poor photos (#160). RecognizeDocumentsRequest (macOS
+// grayscale, raise contrast), for poor photos (#160; off by default, since it
+// barely helped). RecognizeDocumentsRequest (macOS
 // 26, adds paragraphs and tables) is the planned upgrade; the contract's
 // `engine` field already names it.
 
@@ -50,18 +51,16 @@ guard args.count == 1, !args[0].hasPrefix("--") else {
     64)
 }
 
-/// Upscale an image narrower than 1600 px to 1600 px (Lanczos), reduce noise,
-/// drop colour and raise contrast. Rendered on the CPU so the result, and so
+/// Upscale a small image (`enhanceScale`, Lanczos), reduce noise, convert to
+/// grayscale and raise contrast. Rendered on the CPU so the result, and so
 /// the recording, is the same on every run.
 func enhance(_ image: CGImage) -> CGImage? {
   var ci = CIImage(cgImage: image)
-  let targetWidth = 1600.0
-  if Double(image.width) < targetWidth {
+  let scale = enhanceScale(width: image.width, height: image.height)
+  if scale > 1 {
     ci = ci.applyingFilter(
       "CILanczosScaleTransform",
-      parameters: [
-        kCIInputScaleKey: targetWidth / Double(image.width), kCIInputAspectRatioKey: 1.0,
-      ])
+      parameters: [kCIInputScaleKey: scale, kCIInputAspectRatioKey: 1.0])
   }
   ci = ci.applyingFilter(
     "CINoiseReduction", parameters: ["inputNoiseLevel": 0.06, "inputSharpness": 0.5])

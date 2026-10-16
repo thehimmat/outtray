@@ -1,6 +1,7 @@
 // OCR arm eval (#8, #160). How much of each page the Apple Vision sidecar
-// reads, on the clean fixtures and on degraded copies (fixtures/degraded), with
-// Vision's language correction on (`default`) and off. Modes:
+// reads, on the clean fixtures and on degraded copies (fixtures/degraded), in
+// three variants: `default` (language correction on), `no-language-correction`
+// and `enhanced` (`--enhance` preprocessing). Modes:
 //   replay (default) - score the committed recordings; runs anywhere. Writes
 //                      fixtures/ocr.json and docs/evals/ocr-scoreboard.md.
 //   record           - macOS: run the sidecar on every page in every variant,
@@ -208,7 +209,7 @@ ${levels}
 \`no-language-correction\` turns it off, since correction can rewrite
 identifier-like tokens toward dictionary words; \`enhanced\` keeps correction
 on and preprocesses the image first (\`outtray-ocr --enhance\`: upscale an
-image narrower than 1600 px, reduce noise, raise contrast).
+image narrower than 1600 px, reduce noise, grayscale, raise contrast).
 
 ## Headline
 
@@ -260,7 +261,10 @@ ${perPage('enhanced')}
 - **Word recall** ignores order and does not count extra words, so it
   measures what was read, not layout.
 - **Timing is the sidecar's own** (image decode excluded), on the machine
-  that recorded it, a CI Mac, not the dev machine
+  that recorded it, a CI Mac, not the dev machine. A recording keeps its
+  timing until what Vision reads changes, so variants recorded in different
+  runs were timed on different runners: compare times within a variant, not
+  across them
   (\`docs/evals/ocr-spike.md\`).
 
 ## Caveats

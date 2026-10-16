@@ -11,10 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `outtray-ocr --enhance` (and `VisionOcr`'s `enhance` option) preprocesses
-  a page before recognition: upscale, noise reduction, contrast. Measured on
-  the degraded pages, it recovers 3 of the 28 fields lost on poor phone
-  photos and no identifiers, at about 70% more time, so it is off by
-  default (#160).
+  a page before recognition: upscale, noise reduction, grayscale, contrast.
+  On the poor phone photos it gains 4 fields and loses 1 (8 to 11 of 36)
+  and recovers no identifier, so it is off by default (#160).
 
 - The OCR eval reads degraded pages too (#160): a simulated flatbed scan and
   a poor phone photo of every fixture, with Vision's language correction on

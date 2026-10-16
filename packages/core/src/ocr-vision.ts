@@ -42,7 +42,7 @@ export interface VisionOcrOptions {
   languageCorrection?: boolean;
   /**
    * Preprocess the image before recognition: upscale a small image, reduce
-   * noise, raise contrast. Defaults to false. Measured on degraded pages in
+   * noise, convert to grayscale, raise contrast. Defaults to false. Measured on degraded pages in
    * `docs/evals/ocr-scoreboard.md`.
    */
   enhance?: boolean;
@@ -98,8 +98,8 @@ export class VisionOcr {
    *
    * Failure modes: rejects with `OcrUnavailableError` off macOS (without
    * spawning anything) or when the sidecar binary is not found; with
-   * `OcrError` when the sidecar exits non-zero (unreadable image, Vision
-   * failure, timeout), carrying its exit status and stderr; with
+   * `OcrError` when the sidecar exits non-zero (unreadable image,
+   * preprocessing or Vision failure, timeout), carrying its exit status and stderr; with
    * `OcrContractError` when its output is not a valid `ocr-v1` result.
    */
   async recognize(path: string): Promise<OcrResult> {

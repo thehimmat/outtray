@@ -88,8 +88,9 @@ What this shows:
 ## Preprocessing (#160)
 
 Can cheap image preprocessing recover the harsh pages? `outtray-ocr
---enhance` upscales an image narrower than 1600 px (Lanczos), reduces noise
-and raises contrast with Core Image before Vision runs, recorded as the
+--enhance` upscales an image narrower than 1600 px (Lanczos, capped at 4000
+px on the longer side), reduces noise, converts to grayscale and raises
+contrast with Core Image before Vision runs, recorded as the
 `enhanced` variant.
 
 | Harsh pages | Fields | Identifiers exact | Words | Median time |
@@ -98,8 +99,11 @@ and raises contrast with Core Image before Vision runs, recorded as the
 | enhanced | 11/36 | 0/4 | 52/375 | 2.2 s |
 
 - **It is not the fix.** Four fields gained, one lost (a merchant read
-  without it and missed with it), no identifier recovered, about 70% more
-  time per page. Clean and scan pages are unchanged at 36/36.
+  without it and missed with it), no identifier recovered. Clean and scan
+  pages are unchanged at 36/36. The times look higher with it, but the two
+  variants were recorded in different CI runs on different runners, and the
+  preprocessing renders on the CPU for stable recordings, so the time is not
+  a reliable cost figure; the decision rests on accuracy alone.
 - **Decision: off by default**, kept as an option and an eval variant so
   better preprocessing can be measured against it.
 - **The lever is routing, not repair.** A page where Vision finds a few

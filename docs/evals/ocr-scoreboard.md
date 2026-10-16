@@ -7,7 +7,7 @@ Regenerate with `pnpm eval:ocr`; CI replays it and fails on drift. The
 read is missed, and records and commits new recordings when the sidecar or
 the pages change.
 
-Generated at commit `63542282461b` from recordings made on macOS 26.6.2 (arm64),
+Generated at commit `e7d9752fe26b` from recordings made on macOS 26.6.2 (arm64),
 engine `vision-recognize-text` revision 3.
 
 ## Pages
@@ -23,7 +23,7 @@ the same labels:
 `no-language-correction` turns it off, since correction can rewrite
 identifier-like tokens toward dictionary words; `enhanced` keeps correction
 on and preprocesses the image first (`outtray-ocr --enhance`: upscale an
-image narrower than 1600 px, reduce noise, raise contrast).
+image narrower than 1600 px, reduce noise, grayscale, raise contrast).
 
 ## Headline
 
@@ -174,7 +174,10 @@ Against `default`, field by field.
 - **Word recall** ignores order and does not count extra words, so it
   measures what was read, not layout.
 - **Timing is the sidecar's own** (image decode excluded), on the machine
-  that recorded it, a CI Mac, not the dev machine
+  that recorded it, a CI Mac, not the dev machine. A recording keeps its
+  timing until what Vision reads changes, so variants recorded in different
+  runs were timed on different runners: compare times within a variant, not
+  across them
   (`docs/evals/ocr-spike.md`).
 
 ## Caveats
