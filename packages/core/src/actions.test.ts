@@ -439,3 +439,55 @@ describe('planActions drops field labels the model emits as action items (#133)'
     expect(queue.items.filter((i) => i.kind === 'todo')).toEqual([]);
   });
 });
+
+describe('planActions on receipts (#140)', () => {
+  const receipt = (actions: DocumentExtraction['action_items']) =>
+    ({
+      type: 'receipt',
+      summary: '$36.49',
+      action_items: actions,
+      merchant: 'Northside Grocers',
+      total: '$36.49',
+      purchased_at: '2025-08-23',
+    }) as DocumentExtraction;
+
+  it('drops a payment action, since a receipt records a payment already made', () => {
+    const queue = planActions(
+      report([
+        item(
+          'r.png',
+          receipt([
+            { text: 'Pay $36.49', due_date: '2025-08-23' },
+            { text: 'Payment of $36.49', due_date: null },
+          ]),
+        ),
+      ]),
+      { today: TODAY },
+    );
+    expect(queue.items.map((i) => i.ruleId)).toEqual(['ret-receipt']);
+    expect(queue.flagged).toBe(0);
+  });
+
+  it('keeps other receipt actions, like a return window', () => {
+    const queue = planActions(
+      report([item('r.png', receipt([{ text: 'Return by', due_date: '2026-08-01' }]))]),
+      { today: TODAY },
+    );
+    expect(queue.items.find((i) => i.kind === 'todo')?.date).toBe('2026-08-01');
+  });
+
+  it('keeps a payment action when the trusted type is not receipt', () => {
+    const disputed: Reconciliation = {
+      effectiveType: 'bill',
+      status: 'user',
+      review: false,
+      vlmType: 'receipt',
+      classification: null,
+    };
+    const queue = planActions(
+      report([item('r.png', receipt([{ text: 'Pay $36.49', due_date: '2026-08-23' }]), disputed)]),
+      { today: TODAY },
+    );
+    expect(queue.items.some((i) => i.ruleId === 'todo-extracted')).toBe(true);
+  });
+});
