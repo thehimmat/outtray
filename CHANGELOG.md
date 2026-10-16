@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `pnpm eval:noise [runs]` measures the noise floor on the dev machine, as
+  the eval methodology requires before trusting a threshold or a speed
+  claim: it runs the live eval several times on one commit and writes which
+  field verdicts changed between runs, the spread of matched fields, and
+  the spread of time per document to `docs/evals/noise-floor.md`.
+
 - A cost dashboard (`pnpm eval:cost`, `docs/evals/cost-dashboard.md`): what
   one extraction costs on the 8 GB Air, from the timings recorded with each
   fixture. Median 31.8 s per document, 89% of it reading the prompt and page
