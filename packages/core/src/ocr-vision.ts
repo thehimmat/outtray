@@ -35,6 +35,11 @@ export type OcrRunner = (binary: string, args: readonly string[]) => Promise<Ocr
 export interface VisionOcrOptions {
   /** Path to the sidecar. Defaults to `outtray-ocr` on PATH. */
   binary?: string;
+  /**
+   * Let Vision correct recognized text toward dictionary words. Defaults to
+   * true. It can rewrite identifier-like tokens, so #160 measures both.
+   */
+  languageCorrection?: boolean;
   /** Kill the sidecar after this long. Defaults to 60 s. */
   timeoutMs?: number;
   /** Injected runner (for tests). Defaults to the real subprocess. */
@@ -68,11 +73,13 @@ function realRunner(timeoutMs: number): OcrRunner {
 export class VisionOcr {
   readonly name = 'vision';
   readonly #binary: string;
+  readonly #flags: readonly string[];
   readonly #run: OcrRunner;
   readonly #platform: NodeJS.Platform;
 
   constructor(options: VisionOcrOptions = {}) {
     this.#binary = options.binary ?? DEFAULT_OCR_BINARY;
+    this.#flags = options.languageCorrection === false ? ['--no-language-correction'] : [];
     this.#run = options.run ?? realRunner(options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
     this.#platform = options.platform ?? process.platform;
   }
@@ -93,7 +100,7 @@ export class VisionOcr {
           'arm (ADR-0002) and is not built yet.',
       );
     }
-    const result = await this.#run(this.#binary, [path]);
+    const result = await this.#run(this.#binary, [...this.#flags, path]);
     if (result.notFound) {
       throw new OcrUnavailableError(
         `The OCR sidecar ${this.#binary} was not found. Build it with ` +

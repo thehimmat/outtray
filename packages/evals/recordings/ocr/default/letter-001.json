@@ -1,6 +1,7 @@
 {
-  "fixture": "letter-001",
-  "pngSha256": "438b15dfaeb52811d216537c501ea20650c2471aa12f3329303be663c279b82a",
+  "page": "letter-001",
+  "variant": "default",
+  "imageSha256": "438b15dfaeb52811d216537c501ea20650c2471aa12f3329303be663c279b82a",
   "host": "macOS 26.6.2 (arm64)",
   "result": {
     "contract": "ocr-v1",

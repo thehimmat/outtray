@@ -33,6 +33,12 @@ describe('VisionOcr', () => {
     expect(calls).toEqual([{ binary: '/opt/outtray-ocr', args: ['/docs/bill.png'] }]);
   });
 
+  it('passes --no-language-correction when language correction is off', async () => {
+    const { run, calls } = runner({ status: 0, stdout: JSON.stringify(result), stderr: '' });
+    await new VisionOcr({ run, platform: 'darwin', languageCorrection: false }).recognize('a.png');
+    expect(calls[0]?.args).toEqual(['--no-language-correction', 'a.png']);
+  });
+
   it('defaults to the binary on PATH', async () => {
     const { run, calls } = runner({ status: 0, stdout: JSON.stringify(result), stderr: '' });
     await new VisionOcr({ run, platform: 'darwin' }).recognize('a.png');

@@ -1,6 +1,7 @@
 {
-  "fixture": "policy-001",
-  "pngSha256": "e899c1f33f3183c902f1bd4ce99d44db16f748de50f084ff8b298f7c4081f8a0",
+  "page": "policy-001",
+  "variant": "default",
+  "imageSha256": "e899c1f33f3183c902f1bd4ce99d44db16f748de50f084ff8b298f7c4081f8a0",
   "host": "macOS 26.6.2 (arm64)",
   "result": {
     "contract": "ocr-v1",

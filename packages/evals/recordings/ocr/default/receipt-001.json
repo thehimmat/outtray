@@ -1,6 +1,7 @@
 {
-  "fixture": "receipt-001",
-  "pngSha256": "fdcf5b4a37a85c9c1a231f62505d4e0ef124afb3509a09d8f57356b768d55817",
+  "page": "receipt-001",
+  "variant": "default",
+  "imageSha256": "fdcf5b4a37a85c9c1a231f62505d4e0ef124afb3509a09d8f57356b768d55817",
   "host": "macOS 26.6.2 (arm64)",
   "result": {
     "contract": "ocr-v1",

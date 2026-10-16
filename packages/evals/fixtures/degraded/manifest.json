@@ -1,0 +1,208 @@
+{
+  "seed": 20261016,
+  "levels": {
+    "scan": {
+      "description": "Flatbed scan: slight skew, soft focus, sensor noise, JPEG.",
+      "scale": 1.0,
+      "rotate_deg": 1.5,
+      "blur_radius": 0.8,
+      "contrast": 0.85,
+      "shade": 0.0,
+      "noise_sigma": 10.0,
+      "jpeg_quality": 55
+    },
+    "harsh": {
+      "description": "Poor phone photo: half resolution, visible skew, blur, uneven light, washed-out contrast, heavy noise, strong JPEG.",
+      "scale": 0.5,
+      "rotate_deg": -3.5,
+      "blur_radius": 1.2,
+      "contrast": 0.55,
+      "shade": 0.35,
+      "noise_sigma": 18.0,
+      "jpeg_quality": 35
+    }
+  },
+  "count": 20,
+  "pages": [
+    {
+      "id": "bill-001.scan",
+      "source": "bill-001",
+      "level": "scan",
+      "image": {
+        "path": "degraded/bill-001.scan.jpg",
+        "sha256": "e043d0b7a9431c075a733268e7c0b080534122dd67abeaec3cd37a371229ae84"
+      }
+    },
+    {
+      "id": "bill-001.harsh",
+      "source": "bill-001",
+      "level": "harsh",
+      "image": {
+        "path": "degraded/bill-001.harsh.jpg",
+        "sha256": "7b0627b67385cb923a80d4829ab92d4530780402c89a67310b68dbdfb5297e90"
+      }
+    },
+    {
+      "id": "receipt-001.scan",
+      "source": "receipt-001",
+      "level": "scan",
+      "image": {
+        "path": "degraded/receipt-001.scan.jpg",
+        "sha256": "3faf261df77568f1559efc2d5b2807f5ce3f17b28243da69d0ccbdfac8ec2a3b"
+      }
+    },
+    {
+      "id": "receipt-001.harsh",
+      "source": "receipt-001",
+      "level": "harsh",
+      "image": {
+        "path": "degraded/receipt-001.harsh.jpg",
+        "sha256": "b105ed6b53fffb7beb480976504ed948d68ff095297f4cca368230773f418308"
+      }
+    },
+    {
+      "id": "letter-001.scan",
+      "source": "letter-001",
+      "level": "scan",
+      "image": {
+        "path": "degraded/letter-001.scan.jpg",
+        "sha256": "d4c848790ded245c3d5aad3b13a29259ae501cad92eaa9725ac6c35b8ab78d18"
+      }
+    },
+    {
+      "id": "letter-001.harsh",
+      "source": "letter-001",
+      "level": "harsh",
+      "image": {
+        "path": "degraded/letter-001.harsh.jpg",
+        "sha256": "991cee3b849826b8847ee446ba72749f02e9c8175610e3691d13450113aa8eb6"
+      }
+    },
+    {
+      "id": "id_document-001.scan",
+      "source": "id_document-001",
+      "level": "scan",
+      "image": {
+        "path": "degraded/id_document-001.scan.jpg",
+        "sha256": "4fcb6008c34c89cb82d4fc530bb1dcea68d9568c39b8daf85187ce99aa1d7954"
+      }
+    },
+    {
+      "id": "id_document-001.harsh",
+      "source": "id_document-001",
+      "level": "harsh",
+      "image": {
+        "path": "degraded/id_document-001.harsh.jpg",
+        "sha256": "687e3cc6d38892714064d7fff655cb46f7618f1f966b0a0d2eac7fbb1da802ee"
+      }
+    },
+    {
+      "id": "policy-001.scan",
+      "source": "policy-001",
+      "level": "scan",
+      "image": {
+        "path": "degraded/policy-001.scan.jpg",
+        "sha256": "59460d1d203043d042d11d23661c750afbcff3e467ffccf7d307e94a40b157d7"
+      }
+    },
+    {
+      "id": "policy-001.harsh",
+      "source": "policy-001",
+      "level": "harsh",
+      "image": {
+        "path": "degraded/policy-001.harsh.jpg",
+        "sha256": "d544f0fbe1b74ce0bf3272bbbc786ed9a9cc27965f0efb4cf095f028282c2354"
+      }
+    },
+    {
+      "id": "bill-002.scan",
+      "source": "bill-002",
+      "level": "scan",
+      "image": {
+        "path": "degraded/bill-002.scan.jpg",
+        "sha256": "2458da513afe19bbf1eda2f9143138f2ad6bbe0e8439945525b5604b65fb94d9"
+      }
+    },
+    {
+      "id": "bill-002.harsh",
+      "source": "bill-002",
+      "level": "harsh",
+      "image": {
+        "path": "degraded/bill-002.harsh.jpg",
+        "sha256": "c3e74c9236163a8f63906bb97c19bf9c50f7e05d76a68c12e536dbcd4f56aae1"
+      }
+    },
+    {
+      "id": "receipt-002.scan",
+      "source": "receipt-002",
+      "level": "scan",
+      "image": {
+        "path": "degraded/receipt-002.scan.jpg",
+        "sha256": "8e15238508ffc1642b506b38e015216484f292615730918be2615eb017b70ce8"
+      }
+    },
+    {
+      "id": "receipt-002.harsh",
+      "source": "receipt-002",
+      "level": "harsh",
+      "image": {
+        "path": "degraded/receipt-002.harsh.jpg",
+        "sha256": "252660ffbfbd53d2a7d655b6fd7a2e44601eab7bd1b494df80b94ffbb789b038"
+      }
+    },
+    {
+      "id": "letter-002.scan",
+      "source": "letter-002",
+      "level": "scan",
+      "image": {
+        "path": "degraded/letter-002.scan.jpg",
+        "sha256": "2c17f3a35a3c842a18b9df6c2329e3e6daac205cf19f8d094a98470c872dd8d4"
+      }
+    },
+    {
+      "id": "letter-002.harsh",
+      "source": "letter-002",
+      "level": "harsh",
+      "image": {
+        "path": "degraded/letter-002.harsh.jpg",
+        "sha256": "0cf9621ba90631bfd1d2897e28dede380572f2b264593ed1a5d3f570ca4c1513"
+      }
+    },
+    {
+      "id": "id_document-002.scan",
+      "source": "id_document-002",
+      "level": "scan",
+      "image": {
+        "path": "degraded/id_document-002.scan.jpg",
+        "sha256": "53cd0e51994a779380bda674e41630283803ee461e784d9808f019b3e5cb9711"
+      }
+    },
+    {
+      "id": "id_document-002.harsh",
+      "source": "id_document-002",
+      "level": "harsh",
+      "image": {
+        "path": "degraded/id_document-002.harsh.jpg",
+        "sha256": "edc67efca3fc7ae47562ea83be9e7f6e9db4e06a64c603232fc632f92b3015d7"
+      }
+    },
+    {
+      "id": "policy-002.scan",
+      "source": "policy-002",
+      "level": "scan",
+      "image": {
+        "path": "degraded/policy-002.scan.jpg",
+        "sha256": "002d73291d0257b7b018e6df4f94e524d494c7a4ff431b1c669adeead9978b2e"
+      }
+    },
+    {
+      "id": "policy-002.harsh",
+      "source": "policy-002",
+      "level": "harsh",
+      "image": {
+        "path": "degraded/policy-002.harsh.jpg",
+        "sha256": "6d7d4a9f8ead3b1aaf5e209cee389293e383aef0ae8e1e156dc727569b8eb3e4"
+      }
+    }
+  ]
+}
