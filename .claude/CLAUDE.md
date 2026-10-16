@@ -85,12 +85,26 @@ When those conflict, favor the showcase.
   actions on receipts (#140), P 11/15, R 11/13.
 - **Phase 4 started: cost dashboard** (`pnpm eval:cost`,
   `docs/evals/cost-dashboard.md`, CI-gated against `fixtures/cost.json`):
-  breaks each recorded extraction into load, prefill (by difference, #150)
-  and generating. Median 31.8 s per document on the Air, prefill 89%, at
+  breaks each recorded extraction into load, prefill and generating
+  (prefill by difference until the next re-record; recordings now keep
+  `promptMs`, #153). `pnpm eval:noise [runs]` measures the noise floor
+  live on the Air (#154). Median 31.8 s per document on the Air, prefill 89%, at
   about 118 prompt tokens/s against the memory spike's 1,830 for the same
   model: likely a GPU spill at the larger context, measured on the Air in
   #152 before any performance work. Phase 3 closes after #149 (on-device
-  check of the app features and the demo video).
+  check of the app features and the demo video); then post the Phase 3
+  checkpoint and file the walkthrough issue pinned to that SHA.
+- **Competitive teardown** (`docs/research/competitive-teardown.md`, #155,
+  #156, from vendor sites and repos): paperless-ngx v3 has opt-in local AI;
+  paperless-ai is unmaintained; Paperspell (cloud) shows per-document
+  suggested actions and a library-wide expiry calendar; Duely is an
+  email-forward renewal tracker. Still unclaimed: local, retention advice
+  with cited rules, one reviewed queue across a whole pile. Hands-on checks
+  remain on #9. ppspell.com, getduely.app and the app stores are on the
+  cloud environment's network allowlist.
+- **Waiting on the Air**: #149, #152, #130 (zod bump needs `pnpm
+  eval:record`), #9 hands-on. Cloud-doable leftovers are low value until
+  those land (#106, #147) or depend on them (#20).
 - **ADR-0009 stage complete end to end** (amendment accepted, #54): two-stage
   scan with reconciliation verdicts plus one typed re-extraction on confident
   disagreement (`extract-typed-v1`). Scoreboard: VLM 8/10, classifier 10/10,
