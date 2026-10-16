@@ -7,7 +7,7 @@
     "contract": "ocr-v1",
     "engine": "vision-recognize-text",
     "engineRevision": 3,
-    "elapsedMs": 1872.6,
+    "elapsedMs": 1105.7,
     "pages": [
       {
         "width": 1632,
@@ -64,16 +64,6 @@
             }
           },
           {
-            "text": "Comprehensive auto, $500 deductible",
-            "confidence": 1,
-            "box": {
-              "x": 0.6081,
-              "y": 0.2003,
-              "width": 0.2946,
-              "height": 0.025
-            }
-          },
-          {
             "text": "Coverage",
             "confidence": 1,
             "box": {
@@ -81,6 +71,16 @@
               "y": 0.2176,
               "width": 0.0768,
               "height": 0.0154
+            }
+          },
+          {
+            "text": "Comprehensive auto, $500 deductible",
+            "confidence": 1,
+            "box": {
+              "x": 0.6081,
+              "y": 0.2003,
+              "width": 0.2946,
+              "height": 0.025
             }
           },
           {

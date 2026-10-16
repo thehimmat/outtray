@@ -7,7 +7,7 @@
     "contract": "ocr-v1",
     "engine": "vision-recognize-text",
     "engineRevision": 3,
-    "elapsedMs": 1337.5,
+    "elapsedMs": 1470.6,
     "pages": [
       {
         "width": 816,
@@ -54,16 +54,6 @@
             }
           },
           {
-            "text": "meno to wiwm yaregiwtlng the il note",
-            "confidence": 0.3,
-            "box": {
-              "x": 0.156,
-              "y": 0.2432,
-              "width": 0.3545,
-              "height": 0.0309
-            }
-          },
-          {
             "text": "actole cibce beiiy",
             "confidence": 0.3,
             "box": {
@@ -71,6 +61,16 @@
               "y": 0.2611,
               "width": 0.1462,
               "height": 0.0231
+            }
+          },
+          {
+            "text": "meno to wiwm yaregiwtlng the il note",
+            "confidence": 0.3,
+            "box": {
+              "x": 0.156,
+              "y": 0.2432,
+              "width": 0.3545,
+              "height": 0.0309
             }
           },
           {

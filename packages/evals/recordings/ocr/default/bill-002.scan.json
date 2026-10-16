@@ -7,7 +7,7 @@
     "contract": "ocr-v1",
     "engine": "vision-recognize-text",
     "engineRevision": 3,
-    "elapsedMs": 1762.4,
+    "elapsedMs": 1247.3,
     "pages": [
       {
         "width": 1632,
@@ -124,16 +124,6 @@
             }
           },
           {
-            "text": "$453.00",
-            "confidence": 1,
-            "box": {
-              "x": 0.7828,
-              "y": 0.3558,
-              "width": 0.1123,
-              "height": 0.0268
-            }
-          },
-          {
             "text": "Total amount due",
             "confidence": 1,
             "box": {
@@ -141,6 +131,16 @@
               "y": 0.375,
               "width": 0.1352,
               "height": 0.0145
+            }
+          },
+          {
+            "text": "$453.00",
+            "confidence": 1,
+            "box": {
+              "x": 0.7828,
+              "y": 0.3558,
+              "width": 0.1123,
+              "height": 0.0268
             }
           },
           {

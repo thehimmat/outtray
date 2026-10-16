@@ -21,7 +21,7 @@
           "wordsTotal": 375,
           "identifiersFound": 4,
           "identifiersTotal": 4,
-          "medianMs": 1763.65,
+          "medianMs": 1635.85,
           "misses": []
         },
         "harsh": {
@@ -32,7 +32,7 @@
           "wordsTotal": 375,
           "identifiersFound": 0,
           "identifiersTotal": 4,
-          "medianMs": 1262.3000000000002,
+          "medianMs": 1255.5500000000002,
           "misses": [
             {
               "id": "bill-001.harsh",
@@ -767,7 +767,7 @@
           },
           "lines": 10,
           "minConfidence": 1,
-          "elapsedMs": 1772.3,
+          "elapsedMs": 1243.1,
           "level": "scan"
         },
         {
@@ -828,7 +828,7 @@
           },
           "lines": 14,
           "minConfidence": 1,
-          "elapsedMs": 1762.4,
+          "elapsedMs": 1247.3,
           "level": "scan"
         },
         {
@@ -983,7 +983,7 @@
           },
           "lines": 4,
           "minConfidence": 0.3,
-          "elapsedMs": 1318.3,
+          "elapsedMs": 1082.1,
           "level": "harsh"
         },
         {
@@ -1077,7 +1077,7 @@
           },
           "lines": 10,
           "minConfidence": 1,
-          "elapsedMs": 1872.6,
+          "elapsedMs": 1105.7,
           "level": "scan"
         },
         {
@@ -1131,7 +1131,7 @@
           "wordsTotal": 375,
           "identifiersFound": 4,
           "identifiersTotal": 4,
-          "medianMs": 1648.35,
+          "medianMs": 1577.3,
           "misses": []
         },
         "harsh": {
@@ -1872,7 +1872,7 @@
           },
           "lines": 10,
           "minConfidence": 1,
-          "elapsedMs": 2008.3,
+          "elapsedMs": 1023.7,
           "level": "scan"
         },
         {
@@ -1933,7 +1933,7 @@
           },
           "lines": 14,
           "minConfidence": 1,
-          "elapsedMs": 1543.6,
+          "elapsedMs": 1056.3,
           "level": "scan"
         },
         {
@@ -2088,7 +2088,7 @@
           },
           "lines": 8,
           "minConfidence": 0.3,
-          "elapsedMs": 1337.5,
+          "elapsedMs": 1470.6,
           "level": "harsh"
         },
         {
@@ -2182,7 +2182,7 @@
           },
           "lines": 10,
           "minConfidence": 1,
-          "elapsedMs": 1681.3,
+          "elapsedMs": 1006.3,
           "level": "scan"
         },
         {

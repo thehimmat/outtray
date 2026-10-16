@@ -7,7 +7,7 @@ Regenerate with `pnpm eval:ocr`; CI replays it and fails on drift. The
 read is missed, and records and commits new recordings when the sidecar or
 the pages change.
 
-Generated at commit `c44351771660` from recordings made on macOS 26.6.2 (arm64),
+Generated at commit `db104f21fe21` from recordings made on macOS 26.6.2 (arm64),
 engine `vision-recognize-text` revision 3.
 
 ## Pages
@@ -28,10 +28,10 @@ identifier-like tokens toward dictionary words.
 | Pages | Variant | Fields | Identifiers exact | Words | Median ms |
 | --- | --- | --- | --- | --- | --- |
 | clean | default | 36/36 (100%) | 4/4 (100%) | 373/375 (99%) | 1790 |
-| scan | default | 36/36 (100%) | 4/4 (100%) | 373/375 (99%) | 1764 |
-| harsh | default | 8/36 (22%) | 0/4 (0%) | 45/375 (12%) | 1262 |
+| scan | default | 36/36 (100%) | 4/4 (100%) | 373/375 (99%) | 1636 |
+| harsh | default | 8/36 (22%) | 0/4 (0%) | 45/375 (12%) | 1256 |
 | clean | no-language-correction | 36/36 (100%) | 4/4 (100%) | 373/375 (99%) | 1597 |
-| scan | no-language-correction | 36/36 (100%) | 4/4 (100%) | 373/375 (99%) | 1648 |
+| scan | no-language-correction | 36/36 (100%) | 4/4 (100%) | 373/375 (99%) | 1577 |
 | harsh | no-language-correction | 9/36 (25%) | 0/4 (0%) | 43/375 (11%) | 1198 |
 
 - **Fields**: the labelled value is present in the OCR text (normalized;
@@ -66,17 +66,17 @@ identifier-like tokens toward dictionary words.
 | letter-001.harsh | 1/4 | 13% | 2 | 1 | 1359 | sender, recipient, sent_date |
 | id_document-001.scan | 4/4 | 100% | 10 | 1 | 1756 | - |
 | id_document-001.harsh | 0/4 | 8% | 3 | 1 | 1259 | holder_name, id_number, issuer, expiry_date |
-| policy-001.scan | 3/3 | 100% | 10 | 1 | 1772 | - |
+| policy-001.scan | 3/3 | 100% | 10 | 1 | 1243 | - |
 | policy-001.harsh | 0/3 | 11% | 2 | 1 | 1265 | insurer, policy_number, expiry_date |
-| bill-002.scan | 4/4 | 100% | 14 | 1 | 1762 | - |
+| bill-002.scan | 4/4 | 100% | 14 | 1 | 1247 | - |
 | bill-002.harsh | 2/4 | 15% | 4 | 0.5 | 1226 | due_date, late_fee |
 | receipt-002.scan | 3/3 | 97% | 13 | 1 | 1613 | - |
 | receipt-002.harsh | 0/3 | 10% | 3 | 1 | 1231 | merchant, total, purchased_at |
 | letter-002.scan | 4/4 | 100% | 11 | 1 | 1829 | - |
-| letter-002.harsh | 1/4 | 16% | 4 | 0.3 | 1318 | sender, recipient, sent_date |
+| letter-002.harsh | 1/4 | 16% | 4 | 0.3 | 1082 | sender, recipient, sent_date |
 | id_document-002.scan | 4/4 | 100% | 10 | 1 | 1545 | - |
 | id_document-002.harsh | 0/4 | 8% | 2 | 1 | 1252 | holder_name, id_number, issuer, expiry_date |
-| policy-002.scan | 3/3 | 100% | 10 | 1 | 1873 | - |
+| policy-002.scan | 3/3 | 100% | 10 | 1 | 1106 | - |
 | policy-002.harsh | 0/3 | 6% | 2 | 1 | 1160 | insurer, policy_number, expiry_date |
 
 ## Per page (no language correction)
@@ -101,17 +101,17 @@ identifier-like tokens toward dictionary words.
 | letter-001.harsh | 1/4 | 13% | 3 | 0.3 | 1203 | sender, recipient, sent_date |
 | id_document-001.scan | 4/4 | 100% | 10 | 1 | 3121 | - |
 | id_document-001.harsh | 0/4 | 4% | 3 | 1 | 1659 | holder_name, id_number, issuer, expiry_date |
-| policy-001.scan | 3/3 | 100% | 10 | 1 | 2008 | - |
+| policy-001.scan | 3/3 | 100% | 10 | 1 | 1024 | - |
 | policy-001.harsh | 0/3 | 11% | 3 | 0.3 | 1228 | insurer, policy_number, expiry_date |
-| bill-002.scan | 4/4 | 100% | 14 | 1 | 1544 | - |
+| bill-002.scan | 4/4 | 100% | 14 | 1 | 1056 | - |
 | bill-002.harsh | 2/4 | 15% | 3 | 1 | 1136 | due_date, late_fee |
 | receipt-002.scan | 3/3 | 97% | 13 | 1 | 1519 | - |
 | receipt-002.harsh | 0/3 | 10% | 3 | 1 | 1062 | merchant, total, purchased_at |
 | letter-002.scan | 4/4 | 100% | 11 | 1 | 1807 | - |
-| letter-002.harsh | 2/4 | 18% | 8 | 0.3 | 1338 | recipient, sent_date |
+| letter-002.harsh | 2/4 | 18% | 8 | 0.3 | 1471 | recipient, sent_date |
 | id_document-002.scan | 4/4 | 100% | 10 | 1 | 1575 | - |
 | id_document-002.harsh | 0/4 | 8% | 2 | 1 | 1153 | holder_name, id_number, issuer, expiry_date |
-| policy-002.scan | 3/3 | 100% | 10 | 1 | 1681 | - |
+| policy-002.scan | 3/3 | 100% | 10 | 1 | 1006 | - |
 | policy-002.harsh | 0/3 | 6% | 2 | 1 | 1249 | insurer, policy_number, expiry_date |
 
 ## How to read this
