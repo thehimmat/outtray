@@ -42,7 +42,11 @@ const mdPath = join(evalsRoot, '..', '..', 'docs', 'evals', 'ocr-scoreboard.md')
 const recordings = ocrRecordingsDir();
 
 function liveRecognizer(variant) {
-  const ocr = new VisionOcr({ binary, languageCorrection: variant === 'default' });
+  const ocr = new VisionOcr({
+    binary,
+    languageCorrection: variant !== 'no-language-correction',
+    enhance: variant === 'enhanced',
+  });
   return (_page, imagePath) => ocr.recognize(imagePath);
 }
 
@@ -157,21 +161,21 @@ function markdown(variants) {
         return `| ${r.id} | ${found}/${r.fields.length} | ${pct(r.words.found, r.words.total)} | ${r.lines} | ${r.minConfidence ?? '-'} | ${Math.round(r.elapsedMs)} | ${missed.join(', ') || '-'} |`;
       })
       .join('\n');
-  // Where the two variants disagree on a field.
-  const off = new Map(
-    variants['no-language-correction'].rows.map((r) => [
-      r.id,
-      new Map(r.fields.map((f) => [f.field, f.found])),
-    ]),
-  );
-  const diffs = variants.default.rows.flatMap((r) =>
-    r.fields
-      .filter((f) => off.get(r.id)?.get(f.field) !== f.found)
-      .map(
-        (f) =>
-          `- ${r.id} \`${f.field}\` (\`${f.expected}\`): ${f.found ? 'read with correction, missed without' : 'missed with correction, read without'}`,
-      ),
-  );
+  // Where each other variant reads a field differently from `default`.
+  const diffsFor = (v) => {
+    const other = new Map(
+      variants[v].rows.map((r) => [r.id, new Map(r.fields.map((f) => [f.field, f.found]))]),
+    );
+    const lines = variants.default.rows.flatMap((r) =>
+      r.fields
+        .filter((f) => other.get(r.id)?.get(f.field) !== f.found)
+        .map(
+          (f) =>
+            `- ${r.id} \`${f.field}\` (\`${f.expected}\`): ${f.found ? `read by default, missed by ${v}` : `missed by default, read by ${v}`}`,
+        ),
+    );
+    return lines.length === 0 ? 'No field changes.' : lines.join('\n');
+  };
   const gitSha = execSync('git rev-parse HEAD').toString().trim().slice(0, 12);
   const degraded = JSON.parse(
     readFileSync(join(evalsRoot, 'fixtures', 'degraded', 'manifest.json'), 'utf8'),
@@ -202,7 +206,9 @@ ${levels}
 
 **Variants**: \`default\` runs Vision with language correction on;
 \`no-language-correction\` turns it off, since correction can rewrite
-identifier-like tokens toward dictionary words.
+identifier-like tokens toward dictionary words; \`enhanced\` keeps correction
+on and preprocesses the image first (\`outtray-ocr --enhance\`: upscale an
+image narrower than 1600 px, reduce noise, raise contrast).
 
 ## Headline
 
@@ -216,9 +222,17 @@ ${headline}
   read character for character.
 - **Words**: rendered words present in the OCR text, as a multiset.
 
-## Where language correction changes the result
+## Where a variant changes the result
 
-${diffs.length === 0 ? 'Nowhere: both variants read the same fields on every page.' : diffs.join('\n')}
+Against \`default\`, field by field.
+
+### Language correction off
+
+${diffsFor('no-language-correction')}
+
+### Enhanced
+
+${diffsFor('enhanced')}
 
 ## Per page (default variant)
 
@@ -231,6 +245,12 @@ ${perPage('default')}
 | Page | Fields | Words | Lines | Min confidence | ms | Missed |
 | --- | --- | --- | --- | --- | --- | --- |
 ${perPage('no-language-correction')}
+
+## Per page (enhanced)
+
+| Page | Fields | Words | Lines | Min confidence | ms | Missed |
+| --- | --- | --- | --- | --- | --- | --- |
+${perPage('enhanced')}
 
 ## How to read this
 

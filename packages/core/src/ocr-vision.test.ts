@@ -39,6 +39,12 @@ describe('VisionOcr', () => {
     expect(calls[0]?.args).toEqual(['--no-language-correction', 'a.png']);
   });
 
+  it('passes --enhance when preprocessing is on, before the path', async () => {
+    const { run, calls } = runner({ status: 0, stdout: JSON.stringify(result), stderr: '' });
+    await new VisionOcr({ run, platform: 'darwin', enhance: true }).recognize('a.png');
+    expect(calls[0]?.args).toEqual(['--enhance', 'a.png']);
+  });
+
   it('defaults to the binary on PATH', async () => {
     const { run, calls } = runner({ status: 0, stdout: JSON.stringify(result), stderr: '' });
     await new VisionOcr({ run, platform: 'darwin' }).recognize('a.png');

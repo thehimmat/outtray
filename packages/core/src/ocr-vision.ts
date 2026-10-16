@@ -40,6 +40,12 @@ export interface VisionOcrOptions {
    * true. It can rewrite identifier-like tokens, so #160 measures both.
    */
   languageCorrection?: boolean;
+  /**
+   * Preprocess the image before recognition: upscale a small image, reduce
+   * noise, raise contrast. Defaults to false. Measured on degraded pages in
+   * `docs/evals/ocr-scoreboard.md`.
+   */
+  enhance?: boolean;
   /** Kill the sidecar after this long. Defaults to 60 s. */
   timeoutMs?: number;
   /** Injected runner (for tests). Defaults to the real subprocess. */
@@ -79,7 +85,10 @@ export class VisionOcr {
 
   constructor(options: VisionOcrOptions = {}) {
     this.#binary = options.binary ?? DEFAULT_OCR_BINARY;
-    this.#flags = options.languageCorrection === false ? ['--no-language-correction'] : [];
+    this.#flags = [
+      ...(options.languageCorrection === false ? ['--no-language-correction'] : []),
+      ...(options.enhance ? ['--enhance'] : []),
+    ];
     this.#run = options.run ?? realRunner(options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
     this.#platform = options.platform ?? process.platform;
   }
