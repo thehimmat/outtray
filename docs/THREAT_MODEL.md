@@ -60,7 +60,10 @@ Conclusions:
 3. **Tokenization is best-effort.** It depends on locating the extracted value
    inside derived text, and normalization or OCR variance can defeat the match.
    It reduces copies; it must never be documented as guaranteeing one copy, and
-   failures to tokenize should be reported rather than swallowed.
+   failures to tokenize should be reported rather than swallowed. Since #97 a
+   run one edit away from the value, or of similar length ending in its last
+   four, is also redacted, so a model that drops or swaps a digit no longer
+   leaks the rest; a rewrite beyond that still survives.
 4. **The residual risk is the user's to accept**, which is why the feature is
    off by default and disclosed in plain terms. Keeping a passport number in a
    local encrypted store is the same class of decision as keeping one in a
