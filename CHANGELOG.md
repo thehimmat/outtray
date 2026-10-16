@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Building the desktop app on a Rust older than 1.90 now stops with Cargo's
+  own message naming the minimum, instead of failing inside a dependency.
+  Both crates declare `rust-version = "1.90"` and CI checks them on exactly
+  that toolchain (#131).
+
 - The desktop app can reach the local model. Core called `fetch` detached
   from the page and read Ollama's reply with `for await`; both work under
   Node but throw in WebKit, the macOS webview, so every scan failed with

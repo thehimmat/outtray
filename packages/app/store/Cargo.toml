@@ -2,6 +2,7 @@
 name = "outtray-store"
 version = "0.0.0"
 edition = "2021"
+rust-version = "1.90"
 publish = false
 description = "The encrypted store for the desktop app (ADR-0011, ADR-0013): the Rust side of StorageProvider, driven by JSON commands."
 

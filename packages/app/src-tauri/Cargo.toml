@@ -2,6 +2,7 @@
 name = "outtray-app"
 version = "0.0.0"
 edition = "2021"
+rust-version = "1.90"
 publish = false
 description = "The Outtray desktop shell (ADR-0001, ADR-0013): Tauri around the host-neutral core, with the encrypted store and the Keychain key in Rust."
 

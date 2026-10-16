@@ -96,8 +96,10 @@ pnpm typecheck   # tsc project references
 pnpm build
 ```
 
-The desktop app (`packages/app`) needs Rust 1.90 or newer, macOS, and Ollama
-running with `qwen3-vl:2b` and `nomic-embed-text` pulled:
+The desktop app (`packages/app`) needs Rust 1.90 or newer (declared as
+`rust-version` in both crates and checked in CI; `rustup update stable` if
+Cargo says yours is older), macOS, and Ollama running with `qwen3-vl:2b` and
+`nomic-embed-text` pulled:
 
 ```sh
 pnpm build && pnpm --filter @outtray/app tauri dev
