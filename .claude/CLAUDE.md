@@ -76,7 +76,8 @@ When those conflict, favor the showcase.
   `pnpm eval:actions` replays recorded extractions, plans as of 2026-07-22
   and matches against authored expectations
   (`docs/evals/action-scoreboard.md`, CI-gated); baseline P 10/24, R 10/13; after date normalization P 11/25, R 11/13;
-  after the #65 merge of one fact flagged twice, P 11/22, R 11/13.
+  after the #65 merge of one fact flagged twice, P 11/22, R 11/13; after
+  dropping field headings (#133), P 11/17, R 11/13.
 - **ADR-0009 stage complete end to end** (amendment accepted, #54): two-stage
   scan with reconciliation verdicts plus one typed re-extraction on confident
   disagreement (`extract-typed-v1`). Scoreboard: VLM 8/10, classifier 10/10,

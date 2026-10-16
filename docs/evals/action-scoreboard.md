@@ -8,15 +8,15 @@ A match needs the same kind, rule, date and retention advice, and a title
 containing the required words. Recall shows a 95% Wilson interval.
 Regenerate with `pnpm eval:actions`; CI replays it and fails on drift.
 
-Generated at commit `c0d860f456aa` over 10 synthetic fixtures.
+Generated at commit `49b3a4e83c46` over 10 synthetic fixtures.
 
 | Action kind | Precision | Recall (95% CI) |
 | --- | --- | --- |
 | attention_flag | 3/5 (60%) | 3/3 (100%) [44-100] |
-| todo | 1/8 (13%) | 1/1 (100%) [21-100] |
+| todo | 1/3 (33%) | 1/1 (100%) [21-100] |
 | expiry_alert | 1/1 (100%) | 1/1 (100%) [21-100] |
 | retention_advice | 6/8 (75%) | 6/8 (75%) [41-93] |
-| **overall** | **11/22 (50%)** | **11/13 (85%) [58-96]** |
+| **overall** | **11/17 (65%)** | **11/13 (85%) [58-96]** |
 
 ## Where it misses
 
@@ -25,11 +25,9 @@ Generated at commit `c0d860f456aa` over 10 synthetic fixtures.
 | bill-001 | retention_advice shred | retention_advice keep |
 | receipt-001 | - | attention_flag flag-past-due 2025-08-23 |
 | letter-001 | - | todo todo-extracted |
-| policy-001 | - | todo todo-extracted 2026-12-16; todo todo-extracted; todo todo-extracted |
 | bill-002 | retention_advice shred | retention_advice keep |
 | receipt-002 | - | attention_flag flag-past-due 2025-07-04 |
 | letter-002 | - | todo todo-extracted |
-| policy-002 | - | todo todo-extracted; todo todo-extracted |
 
 ## Caveats
 

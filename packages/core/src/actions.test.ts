@@ -332,3 +332,110 @@ describe('planActions merges one fact flagged twice (#65)', () => {
     ).toEqual(['2026-01-10', '2026-01-19']);
   });
 });
+
+describe('planActions drops field labels the model emits as action items (#133)', () => {
+  const policy = (expiry: string, actions: DocumentExtraction['action_items']) =>
+    ({
+      type: 'policy',
+      summary: 'Auto policy.',
+      action_items: actions,
+      insurer: 'Evergreen Mutual',
+      policy_number: 'POL-804220',
+      coverage_summary: 'auto',
+      expiry_date: expiry,
+    }) as DocumentExtraction;
+
+  it('drops headings with a field value in the due slot', () => {
+    const queue = planActions(
+      report([
+        item(
+          'p.png',
+          policy('2026-12-16', [
+            { text: 'Policy number', due_date: 'POL-804220' },
+            { text: 'Coverage', due_date: 'Comprehensive auto, $500 deductible' },
+          ]),
+        ),
+      ]),
+      { today: TODAY },
+    );
+    expect(queue.items.filter((i) => i.ruleId === 'todo-extracted')).toEqual([]);
+  });
+
+  it('drops a date heading that names no deadline', () => {
+    const queue = planActions(
+      report([
+        item(
+          'p.png',
+          policy('2026-12-16', [{ text: 'Expiration date', due_date: 'December 16, 2026' }]),
+        ),
+      ]),
+      { today: TODAY },
+    );
+    expect(queue.items.filter((i) => i.kind === 'todo')).toEqual([]);
+  });
+
+  it('keeps a deadline heading with a real date, as the document asks for it', () => {
+    const queue = planActions(
+      report([
+        item('b.png', {
+          ...BILL,
+          action_items: [{ text: 'Payment due date', due_date: '2025-03-25' }],
+        }),
+      ]),
+      { today: TODAY },
+    );
+    expect(queue.items.find((i) => i.ruleId === 'flag-past-due')?.date).toBe('2025-03-25');
+  });
+
+  it('drops a deadline heading whose due slot is not a date', () => {
+    const queue = planActions(
+      report([item('b.png', { ...BILL, action_items: [{ text: 'Due date', due_date: 'n/a' }] })]),
+      { today: TODAY },
+    );
+    expect(queue.items.filter((i) => i.ruleId === 'todo-extracted')).toEqual([]);
+  });
+
+  it('keeps short imperatives, amounts and sentences', () => {
+    const queue = planActions(
+      report([
+        item('b.png', {
+          ...BILL,
+          action_items: [
+            { text: 'Renew license', due_date: null },
+            { text: 'Pay $36.49', due_date: null },
+            {
+              text: 'Review enclosed details and contact office with any questions',
+              due_date: null,
+            },
+          ],
+        }),
+      ]),
+      { today: TODAY },
+    );
+    expect(
+      queue.items
+        .filter((i) => i.kind === 'todo')
+        .map((i) => i.title)
+        .sort(),
+    ).toEqual([
+      'Pay $36.49',
+      'Renew license',
+      'Review enclosed details and contact office with any questions',
+    ]);
+  });
+
+  it('still lends a dropped heading as a citation to the expiry item it restates', () => {
+    const queue = planActions(
+      report([
+        item('p.png', policy('2026-08-15', [{ text: 'Expiry Date', due_date: '2026-08-15' }])),
+      ]),
+      { today: TODAY },
+    );
+    const alert = queue.items.find((i) => i.kind === 'expiry_alert');
+    expect(alert?.citations.map((c) => c.snippet)).toEqual([
+      'expiry_date: 2026-08-15',
+      'Expiry Date',
+    ]);
+    expect(queue.items.filter((i) => i.kind === 'todo')).toEqual([]);
+  });
+});
