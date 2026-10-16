@@ -67,6 +67,6 @@ read as a bullet.
 
 ## Follow-ups
 
-Filed as issues: `RecognizeDocumentsRequest` (macOS 26 structure), the
-pipeline wiring (OCR text into classify-first), timing on the Air, and
-noisy-scan fixtures.
+- #159: OCR text into `scan`, classify-first routing (ADR-0009 section 1).
+- #160: noisy-scan fixtures, language correction on or off, reading order
+  and `RecognizeDocumentsRequest`, and timing on the Air.
