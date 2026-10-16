@@ -2214,6 +2214,1101 @@
           "level": "harsh"
         }
       ]
+    },
+    "enhanced": {
+      "byLevel": {
+        "clean": {
+          "fixtures": 10,
+          "fieldsFound": 36,
+          "fieldsTotal": 36,
+          "wordsFound": 373,
+          "wordsTotal": 375,
+          "identifiersFound": 4,
+          "identifiersTotal": 4,
+          "medianMs": 1979.3,
+          "misses": []
+        },
+        "scan": {
+          "fixtures": 10,
+          "fieldsFound": 36,
+          "fieldsTotal": 36,
+          "wordsFound": 373,
+          "wordsTotal": 375,
+          "identifiersFound": 4,
+          "identifiersTotal": 4,
+          "medianMs": 2162.75,
+          "misses": []
+        },
+        "harsh": {
+          "fixtures": 10,
+          "fieldsFound": 11,
+          "fieldsTotal": 36,
+          "wordsFound": 52,
+          "wordsTotal": 375,
+          "identifiersFound": 0,
+          "identifiersTotal": 4,
+          "medianMs": 2163.6000000000004,
+          "misses": [
+            {
+              "id": "bill-001.harsh",
+              "field": "due_date",
+              "expected": "2027-02-16"
+            },
+            {
+              "id": "bill-001.harsh",
+              "field": "late_fee",
+              "expected": "$56.00"
+            },
+            {
+              "id": "receipt-001.harsh",
+              "field": "merchant",
+              "expected": "Northside Grocers"
+            },
+            {
+              "id": "receipt-001.harsh",
+              "field": "purchased_at",
+              "expected": "2025-08-23"
+            },
+            {
+              "id": "letter-001.harsh",
+              "field": "sender",
+              "expected": "Cascade Credit Union"
+            },
+            {
+              "id": "letter-001.harsh",
+              "field": "recipient",
+              "expected": "Ana Nguyen"
+            },
+            {
+              "id": "letter-001.harsh",
+              "field": "sent_date",
+              "expected": "2025-07-08"
+            },
+            {
+              "id": "id_document-001.harsh",
+              "field": "holder_name",
+              "expected": "Nina Nguyen"
+            },
+            {
+              "id": "id_document-001.harsh",
+              "field": "id_number",
+              "expected": "D8923829"
+            },
+            {
+              "id": "id_document-001.harsh",
+              "field": "issuer",
+              "expected": "State of Washington"
+            },
+            {
+              "id": "id_document-001.harsh",
+              "field": "expiry_date",
+              "expected": "2026-01-19"
+            },
+            {
+              "id": "policy-001.harsh",
+              "field": "insurer",
+              "expected": "Harbor Casualty"
+            },
+            {
+              "id": "policy-001.harsh",
+              "field": "policy_number",
+              "expected": "POL-804220"
+            },
+            {
+              "id": "policy-001.harsh",
+              "field": "expiry_date",
+              "expected": "2026-12-16"
+            },
+            {
+              "id": "bill-002.harsh",
+              "field": "due_date",
+              "expected": "2025-03-25"
+            },
+            {
+              "id": "bill-002.harsh",
+              "field": "late_fee",
+              "expected": "$45.00"
+            },
+            {
+              "id": "receipt-002.harsh",
+              "field": "purchased_at",
+              "expected": "2025-07-04"
+            },
+            {
+              "id": "letter-002.harsh",
+              "field": "recipient",
+              "expected": "Jordan Mbeki"
+            },
+            {
+              "id": "letter-002.harsh",
+              "field": "sent_date",
+              "expected": "2026-08-05"
+            },
+            {
+              "id": "id_document-002.harsh",
+              "field": "holder_name",
+              "expected": "Wei Reyes"
+            },
+            {
+              "id": "id_document-002.harsh",
+              "field": "id_number",
+              "expected": "C4821983"
+            },
+            {
+              "id": "id_document-002.harsh",
+              "field": "expiry_date",
+              "expected": "2026-07-23"
+            },
+            {
+              "id": "policy-002.harsh",
+              "field": "insurer",
+              "expected": "Evergreen Mutual"
+            },
+            {
+              "id": "policy-002.harsh",
+              "field": "policy_number",
+              "expected": "POL-769782"
+            },
+            {
+              "id": "policy-002.harsh",
+              "field": "expiry_date",
+              "expected": "2025-01-06"
+            }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "id": "bill-001",
+          "fields": [
+            {
+              "field": "payee",
+              "expected": "Metro Electric",
+              "found": true
+            },
+            {
+              "field": "amount_due",
+              "expected": "$91.00",
+              "found": true
+            },
+            {
+              "field": "due_date",
+              "expected": "2027-02-16",
+              "found": true
+            },
+            {
+              "field": "late_fee",
+              "expected": "$56.00",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 47,
+            "total": 47
+          },
+          "lines": 14,
+          "minConfidence": 1,
+          "elapsedMs": 2613.2,
+          "level": "clean"
+        },
+        {
+          "id": "receipt-001",
+          "fields": [
+            {
+              "field": "merchant",
+              "expected": "Northside Grocers",
+              "found": true
+            },
+            {
+              "field": "total",
+              "expected": "$36.49",
+              "found": true
+            },
+            {
+              "field": "purchased_at",
+              "expected": "2025-08-23",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 30,
+            "total": 31
+          },
+          "lines": 13,
+          "minConfidence": 1,
+          "elapsedMs": 1823.5,
+          "level": "clean"
+        },
+        {
+          "id": "letter-001",
+          "fields": [
+            {
+              "field": "sender",
+              "expected": "Cascade Credit Union",
+              "found": true
+            },
+            {
+              "field": "recipient",
+              "expected": "Ana Nguyen",
+              "found": true
+            },
+            {
+              "field": "subject",
+              "expected": "Notice of annual inspection",
+              "found": true
+            },
+            {
+              "field": "sent_date",
+              "expected": "2025-07-08",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 47,
+            "total": 47
+          },
+          "lines": 11,
+          "minConfidence": 1,
+          "elapsedMs": 1829.8,
+          "level": "clean"
+        },
+        {
+          "id": "id_document-001",
+          "fields": [
+            {
+              "field": "holder_name",
+              "expected": "Nina Nguyen",
+              "found": true
+            },
+            {
+              "field": "id_number",
+              "expected": "D8923829",
+              "found": true
+            },
+            {
+              "field": "issuer",
+              "expected": "State of Washington",
+              "found": true
+            },
+            {
+              "field": "expiry_date",
+              "expected": "2026-01-19",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 26,
+            "total": 26
+          },
+          "lines": 10,
+          "minConfidence": 1,
+          "elapsedMs": 1578.2,
+          "level": "clean"
+        },
+        {
+          "id": "policy-001",
+          "fields": [
+            {
+              "field": "insurer",
+              "expected": "Harbor Casualty",
+              "found": true
+            },
+            {
+              "field": "policy_number",
+              "expected": "POL-804220",
+              "found": true
+            },
+            {
+              "field": "expiry_date",
+              "expected": "2026-12-16",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 35,
+            "total": 35
+          },
+          "lines": 10,
+          "minConfidence": 1,
+          "elapsedMs": 2214.9,
+          "level": "clean"
+        },
+        {
+          "id": "bill-002",
+          "fields": [
+            {
+              "field": "payee",
+              "expected": "Regional Gas Co",
+              "found": true
+            },
+            {
+              "field": "amount_due",
+              "expected": "$453.00",
+              "found": true
+            },
+            {
+              "field": "due_date",
+              "expected": "2025-03-25",
+              "found": true
+            },
+            {
+              "field": "late_fee",
+              "expected": "$45.00",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 48,
+            "total": 48
+          },
+          "lines": 14,
+          "minConfidence": 1,
+          "elapsedMs": 1861.1,
+          "level": "clean"
+        },
+        {
+          "id": "receipt-002",
+          "fields": [
+            {
+              "field": "merchant",
+              "expected": "Sunbelt Mart",
+              "found": true
+            },
+            {
+              "field": "total",
+              "expected": "$97.49",
+              "found": true
+            },
+            {
+              "field": "purchased_at",
+              "expected": "2025-07-04",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 30,
+            "total": 31
+          },
+          "lines": 13,
+          "minConfidence": 1,
+          "elapsedMs": 1959.8,
+          "level": "clean"
+        },
+        {
+          "id": "letter-002",
+          "fields": [
+            {
+              "field": "sender",
+              "expected": "Northgate Property Mgmt",
+              "found": true
+            },
+            {
+              "field": "recipient",
+              "expected": "Jordan Mbeki",
+              "found": true
+            },
+            {
+              "field": "subject",
+              "expected": "Notice of annual inspection",
+              "found": true
+            },
+            {
+              "field": "sent_date",
+              "expected": "2026-08-05",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 49,
+            "total": 49
+          },
+          "lines": 11,
+          "minConfidence": 1,
+          "elapsedMs": 1998.8,
+          "level": "clean"
+        },
+        {
+          "id": "id_document-002",
+          "fields": [
+            {
+              "field": "holder_name",
+              "expected": "Wei Reyes",
+              "found": true
+            },
+            {
+              "field": "id_number",
+              "expected": "C4821983",
+              "found": true
+            },
+            {
+              "field": "issuer",
+              "expected": "State of California",
+              "found": true
+            },
+            {
+              "field": "expiry_date",
+              "expected": "2026-07-23",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 26,
+            "total": 26
+          },
+          "lines": 10,
+          "minConfidence": 1,
+          "elapsedMs": 2141,
+          "level": "clean"
+        },
+        {
+          "id": "policy-002",
+          "fields": [
+            {
+              "field": "insurer",
+              "expected": "Evergreen Mutual",
+              "found": true
+            },
+            {
+              "field": "policy_number",
+              "expected": "POL-769782",
+              "found": true
+            },
+            {
+              "field": "expiry_date",
+              "expected": "2025-01-06",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 35,
+            "total": 35
+          },
+          "lines": 10,
+          "minConfidence": 1,
+          "elapsedMs": 2307.6,
+          "level": "clean"
+        },
+        {
+          "id": "bill-001.scan",
+          "fields": [
+            {
+              "field": "payee",
+              "expected": "Metro Electric",
+              "found": true
+            },
+            {
+              "field": "amount_due",
+              "expected": "$91.00",
+              "found": true
+            },
+            {
+              "field": "due_date",
+              "expected": "2027-02-16",
+              "found": true
+            },
+            {
+              "field": "late_fee",
+              "expected": "$56.00",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 47,
+            "total": 47
+          },
+          "lines": 14,
+          "minConfidence": 1,
+          "elapsedMs": 2599.5,
+          "level": "scan"
+        },
+        {
+          "id": "bill-001.harsh",
+          "fields": [
+            {
+              "field": "payee",
+              "expected": "Metro Electric",
+              "found": true
+            },
+            {
+              "field": "amount_due",
+              "expected": "$91.00",
+              "found": true
+            },
+            {
+              "field": "due_date",
+              "expected": "2027-02-16",
+              "found": false
+            },
+            {
+              "field": "late_fee",
+              "expected": "$56.00",
+              "found": false
+            }
+          ],
+          "words": {
+            "found": 6,
+            "total": 47
+          },
+          "lines": 5,
+          "minConfidence": 0.3,
+          "elapsedMs": 2188.3,
+          "level": "harsh"
+        },
+        {
+          "id": "receipt-001.scan",
+          "fields": [
+            {
+              "field": "merchant",
+              "expected": "Northside Grocers",
+              "found": true
+            },
+            {
+              "field": "total",
+              "expected": "$36.49",
+              "found": true
+            },
+            {
+              "field": "purchased_at",
+              "expected": "2025-08-23",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 30,
+            "total": 31
+          },
+          "lines": 13,
+          "minConfidence": 1,
+          "elapsedMs": 2192.8,
+          "level": "scan"
+        },
+        {
+          "id": "receipt-001.harsh",
+          "fields": [
+            {
+              "field": "merchant",
+              "expected": "Northside Grocers",
+              "found": false
+            },
+            {
+              "field": "total",
+              "expected": "$36.49",
+              "found": true
+            },
+            {
+              "field": "purchased_at",
+              "expected": "2025-08-23",
+              "found": false
+            }
+          ],
+          "words": {
+            "found": 4,
+            "total": 31
+          },
+          "lines": 5,
+          "minConfidence": 0.3,
+          "elapsedMs": 2415.3,
+          "level": "harsh"
+        },
+        {
+          "id": "letter-001.scan",
+          "fields": [
+            {
+              "field": "sender",
+              "expected": "Cascade Credit Union",
+              "found": true
+            },
+            {
+              "field": "recipient",
+              "expected": "Ana Nguyen",
+              "found": true
+            },
+            {
+              "field": "subject",
+              "expected": "Notice of annual inspection",
+              "found": true
+            },
+            {
+              "field": "sent_date",
+              "expected": "2025-07-08",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 47,
+            "total": 47
+          },
+          "lines": 11,
+          "minConfidence": 1,
+          "elapsedMs": 1400.8,
+          "level": "scan"
+        },
+        {
+          "id": "letter-001.harsh",
+          "fields": [
+            {
+              "field": "sender",
+              "expected": "Cascade Credit Union",
+              "found": false
+            },
+            {
+              "field": "recipient",
+              "expected": "Ana Nguyen",
+              "found": false
+            },
+            {
+              "field": "subject",
+              "expected": "Notice of annual inspection",
+              "found": true
+            },
+            {
+              "field": "sent_date",
+              "expected": "2025-07-08",
+              "found": false
+            }
+          ],
+          "words": {
+            "found": 8,
+            "total": 47
+          },
+          "lines": 4,
+          "minConfidence": 0.5,
+          "elapsedMs": 2168.9,
+          "level": "harsh"
+        },
+        {
+          "id": "id_document-001.scan",
+          "fields": [
+            {
+              "field": "holder_name",
+              "expected": "Nina Nguyen",
+              "found": true
+            },
+            {
+              "field": "id_number",
+              "expected": "D8923829",
+              "found": true
+            },
+            {
+              "field": "issuer",
+              "expected": "State of Washington",
+              "found": true
+            },
+            {
+              "field": "expiry_date",
+              "expected": "2026-01-19",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 26,
+            "total": 26
+          },
+          "lines": 10,
+          "minConfidence": 1,
+          "elapsedMs": 2132.7,
+          "level": "scan"
+        },
+        {
+          "id": "id_document-001.harsh",
+          "fields": [
+            {
+              "field": "holder_name",
+              "expected": "Nina Nguyen",
+              "found": false
+            },
+            {
+              "field": "id_number",
+              "expected": "D8923829",
+              "found": false
+            },
+            {
+              "field": "issuer",
+              "expected": "State of Washington",
+              "found": false
+            },
+            {
+              "field": "expiry_date",
+              "expected": "2026-01-19",
+              "found": false
+            }
+          ],
+          "words": {
+            "found": 3,
+            "total": 26
+          },
+          "lines": 2,
+          "minConfidence": 1,
+          "elapsedMs": 2285.5,
+          "level": "harsh"
+        },
+        {
+          "id": "policy-001.scan",
+          "fields": [
+            {
+              "field": "insurer",
+              "expected": "Harbor Casualty",
+              "found": true
+            },
+            {
+              "field": "policy_number",
+              "expected": "POL-804220",
+              "found": true
+            },
+            {
+              "field": "expiry_date",
+              "expected": "2026-12-16",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 35,
+            "total": 35
+          },
+          "lines": 10,
+          "minConfidence": 1,
+          "elapsedMs": 2388.3,
+          "level": "scan"
+        },
+        {
+          "id": "policy-001.harsh",
+          "fields": [
+            {
+              "field": "insurer",
+              "expected": "Harbor Casualty",
+              "found": false
+            },
+            {
+              "field": "policy_number",
+              "expected": "POL-804220",
+              "found": false
+            },
+            {
+              "field": "expiry_date",
+              "expected": "2026-12-16",
+              "found": false
+            }
+          ],
+          "words": {
+            "found": 4,
+            "total": 35
+          },
+          "lines": 3,
+          "minConfidence": 0.3,
+          "elapsedMs": 2312.8,
+          "level": "harsh"
+        },
+        {
+          "id": "bill-002.scan",
+          "fields": [
+            {
+              "field": "payee",
+              "expected": "Regional Gas Co",
+              "found": true
+            },
+            {
+              "field": "amount_due",
+              "expected": "$453.00",
+              "found": true
+            },
+            {
+              "field": "due_date",
+              "expected": "2025-03-25",
+              "found": true
+            },
+            {
+              "field": "late_fee",
+              "expected": "$45.00",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 48,
+            "total": 48
+          },
+          "lines": 14,
+          "minConfidence": 1,
+          "elapsedMs": 2890.4,
+          "level": "scan"
+        },
+        {
+          "id": "bill-002.harsh",
+          "fields": [
+            {
+              "field": "payee",
+              "expected": "Regional Gas Co",
+              "found": true
+            },
+            {
+              "field": "amount_due",
+              "expected": "$453.00",
+              "found": true
+            },
+            {
+              "field": "due_date",
+              "expected": "2025-03-25",
+              "found": false
+            },
+            {
+              "field": "late_fee",
+              "expected": "$45.00",
+              "found": false
+            }
+          ],
+          "words": {
+            "found": 7,
+            "total": 48
+          },
+          "lines": 6,
+          "minConfidence": 0.3,
+          "elapsedMs": 2158.3,
+          "level": "harsh"
+        },
+        {
+          "id": "receipt-002.scan",
+          "fields": [
+            {
+              "field": "merchant",
+              "expected": "Sunbelt Mart",
+              "found": true
+            },
+            {
+              "field": "total",
+              "expected": "$97.49",
+              "found": true
+            },
+            {
+              "field": "purchased_at",
+              "expected": "2025-07-04",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 30,
+            "total": 31
+          },
+          "lines": 13,
+          "minConfidence": 1,
+          "elapsedMs": 2123.1,
+          "level": "scan"
+        },
+        {
+          "id": "receipt-002.harsh",
+          "fields": [
+            {
+              "field": "merchant",
+              "expected": "Sunbelt Mart",
+              "found": true
+            },
+            {
+              "field": "total",
+              "expected": "$97.49",
+              "found": true
+            },
+            {
+              "field": "purchased_at",
+              "expected": "2025-07-04",
+              "found": false
+            }
+          ],
+          "words": {
+            "found": 4,
+            "total": 31
+          },
+          "lines": 3,
+          "minConfidence": 1,
+          "elapsedMs": 2080.3,
+          "level": "harsh"
+        },
+        {
+          "id": "letter-002.scan",
+          "fields": [
+            {
+              "field": "sender",
+              "expected": "Northgate Property Mgmt",
+              "found": true
+            },
+            {
+              "field": "recipient",
+              "expected": "Jordan Mbeki",
+              "found": true
+            },
+            {
+              "field": "subject",
+              "expected": "Notice of annual inspection",
+              "found": true
+            },
+            {
+              "field": "sent_date",
+              "expected": "2026-08-05",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 49,
+            "total": 49
+          },
+          "lines": 11,
+          "minConfidence": 1,
+          "elapsedMs": 2282.3,
+          "level": "scan"
+        },
+        {
+          "id": "letter-002.harsh",
+          "fields": [
+            {
+              "field": "sender",
+              "expected": "Northgate Property Mgmt",
+              "found": true
+            },
+            {
+              "field": "recipient",
+              "expected": "Jordan Mbeki",
+              "found": false
+            },
+            {
+              "field": "subject",
+              "expected": "Notice of annual inspection",
+              "found": true
+            },
+            {
+              "field": "sent_date",
+              "expected": "2026-08-05",
+              "found": false
+            }
+          ],
+          "words": {
+            "found": 8,
+            "total": 49
+          },
+          "lines": 5,
+          "minConfidence": 0.3,
+          "elapsedMs": 1672.6,
+          "level": "harsh"
+        },
+        {
+          "id": "id_document-002.scan",
+          "fields": [
+            {
+              "field": "holder_name",
+              "expected": "Wei Reyes",
+              "found": true
+            },
+            {
+              "field": "id_number",
+              "expected": "C4821983",
+              "found": true
+            },
+            {
+              "field": "issuer",
+              "expected": "State of California",
+              "found": true
+            },
+            {
+              "field": "expiry_date",
+              "expected": "2026-07-23",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 26,
+            "total": 26
+          },
+          "lines": 10,
+          "minConfidence": 1,
+          "elapsedMs": 1355.6,
+          "level": "scan"
+        },
+        {
+          "id": "id_document-002.harsh",
+          "fields": [
+            {
+              "field": "holder_name",
+              "expected": "Wei Reyes",
+              "found": false
+            },
+            {
+              "field": "id_number",
+              "expected": "C4821983",
+              "found": false
+            },
+            {
+              "field": "issuer",
+              "expected": "State of California",
+              "found": true
+            },
+            {
+              "field": "expiry_date",
+              "expected": "2026-07-23",
+              "found": false
+            }
+          ],
+          "words": {
+            "found": 4,
+            "total": 26
+          },
+          "lines": 2,
+          "minConfidence": 1,
+          "elapsedMs": 1284.7,
+          "level": "harsh"
+        },
+        {
+          "id": "policy-002.scan",
+          "fields": [
+            {
+              "field": "insurer",
+              "expected": "Evergreen Mutual",
+              "found": true
+            },
+            {
+              "field": "policy_number",
+              "expected": "POL-769782",
+              "found": true
+            },
+            {
+              "field": "expiry_date",
+              "expected": "2025-01-06",
+              "found": true
+            }
+          ],
+          "words": {
+            "found": 35,
+            "total": 35
+          },
+          "lines": 10,
+          "minConfidence": 1,
+          "elapsedMs": 865.6,
+          "level": "scan"
+        },
+        {
+          "id": "policy-002.harsh",
+          "fields": [
+            {
+              "field": "insurer",
+              "expected": "Evergreen Mutual",
+              "found": false
+            },
+            {
+              "field": "policy_number",
+              "expected": "POL-769782",
+              "found": false
+            },
+            {
+              "field": "expiry_date",
+              "expected": "2025-01-06",
+              "found": false
+            }
+          ],
+          "words": {
+            "found": 4,
+            "total": 35
+          },
+          "lines": 3,
+          "minConfidence": 0.5,
+          "elapsedMs": 1237.7,
+          "level": "harsh"
+        }
+      ]
     }
   }
 }

@@ -1,0 +1,70 @@
+{
+  "page": "bill-001.harsh",
+  "variant": "enhanced",
+  "imageSha256": "7b0627b67385cb923a80d4829ab92d4530780402c89a67310b68dbdfb5297e90",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 2188.3,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Metro Electric",
+            "confidence": 1,
+            "box": {
+              "x": 0.1096,
+              "y": 0.0415,
+              "width": 0.1516,
+              "height": 0.0246
+            }
+          },
+          {
+            "text": "Amount Due Notice",
+            "confidence": 1,
+            "box": {
+              "x": 0.1038,
+              "y": 0.1152,
+              "width": 0.2558,
+              "height": 0.0347
+            }
+          },
+          {
+            "text": "Tadaghan",
+            "confidence": 0.3,
+            "box": {
+              "x": 0.0948,
+              "y": 0.2034,
+              "width": 0.0884,
+              "height": 0.0236
+            }
+          },
+          {
+            "text": "MA 96222",
+            "confidence": 0.5,
+            "box": {
+              "x": 0.1872,
+              "y": 0.2108,
+              "width": 0.082,
+              "height": 0.0176
+            }
+          },
+          {
+            "text": "$91.00",
+            "confidence": 1,
+            "box": {
+              "x": 0.8146,
+              "y": 0.3779,
+              "width": 0.0945,
+              "height": 0.0291
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

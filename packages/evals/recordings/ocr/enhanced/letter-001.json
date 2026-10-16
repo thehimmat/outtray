@@ -1,0 +1,130 @@
+{
+  "page": "letter-001",
+  "variant": "enhanced",
+  "imageSha256": "438b15dfaeb52811d216537c501ea20650c2471aa12f3329303be663c279b82a",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1829.8,
+    "pages": [
+      {
+        "width": 1632,
+        "height": 2000,
+        "lines": [
+          {
+            "text": "Cascade Credit Union",
+            "confidence": 1,
+            "box": {
+              "x": 0.0783,
+              "y": 0.0595,
+              "width": 0.2331,
+              "height": 0.019
+            }
+          },
+          {
+            "text": "July 8, 2025",
+            "confidence": 1,
+            "box": {
+              "x": 0.8255,
+              "y": 0.0604,
+              "width": 0.0964,
+              "height": 0.0172
+            }
+          },
+          {
+            "text": "Ana Nguyen",
+            "confidence": 1,
+            "box": {
+              "x": 0.0764,
+              "y": 0.1189,
+              "width": 0.0962,
+              "height": 0.0165
+            }
+          },
+          {
+            "text": "7321 Quince St",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.1395,
+              "width": 0.1228,
+              "height": 0.0146
+            }
+          },
+          {
+            "text": "Providence, RI 02906",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.1599,
+              "width": 0.1673,
+              "height": 0.0161
+            }
+          },
+          {
+            "text": "Notice of annual inspection",
+            "confidence": 1,
+            "box": {
+              "x": 0.0783,
+              "y": 0.1904,
+              "width": 0.3523,
+              "height": 0.0218
+            }
+          },
+          {
+            "text": "Dear Ana,",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.2384,
+              "width": 0.0801,
+              "height": 0.0161
+            }
+          },
+          {
+            "text": "We are writing to inform you regarding the matter noted above. Please review the enclosed details and",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.26,
+              "width": 0.7847,
+              "height": 0.0162
+            }
+          },
+          {
+            "text": "contact our office with any questions.",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.279,
+              "width": 0.29,
+              "height": 0.0175
+            }
+          },
+          {
+            "text": "Sincerely,",
+            "confidence": 1,
+            "box": {
+              "x": 0.0763,
+              "y": 0.2988,
+              "width": 0.0787,
+              "height": 0.0201
+            }
+          },
+          {
+            "text": "Cascade Credit Union",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.3225,
+              "width": 0.1708,
+              "height": 0.0147
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

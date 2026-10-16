@@ -1,0 +1,160 @@
+{
+  "page": "bill-001",
+  "variant": "enhanced",
+  "imageSha256": "65ab11013ca2c3c01781ee555a2f95cf9f69322e25cb5103752d46cb1e2e955c",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 2613.2,
+    "pages": [
+      {
+        "width": 1632,
+        "height": 2000,
+        "lines": [
+          {
+            "text": "Metro Electric",
+            "confidence": 1,
+            "box": {
+              "x": 0.0783,
+              "y": 0.061,
+              "width": 0.1512,
+              "height": 0.0175
+            }
+          },
+          {
+            "text": "Statement",
+            "confidence": 1,
+            "box": {
+              "x": 0.8344,
+              "y": 0.0591,
+              "width": 0.0875,
+              "height": 0.017
+            }
+          },
+          {
+            "text": "Account 386863",
+            "confidence": 1,
+            "box": {
+              "x": 0.7936,
+              "y": 0.0814,
+              "width": 0.1281,
+              "height": 0.0146
+            }
+          },
+          {
+            "text": "Amount Due Notice",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.135,
+              "width": 0.2544,
+              "height": 0.022
+            }
+          },
+          {
+            "text": "Priya Nguyen",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.1845,
+              "width": 0.105,
+              "height": 0.0161
+            }
+          },
+          {
+            "text": "6441 Cedar Hollow Rd",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.2035,
+              "width": 0.1762,
+              "height": 0.0175
+            }
+          },
+          {
+            "text": "Bellingham, WA 98225",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.2253,
+              "width": 0.1762,
+              "height": 0.0174
+            }
+          },
+          {
+            "text": "Service period",
+            "confidence": 1,
+            "box": {
+              "x": 0.0872,
+              "y": 0.2674,
+              "width": 0.1121,
+              "height": 0.0146
+            }
+          },
+          {
+            "text": "Q3 2026",
+            "confidence": 1,
+            "box": {
+              "x": 0.8434,
+              "y": 0.2659,
+              "width": 0.0694,
+              "height": 0.0161
+            }
+          },
+          {
+            "text": "Payment due date",
+            "confidence": 1,
+            "box": {
+              "x": 0.0872,
+              "y": 0.3023,
+              "width": 0.1423,
+              "height": 0.0147
+            }
+          },
+          {
+            "text": "February 16, 2027",
+            "confidence": 1,
+            "box": {
+              "x": 0.7651,
+              "y": 0.3009,
+              "width": 0.1459,
+              "height": 0.0176
+            }
+          },
+          {
+            "text": "Total amount due",
+            "confidence": 1,
+            "box": {
+              "x": 0.0996,
+              "y": 0.3675,
+              "width": 0.1352,
+              "height": 0.015
+            }
+          },
+          {
+            "text": "$91.00",
+            "confidence": 1,
+            "box": {
+              "x": 0.8025,
+              "y": 0.3619,
+              "width": 0.0961,
+              "height": 0.0291
+            }
+          },
+          {
+            "text": "Payments received after the due date incur a late fee of $56.00. Do not mail cash.",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.4273,
+              "width": 0.6263,
+              "height": 0.0147
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

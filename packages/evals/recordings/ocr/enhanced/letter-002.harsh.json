@@ -1,0 +1,70 @@
+{
+  "page": "letter-002.harsh",
+  "variant": "enhanced",
+  "imageSha256": "0cf9621ba90631bfd1d2897e28dede380572f2b264593ed1a5d3f570ca4c1513",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1672.6,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Northgate Property Mgmt",
+            "confidence": 1,
+            "box": {
+              "x": 0.1058,
+              "y": 0.0397,
+              "width": 0.2788,
+              "height": 0.0365
+            }
+          },
+          {
+            "text": "Notice of annual inspection",
+            "confidence": 1,
+            "box": {
+              "x": 0.0985,
+              "y": 0.1661,
+              "width": 0.3575,
+              "height": 0.0447
+            }
+          },
+          {
+            "text": "Dater JOi",
+            "confidence": 0.5,
+            "box": {
+              "x": 0.098,
+              "y": 0.2195,
+              "width": 0.0642,
+              "height": 0.0145
+            }
+          },
+          {
+            "text": "We perhoto",
+            "confidence": 0.3,
+            "box": {
+              "x": 0.095,
+              "y": 0.2363,
+              "width": 0.136,
+              "height": 0.0263
+            }
+          },
+          {
+            "text": "By Nigh",
+            "confidence": 0.5,
+            "box": {
+              "x": 0.2014,
+              "y": 0.3081,
+              "width": 0.0856,
+              "height": 0.0191
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

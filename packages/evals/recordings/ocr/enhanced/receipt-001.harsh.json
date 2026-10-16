@@ -1,0 +1,70 @@
+{
+  "page": "receipt-001.harsh",
+  "variant": "enhanced",
+  "imageSha256": "b105ed6b53fffb7beb480976504ed948d68ff095297f4cca368230773f418308",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 2415.3,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Nortide Grocers",
+            "confidence": 1,
+            "box": {
+              "x": 0.1094,
+              "y": 0.0409,
+              "width": 0.1983,
+              "height": 0.028
+            }
+          },
+          {
+            "text": "Sales Receipt",
+            "confidence": 1,
+            "box": {
+              "x": 0.1036,
+              "y": 0.1131,
+              "width": 0.1833,
+              "height": 0.0341
+            }
+          },
+          {
+            "text": "Bitess",
+            "confidence": 0.5,
+            "box": {
+              "x": 0.1123,
+              "y": 0.1715,
+              "width": 0.0446,
+              "height": 0.0145
+            }
+          },
+          {
+            "text": "nate",
+            "confidence": 0.3,
+            "box": {
+              "x": 0.1711,
+              "y": 0.1744,
+              "width": 0.0642,
+              "height": 0.016
+            }
+          },
+          {
+            "text": "$36.49",
+            "confidence": 1,
+            "box": {
+              "x": 0.8164,
+              "y": 0.3372,
+              "width": 0.0963,
+              "height": 0.0262
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

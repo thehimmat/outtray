@@ -1,0 +1,150 @@
+{
+  "page": "receipt-001",
+  "variant": "enhanced",
+  "imageSha256": "fdcf5b4a37a85c9c1a231f62505d4e0ef124afb3509a09d8f57356b768d55817",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1823.5,
+    "pages": [
+      {
+        "width": 1632,
+        "height": 2000,
+        "lines": [
+          {
+            "text": "Northside Grocers",
+            "confidence": 1,
+            "box": {
+              "x": 0.0783,
+              "y": 0.061,
+              "width": 0.1957,
+              "height": 0.0175
+            }
+          },
+          {
+            "text": "August 23, 2025",
+            "confidence": 1,
+            "box": {
+              "x": 0.7936,
+              "y": 0.058,
+              "width": 0.1299,
+              "height": 0.019
+            }
+          },
+          {
+            "text": "Reg 4 • Trn 4180",
+            "confidence": 1,
+            "box": {
+              "x": 0.7918,
+              "y": 0.0785,
+              "width": 0.1317,
+              "height": 0.019
+            }
+          },
+          {
+            "text": "Sales Receipt",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.135,
+              "width": 0.1815,
+              "height": 0.0235
+            }
+          },
+          {
+            "text": "Butter, unsalted",
+            "confidence": 1,
+            "box": {
+              "x": 0.0872,
+              "y": 0.1904,
+              "width": 0.1228,
+              "height": 0.0146
+            }
+          },
+          {
+            "text": "$4.99",
+            "confidence": 1,
+            "box": {
+              "x": 0.8648,
+              "y": 0.1875,
+              "width": 0.0498,
+              "height": 0.0189
+            }
+          },
+          {
+            "text": "Whole milk, 1 gal",
+            "confidence": 1,
+            "box": {
+              "x": 0.0854,
+              "y": 0.2238,
+              "width": 0.1352,
+              "height": 0.0162
+            }
+          },
+          {
+            "text": "$4.29",
+            "confidence": 1,
+            "box": {
+              "x": 0.8648,
+              "y": 0.2224,
+              "width": 0.048,
+              "height": 0.0189
+            }
+          },
+          {
+            "text": "Coffee, ground",
+            "confidence": 1,
+            "box": {
+              "x": 0.0871,
+              "y": 0.2571,
+              "width": 0.1158,
+              "height": 0.0179
+            }
+          },
+          {
+            "text": "$9.50",
+            "confidence": 1,
+            "box": {
+              "x": 0.863,
+              "y": 0.2558,
+              "width": 0.0498,
+              "height": 0.0189
+            }
+          },
+          {
+            "text": "Total",
+            "confidence": 1,
+            "box": {
+              "x": 0.0996,
+              "y": 0.3241,
+              "width": 0.0409,
+              "height": 0.0145
+            }
+          },
+          {
+            "text": "$36.49",
+            "confidence": 1,
+            "box": {
+              "x": 0.8023,
+              "y": 0.3192,
+              "width": 0.0966,
+              "height": 0.0287
+            }
+          },
+          {
+            "text": "Thank you for shopping with us.",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.385,
+              "width": 0.2491,
+              "height": 0.0162
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
