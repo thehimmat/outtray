@@ -47,7 +47,9 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
     this.#host = options.host ?? DEFAULT_HOST;
     assertLoopback(this.#host);
     this.#model = options.model;
-    this.#fetch = options.fetch ?? globalThis.fetch;
+    // Wrapped, not stored bare: calling fetch as a method of this object throws in
+    // WebKit ("Can only call Window.fetch on instances of Window"), the Tauri webview.
+    this.#fetch = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
   }
 
   async embed(texts: string[]): Promise<number[][]> {

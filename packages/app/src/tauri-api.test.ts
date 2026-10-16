@@ -183,6 +183,16 @@ describe('tauriApi', () => {
     expect(shell.isOpen()).toBe(false);
   });
 
+  it('keeps the underlying error in the unreachable message, so a misdiagnosis shows its cause', async () => {
+    const shell = fakeShell({ 'bill.png': PNG });
+    const provider = new FakeProvider(
+      new TypeError('Can only call Window.fetch on instances of Window'),
+    );
+    await expect(api(shell.invoke, provider).planFolder('/docs')).rejects.toThrow(
+      /Start Ollama.*Can only call Window\.fetch/s,
+    );
+  });
+
   it('saves a Reviewed mark that the next plan reads back, even after a rename', async () => {
     const files: Record<string, Uint8Array> = { 'bill.png': PNG };
     const shell = fakeShell(files);

@@ -57,7 +57,9 @@ export class OllamaProvider implements ModelProvider {
   constructor(options: OllamaProviderOptions = {}) {
     this.#host = options.host ?? DEFAULT_HOST;
     assertLoopback(this.#host);
-    this.#fetch = options.fetch ?? globalThis.fetch;
+    // Wrapped, not stored bare: calling fetch as a method of this object throws in
+    // WebKit ("Can only call Window.fetch on instances of Window"), the Tauri webview.
+    this.#fetch = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
     this.#defaultModel = options.defaultModel ?? DEFAULT_MODEL;
   }
 
@@ -100,19 +102,20 @@ export class OllamaProvider implements ModelProvider {
     let timing: OllamaTiming = {};
     let buf = '';
     const decoder = new TextDecoder();
-    const stream = res.body as unknown as AsyncIterable<Uint8Array> | null;
-    if (stream) {
-      for await (const chunk of stream) {
-        buf += decoder.decode(chunk, { stream: true });
-        for (let nl = buf.indexOf('\n'); nl >= 0; nl = buf.indexOf('\n')) {
-          const line = buf.slice(0, nl).trim();
-          buf = buf.slice(nl + 1);
-          if (!line) continue;
-          const parsed = JSON.parse(line) as OllamaStreamChunk;
-          if (parsed.message?.content) content += parsed.message.content;
-          if (parsed.message?.thinking) thinking += parsed.message.thinking;
-          if (parsed.done) timing = parsed;
-        }
+    // A reader, not `for await`: WebKit (the Tauri webview) streams are not async iterable.
+    const reader = res.body?.getReader();
+    while (reader) {
+      const { done, value: chunk } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(chunk, { stream: true });
+      for (let nl = buf.indexOf('\n'); nl >= 0; nl = buf.indexOf('\n')) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line) continue;
+        const parsed = JSON.parse(line) as OllamaStreamChunk;
+        if (parsed.message?.content) content += parsed.message.content;
+        if (parsed.message?.thinking) thinking += parsed.message.thinking;
+        if (parsed.done) timing = parsed;
       }
     }
 

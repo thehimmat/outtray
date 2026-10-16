@@ -151,7 +151,7 @@ export function tauriApi(deps: TauriApiDeps): OuttrayApi {
     } catch (error) {
       if (isUnreachable(error)) {
         throw new Error(
-          `The local model is not running. Start Ollama (ollama serve) with ${EXTRACT_MODEL} and ${EMBED_MODEL} pulled, then try again.`,
+          `The local model is not running. Start Ollama (ollama serve) with ${EXTRACT_MODEL} and ${EMBED_MODEL} pulled, then try again. (${error instanceof Error ? error.message : String(error)})`,
         );
       }
       throw error instanceof Error ? error : new Error(String(error));
