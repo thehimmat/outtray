@@ -79,6 +79,12 @@ When those conflict, favor the showcase.
   after the #65 merge of one fact flagged twice, P 11/22, R 11/13; after
   dropping field headings (#133), P 11/17, R 11/13; after dropping payment
   actions on receipts (#140), P 11/15, R 11/13.
+- **Phase 4 started: cost dashboard** (`pnpm eval:cost`,
+  `docs/evals/cost-dashboard.md`, CI-gated against `fixtures/cost.json`):
+  breaks each recorded extraction into load, prefill (by difference, #150)
+  and generating. Median 31.8 s per document on the Air, prefill 89%; the
+  lever is image size, not decoding. Phase 3 closes after #149 (on-device
+  check of the app features and the demo video).
 - **ADR-0009 stage complete end to end** (amendment accepted, #54): two-stage
   scan with reconciliation verdicts plus one typed re-extraction on confident
   disagreement (`extract-typed-v1`). Scoreboard: VLM 8/10, classifier 10/10,

@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A cost dashboard (`pnpm eval:cost`, `docs/evals/cost-dashboard.md`): what
+  one extraction costs on the 8 GB Air, from the timings recorded with each
+  fixture. Median 31.8 s per document, 89% of it reading the prompt and page
+  image rather than writing the answer. CI replays it and fails on drift.
+
 - The desktop app searches the planned folder's documents, as `outtray find`
   does: type a question below the queue and see the best-matching passages,
   each naming its document. Passages come from the encrypted store (or the
