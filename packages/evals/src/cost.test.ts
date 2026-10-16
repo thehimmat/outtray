@@ -22,10 +22,18 @@ describe('breakdown', () => {
       loadMs: 200,
       generateMs: 2500,
       prefillMs: 27_300,
+      prefillMeasured: false,
       totalMs: 30_000,
       promptTokens: 3300,
       genTokens: 100,
     });
+  });
+
+  it('uses the measured prompt time when the recording has one (#150)', () => {
+    const b = breakdown('x', 'bill', usage({ promptMs: 25_000 }));
+    expect(b.prefillMs).toBe(25_000);
+    expect(b.prefillMeasured).toBe(true);
+    expect(breakdown('x', 'bill', usage()).prefillMeasured).toBe(false);
   });
 
   it('never reports a negative remainder when the runtime rounds', () => {

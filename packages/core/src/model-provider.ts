@@ -49,6 +49,11 @@ export interface GenerateUsage {
   genTokPerSec: number | null;
   /** Total wall time for the call in milliseconds, as reported by the runtime. */
   totalMs: number;
+  /**
+   * Time spent reading the prompt and images (prefill) in milliseconds, when
+   * the runtime reports it. Absent from recordings made before #150.
+   */
+  promptMs?: number;
 }
 
 /** The result of one `generate` call. */

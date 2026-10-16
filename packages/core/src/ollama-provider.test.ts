@@ -131,6 +131,14 @@ describe('OllamaProvider', () => {
     expect(result.doneReason).toBe('stop');
   });
 
+  it('reports the time spent reading the prompt and image (#150)', async () => {
+    const provider = new OllamaProvider({
+      fetch: fetchReturning(mockResponse(thinkingChannelStream())),
+    });
+    const result = await provider.generate({ prompt: 'x', format: {} });
+    expect(result.usage.promptMs).toBe(600);
+  });
+
   it('returns null json and channel when output is not valid JSON', async () => {
     const stream = [{ message: { content: 'not json', thinking: '' } }, { message: {}, ...DONE }];
     const provider = new OllamaProvider({ fetch: fetchReturning(mockResponse(stream)) });

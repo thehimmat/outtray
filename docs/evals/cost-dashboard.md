@@ -2,12 +2,11 @@
 
 What one extraction costs on the dev machine (a 2022 MacBook Air, 8 GB),
 from the timings Ollama reported when each fixture's extraction was
-recorded. Load and generating are reported by the runtime; **prefill**
-(reading the prompt and the page image) is the rest of the wall time, taken
-by difference. Regenerate with `pnpm eval:cost`; CI replays it and fails on
-drift.
+recorded. Load and generating are reported by the runtime. **Prefill**
+(reading the prompt and the page image) is the rest of the wall time, taken by difference.
+Regenerate with `pnpm eval:cost`; CI replays it and fails on drift.
 
-Generated at commit `5303b0149021` over 10 fixture extractions with `qwen3-vl:2b`.
+Generated at commit `c096c4229ce5` over 10 fixture extractions with `qwen3-vl:2b`.
 
 ## Headline
 
@@ -66,8 +65,9 @@ Generated at commit `5303b0149021` over 10 fixture extractions with `qwen3-vl:2b
   not known, and the spike found heavy swap on this machine is normal.
 - **Model load appears once.** Calls after the first find the model resident;
   a cold start shows as one call's load time.
-- **Prefill is by difference**, so it includes any runtime overhead outside
-  load and generating. Ollama's own `prompt_eval_duration` is not recorded
-  yet; recording it would make this a measured figure (#150).
+- **Prefill is by difference where not measured**, so it includes any runtime
+  overhead outside load and generating. Recordings now keep Ollama's
+  `prompt_eval_duration` (#150); the next `pnpm eval:record` on the dev
+  machine makes every row a measured figure.
 - **Ten synthetic single-page fixtures.** Real multi-page documents cost
   proportionally more.
