@@ -8,7 +8,22 @@
  * proposes, the human acts (ADR-0008).
  */
 
-import type { ActionQueue, Citation, CorrectionOutcome, DocumentType } from '@outtray/core';
+import type {
+  ActionQueue,
+  Citation,
+  CorrectionOutcome,
+  DocumentType,
+  IdentifierField,
+} from '@outtray/core';
+
+/** One document a plan read, as the page may show it. */
+export interface PlannedDocument {
+  file: string;
+  /** The trusted (reconciled) type. */
+  type: DocumentType;
+  /** The ID number field and its redacted form, when the document's type has one. Never the full value. */
+  identifier: { field: IdentifierField; redacted: string } | null;
+}
 
 /** One planned folder. */
 export interface PlannedFolder {
@@ -23,6 +38,8 @@ export interface PlannedFolder {
   notes: string[];
   /** Ids of the queue items the person marked reviewed on an earlier run. */
   reviewed: string[];
+  /** Every document read, in scan order. */
+  documents: PlannedDocument[];
 }
 
 /** The host the UI runs against. */
@@ -71,4 +88,31 @@ export interface OuttrayApi {
    * before any folder is planned, or when the embedding model is unreachable.
    */
   search(query: string): Promise<Citation[]>;
+  /**
+   * Whether Outtray remembers ID numbers (off by default, ADR-0011).
+   *
+   * Failure modes: none expected; an unreadable setting reads as off.
+   */
+  readSettings(): Promise<{ identifierStorage: boolean }>;
+  /**
+   * Turn remembering ID numbers on or off. The page must show
+   * `APP_IDENTIFIER_STORAGE_DISCLOSURE` before turning it on, and the host
+   * asks once more in a native dialog, so the person can still decline.
+   * Off deletes every remembered number. Resolves the setting as it now
+   * stands (unchanged when declined) and how many numbers were deleted.
+   *
+   * Failure modes: rejects with an Error whose message is shown to the user
+   * when the setting cannot be written or the numbers cannot be deleted.
+   */
+  setIdentifierStorage(on: boolean): Promise<{ identifierStorage: boolean; purged: number }>;
+  /**
+   * Show one document's remembered ID number in a window of its own
+   * (ADR-0013 amendment 1). The page never receives the number: it learns
+   * only `shown`, or `not_stored` when none is remembered for it.
+   *
+   * Failure modes: rejects with an Error whose message is shown to the user
+   * when the document is not in the last plan, its type has no ID number, or
+   * the store cannot be read.
+   */
+  revealIdentifier(file: string): Promise<'shown' | 'not_stored'>;
 }

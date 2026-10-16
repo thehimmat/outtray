@@ -88,3 +88,72 @@ suite before any UI depends on it.
 - Independent of this decision, the approval-queue UI is built against an
   app-level `OuttrayApi` interface with a mock implementation, so UI work
   does not wait on sign-off.
+
+## Amendment 1 (2026-10-16): identifiers in the app
+
+Status: **accepted 2026-10-16 by Claude** under the project's autonomy rules
+(`.claude/CLAUDE.md`). It refines how the app reaches the identifier vault
+(ADR-0011) and reverses nothing above. It narrows what the page can read, so
+the threat model gets stricter, not looser.
+
+### Context
+
+The CLI has `outtray settings` (the opt-in to remember ID numbers, off by
+default) and `outtray reveal` (show one remembered number on request). The
+app has neither, so a person using only the app can never opt in, and if they
+opted in from the CLI they could never see a number in the app.
+
+Building them the obvious way, with core's `revealIdentifier` in the page,
+would send the full number through the store bridge into JavaScript. The
+bridge already allows that today: `store_command` runs any store operation,
+including `getIdentifier`, though nothing in the page calls it. The page
+renders text the model extracted from documents, so it is the part of the app
+most exposed to hostile content; it should not be able to read the vault at
+all.
+
+### Decision
+
+1. **The page cannot read a full number.** `store_command` refuses
+   `getIdentifier`. Every other operation the pipeline uses stays available,
+   including writing and purging the vault.
+2. **Reveal is a Rust command that shows the number in a native dialog.**
+   `reveal_identifier(documentHash, field)` reads the value on the Rust side
+   and shows it in a system message window. The page learns only whether a
+   number was shown. It is one explicit act per number, as in the CLI.
+3. **The setting is written by Rust, and switching it off purges there.**
+   `write_settings` writes `config.json` the way core's `writeSettings` does
+   (the whole file, owner-only, through a rename). Switching off then deletes
+   every remembered number, as `setIdentifierStorage` does, but only when a
+   database exists: turning the setting off never creates a store or a
+   Keychain key as a side effect, which matches the CLI. Turning it **on**
+   asks once more in a native confirmation dialog from the Rust side, so a
+   page that misbehaves cannot opt the person in without their agreement.
+4. **The app shows the same disclosure** before turning the setting on, with
+   the reveal step named for the app. The wording lives in core with the
+   CLI's, and the same tests pin every claim ADR-0011 requires.
+
+### Options considered
+
+1. **Reveal in the page** with core's `revealIdentifier`. Pros: no new Rust
+   code. Cons: the full number enters JavaScript memory and the DOM, the
+   bridge must keep `getIdentifier` open, and any script the page runs could
+   read every number. Rejected.
+2. **Copy to the clipboard from Rust.** Pros: the page never sees it. Cons:
+   clipboard managers and history keep it indefinitely, and other apps read
+   the clipboard freely. Worse than the terminal the CLI prints to. Rejected.
+3. **Native dialog from Rust** (chosen). Pros: the number stays in the Rust
+   process and the system window; the page cannot read it. Cons: a little
+   Rust with no automated UI test; the dialog is not styled like the app.
+4. **Leave settings and reveal CLI-only.** Pros: nothing to build. Cons: the
+   app is the primary surface from Phase 3 on, and an opt-in nobody can reach
+   from it is not a real choice. Rejected.
+
+### Consequences
+
+- `docs/THREAT_MODEL.md` records that the page cannot read the vault.
+- The refusal is enforced in Rust and unit-tested there. Core's contract
+  suite is unaffected: it reaches the Rust store through the stdio binary,
+  not through the page's bridge.
+- A screenshot taken while the dialog is open captures the number, the same
+  as a terminal after `outtray reveal`. The dialog closes on dismissal and
+  nothing keeps the value.

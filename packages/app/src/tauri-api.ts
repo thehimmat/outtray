@@ -16,6 +16,7 @@ import {
   type DocumentType,
   type EmbeddingProvider,
   explainStorageError,
+  IDENTIFIER_FIELDS,
   indexKeyFor,
   type ModelProvider,
   OllamaEmbeddingProvider,
@@ -32,6 +33,7 @@ import {
   searchStore,
 } from '@outtray/core';
 import type { OuttrayApi, PlannedFolder } from './api.js';
+import { plannedDocuments } from './planned-documents.js';
 
 /** Tauri's `invoke`, or a stand-in in tests. */
 export type Invoke = <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
@@ -119,6 +121,19 @@ export function tauriApi(deps: TauriApiDeps): OuttrayApi {
     setReviewed: (itemId, reviewed) => exclusive(() => mark(itemId, reviewed)),
     setDocumentType: (itemId, type) => exclusive(() => pin(itemId, type)),
     search: (query) => exclusive(() => find(query)),
+    readSettings: () => deps.invoke<{ identifierStorage: boolean }>('read_settings'),
+    setIdentifierStorage: (on) =>
+      exclusive(async () => {
+        try {
+          return await deps.invoke<{ identifierStorage: boolean; purged: number }>(
+            'write_settings',
+            { identifierStorage: on },
+          );
+        } catch (error) {
+          throw new Error(explainStorageError(error, 'the encrypted store'));
+        }
+      }),
+    revealIdentifier: (file) => exclusive(() => reveal(file)),
   };
 
   async function plan(folder: string): Promise<PlannedFolder> {
@@ -179,6 +194,7 @@ export function tauriApi(deps: TauriApiDeps): OuttrayApi {
         skipped: scan.report.skipped,
         notes,
         reviewed,
+        documents: plannedDocuments(scan.report),
       };
     } catch (error) {
       throw plainModelError(error);
@@ -232,6 +248,24 @@ export function tauriApi(deps: TauriApiDeps): OuttrayApi {
       }
       return correctDocument(storage, document, type);
     });
+  }
+
+  async function reveal(file: string): Promise<'shown' | 'not_stored'> {
+    const item = last?.report.items.find((i) => i.file === file);
+    if (!item) throw new Error('This document is not in the last plan; plan the folder again.');
+    const doc = item.result.document;
+    const field = doc ? IDENTIFIER_FIELDS[doc.type] : undefined;
+    if (!field) throw new Error(`${file} has no ID number to reveal.`);
+    try {
+      // The shell shows the number itself; only the outcome comes back here.
+      const { status } = await deps.invoke<{ status: 'shown' | 'not_stored' }>(
+        'reveal_identifier',
+        { documentHash: item.contentHash, field, label: file },
+      );
+      return status;
+    } catch (error) {
+      throw new Error(explainStorageError(error, 'the encrypted store'));
+    }
   }
 
   function targetOf(itemId: string): ReviewTarget {
