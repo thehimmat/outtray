@@ -87,5 +87,22 @@ Conclusions:
 - Crash logs and telemetry: there is no telemetry; crash reporting, if ever
   added, must be opt-in and document-content-free.
 
+## Who may read the database key
+
+The key is a legacy Keychain item, and macOS trusts only the program that
+created it. On a first run from the desktop app, the CLI (which reads the key
+through `/usr/bin/security`) shows a password dialog on every command. By
+the same rule, a key first created by the CLI should make the app the one
+that asks (only the first case was observed, on the Air, #127). This is
+accepted for now (#134): a second program asking for the secret is the
+Keychain doing its job.
+
+"Always Allow" on that dialog is ruled out, as is any access list that names
+`/usr/bin/security`: trusting that tool trusts every process that calls it,
+so any code running as the user could read the key silently. The lasting fix
+is one trusted reader (a signed broker) or a data-protection Keychain item
+shared through an access group. Both need a signing identity (#12) and an
+ADR-0011/0013 amendment.
+
 The complete list of network touchpoints lives in the README's "what leaves
 the machine" table.
