@@ -191,6 +191,11 @@ function isFieldLabel(text: string, due: string | null): boolean {
   return !(words.includes('due') && due !== null);
 }
 
+/** True when an action item asks for a payment ("Pay $36.49", "Payment of ..."). */
+function isPaymentAction(text: string): boolean {
+  return /^(pay|payment)\b/i.test(text.trim());
+}
+
 function isoDaysFrom(today: string, days: number): string {
   const t = new Date(`${today}T00:00:00Z`);
   t.setUTCDate(t.getUTCDate() + days);
@@ -213,7 +218,8 @@ function readDateField(doc: DocumentExtraction, field: string): string | null {
  * eval's rule), so "January 6, 2025" counts; anything that is not a date is
  * treated as no date, never as past due, and comparisons run on ISO strings.
  * Field headings the model lists as action items are dropped (`isFieldLabel`),
- * after lending their citation to any expiry item they restate.
+ * after lending their citation to any expiry item they restate, and so are
+ * payment actions on a document whose trusted type is `receipt`.
  */
 export function planActions(report: ScanReport, options: PlanOptions): ActionQueue {
   const windowEnd = isoDaysFrom(
@@ -286,6 +292,9 @@ export function planActions(report: ScanReport, options: PlanOptions): ActionQue
 
     // To-dos from the document's own extracted action items.
     for (const action of doc.action_items) {
+      // A receipt records a payment already made (#140): "Pay $36.49" on one
+      // is the model restating the total, never something left to do.
+      if (reconciliation.effectiveType === 'receipt' && isPaymentAction(action.text)) continue;
       // Not a date (a model sometimes puts other fields here) means no date.
       const due = normalizeDate(action.due_date);
       const pastDue = due !== null && due < options.today;
