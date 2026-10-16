@@ -66,6 +66,7 @@ export {
   redactExtraction,
   redactedForm,
   replaceIdentifier,
+  replaceNearMisses,
   TOKENIZER_VERSION,
   tokenizeExtraction,
 } from './identifiers.js';

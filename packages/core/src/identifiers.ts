@@ -18,8 +18,9 @@
  * Both remove the value from free text (summary, action items, other string
  * fields) as well as the named field, because the model can restate a number
  * anywhere. Matching is best-effort by nature: it ignores separators and case
- * and folds common OCR confusions, and it cannot find a value the model
- * rewrote. It reduces copies; it never guarantees one.
+ * and folds common OCR confusions, then redacts lookalikes one edit away
+ * (`replaceNearMisses`), and it cannot find a value rewritten further. It
+ * reduces copies; it never guarantees one.
  *
  * Pure throughout, so it is unit-tested without a model or a store.
  */
@@ -31,7 +32,7 @@ import type { DocumentExtraction, DocumentType } from './extraction-schema.js';
  * bump it whenever a change would tokenize the same extraction differently,
  * since chunk text and embeddings are built from that output.
  */
-export const TOKENIZER_VERSION = 'tokenize-v1';
+export const TOKENIZER_VERSION = 'tokenize-v2';
 
 /** The extraction fields that hold a full identifier. */
 export type IdentifierField = 'id_number' | 'policy_number' | 'account_number';
@@ -177,6 +178,63 @@ export function replaceIdentifier(
   return { text: count === 0 ? text : out + text.slice(copied), count };
 }
 
+/** Optimal string alignment distance: edits, with an adjacent swap counting as one. */
+function editDistance(a: string, b: string): number {
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+  );
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const row = d[i] as number[];
+      const prev = d[i - 1] as number[];
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      row[j] = Math.min(
+        (prev[j] as number) + 1,
+        (row[j - 1] as number) + 1,
+        (prev[j - 1] as number) + cost,
+      );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        row[j] = Math.min(row[j] as number, ((d[i - 2] as number[])[j - 2] as number) + 1);
+      }
+    }
+  }
+  return (d[a.length] as number[])[b.length] as number;
+}
+
+/** Runs of letters and digits, joined by single hyphens, that contain a digit. */
+const CANDIDATE_RUN = /[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*/g;
+
+/**
+ * Replace runs in `text` that look like `value` rewritten by the model: the
+ * same length give or take two, and either one edit away (a dropped, added,
+ * changed or swapped character) or ending in the same last four. Meant to run
+ * after `replaceIdentifier`, on what exact matching left behind; over-redacting
+ * a lookalike is the safe direction (#97).
+ *
+ * Failure modes: none; pure. Values shorter than `MIN_LAST_FOUR_LENGTH` are
+ * not searched, since a short run has too many lookalikes. A rewrite that
+ * splits the value with spaces, or changes more than that, still survives.
+ */
+export function replaceNearMisses(
+  text: string,
+  value: string,
+  replacement: string,
+): { text: string; count: number } {
+  const needle = matchKey(value);
+  if (needle.length < MIN_LAST_FOUR_LENGTH) return { text, count: 0 };
+  let count = 0;
+  const out = text.replace(CANDIDATE_RUN, (run) => {
+    if (!/\d/.test(run)) return run;
+    const key = matchKey(run);
+    if (Math.abs(key.length - needle.length) > 2) return run;
+    const near = key.slice(-4) === needle.slice(-4) || editDistance(key, needle) <= 1;
+    if (!near) return run;
+    count += 1;
+    return replacement;
+  });
+  return { text: out, count };
+}
+
 /**
  * Matches the forms this module writes in place of a value: the placeholder
  * `[field]` and the redacted `[field ending 1234, 9 chars]` or
@@ -209,7 +267,7 @@ function replaceEverywhere(
   // forms can be swapped, never a value found by matching.
   const scrub = isProtectedForm(id.field, id.value)
     ? (s: string) => s.replace(protectedForms(id.field), to)
-    : (s: string) => replaceIdentifier(s, id.value, to).text;
+    : (s: string) => replaceNearMisses(replaceIdentifier(s, id.value, to).text, id.value, to).text;
 
   const out: Record<string, unknown> = {};
   for (const [key, v] of Object.entries(doc)) {

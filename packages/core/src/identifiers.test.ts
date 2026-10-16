@@ -8,6 +8,8 @@ import {
   redactExtraction,
   redactedForm,
   replaceIdentifier,
+  replaceNearMisses,
+  TOKENIZER_VERSION,
   tokenizeExtraction,
 } from './identifiers.js';
 
@@ -252,5 +254,73 @@ describe('action item due dates (#64 findings)', () => {
       '[policy_number ending 4220, 9 chars]',
     );
     expect(tokenizeExtraction(POLICY).action_items[0]?.due_date).toBe('[policy_number]');
+  });
+});
+
+describe('replaceNearMisses (#97)', () => {
+  const R = '[x]';
+
+  it('redacts a run one digit short of the value', () => {
+    expect(replaceNearMisses('Policy POL-76982 renews.', 'POL-769782', R)).toEqual({
+      text: `Policy ${R} renews.`,
+      count: 1,
+    });
+  });
+
+  it('redacts a run with two digits transposed', () => {
+    expect(replaceNearMisses('Account 0042117798 closed', '0042-1177-89', R).text).toBe(
+      `Account ${R} closed`,
+    );
+  });
+
+  it('redacts a run with one digit changed or added', () => {
+    expect(replaceNearMisses('id AB1234568', 'AB1234567', R).count).toBe(1);
+    expect(replaceNearMisses('id AB12345677', 'AB1234567', R).count).toBe(1);
+  });
+
+  it('redacts a run that rewrote the start but keeps the last four', () => {
+    expect(replaceNearMisses('ref XY9934567', 'AB1234567', R).count).toBe(1);
+  });
+
+  it('leaves dates, amounts, words and unrelated numbers alone', () => {
+    const text = 'Due 2026-08-31, pay $1,204.00 for policy renewal 55512345 by phone.';
+    expect(replaceNearMisses(text, 'POL-769782', R)).toEqual({ text, count: 0 });
+  });
+
+  it('does not look for near misses of values under 8 characters', () => {
+    expect(replaceNearMisses('code 12346', '12345', R).count).toBe(0);
+  });
+
+  it('leaves the redacted form it sits next to untouched', () => {
+    const text = 'Policy [policy_number ending 9782, 9 chars] renews.';
+    expect(replaceNearMisses(text, 'POL-769782', R)).toEqual({ text, count: 0 });
+  });
+});
+
+describe('tokenize and redact remove near misses too (#97)', () => {
+  const policy: DocumentExtraction = {
+    type: 'policy',
+    summary: 'Auto policy POL-76982 with Evergreen.',
+    action_items: [{ text: 'Renew POL769872', due_date: null }],
+    insurer: 'Evergreen Mutual',
+    policy_number: 'POL-769782',
+    coverage_summary: 'auto',
+    expiry_date: '2026-12-16',
+  };
+
+  it('tokenizes a rewritten mention to the placeholder', () => {
+    const text = extractionText(tokenizeExtraction(policy));
+    expect(text).not.toMatch(/7698|76982|769872/);
+    expect(text).toContain('Auto policy [policy_number] with Evergreen.');
+  });
+
+  it('redacts a rewritten mention to the redacted form', () => {
+    const out = redactExtraction(policy);
+    expect(out.summary).toBe('Auto policy [policy_number ending 9782, 9 chars] with Evergreen.');
+    expect(out.action_items[0]?.text).toBe('Renew [policy_number ending 9782, 9 chars]');
+  });
+
+  it('is a new tokenizer version, so stored chunks are rebuilt', () => {
+    expect(TOKENIZER_VERSION).toBe('tokenize-v2');
   });
 });
