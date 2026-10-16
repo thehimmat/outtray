@@ -86,8 +86,10 @@ When those conflict, favor the showcase.
 - **Phase 4 started: cost dashboard** (`pnpm eval:cost`,
   `docs/evals/cost-dashboard.md`, CI-gated against `fixtures/cost.json`):
   breaks each recorded extraction into load, prefill (by difference, #150)
-  and generating. Median 31.8 s per document on the Air, prefill 89%; the
-  lever is image size, not decoding. Phase 3 closes after #149 (on-device
+  and generating. Median 31.8 s per document on the Air, prefill 89%, at
+  about 118 prompt tokens/s against the memory spike's 1,830 for the same
+  model: likely a GPU spill at the larger context, measured on the Air in
+  #152 before any performance work. Phase 3 closes after #149 (on-device
   check of the app features and the demo video).
 - **ADR-0009 stage complete end to end** (amendment accepted, #54): two-stage
   scan with reconciliation verdicts plus one typed re-extraction on confident

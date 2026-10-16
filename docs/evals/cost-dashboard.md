@@ -7,7 +7,7 @@ recorded. Load and generating are reported by the runtime; **prefill**
 by difference. Regenerate with `pnpm eval:cost`; CI replays it and fails on
 drift.
 
-Generated at commit `e6a937ed8dd5` over 10 fixture extractions with `qwen3-vl:2b`.
+Generated at commit `5303b0149021` over 10 fixture extractions with `qwen3-vl:2b`.
 
 ## Headline
 
@@ -21,7 +21,8 @@ Generated at commit `e6a937ed8dd5` over 10 fixture extractions with `qwen3-vl:2b
 - **Prefill is 89% of all the time.** The model writes about
   100 tokens at roughly 43 tokens per second, a couple of seconds; the rest
   is reading a prompt of about 3,300 tokens, most of them the page image,
-  at a median of about 118 prompt tokens per second.
+  at a median of about 118 prompt tokens per second (see below:
+  that rate is far below what the memory spike measured).
 - Slowest call: id_document-001, 44.6 s.
 
 ## Per fixture
@@ -41,16 +42,22 @@ Generated at commit `e6a937ed8dd5` over 10 fixture extractions with `qwen3-vl:2b
 
 ## What this means
 
-- **Shrinking the image is the lever, not a faster decoder.** Output length
-  barely matters; the prompt's image tokens do. Downscaling pages before
-  extraction, or reading text with the OCR arm (#8) and sending less image,
-  attacks the 89% share directly.
-- **The incremental scan (ADR-0012) is what makes this bearable.** An
-  unchanged document costs no model call at all on the next scan.
-- **The memory spike's "a few seconds" was a smaller page.** That run
-  (`docs/evals/model-memory-spike.md`) used one 816x1000 page; the
-  fixtures are rendered at 1632x2000, four times the pixels, which is where
-  the prompt tokens come from.
+- **Reading the input is the cost, not writing the answer.** Generating
+  takes about 2 s; prefill takes the rest.
+- **The prefill rate is the open question.** The memory spike measured this
+  same model reading its prompt at about 1,830 tokens per second, warm and
+  fully on the GPU (`docs/evals/model-memory-spike.md`). These recordings
+  read at about 118. The fixtures (1632x2000) have four times the
+  spike page's pixels, which explains about three times the tokens but not a
+  rate about 15 times slower. The likeliest cause is the larger context
+  spilling off the GPU, as the 4b model did in the spike; contention at
+  recording time is the other candidate. #152 measures it on the Air.
+- **Either way, the levers are on the input side.** Keep the context on the
+  GPU (a smaller image, a smaller context, flash attention), or send less
+  image by reading text with the OCR arm (#8). A faster decoder would save
+  about 2 s.
+- **The incremental scan (ADR-0012) already removes the cost for unchanged
+  documents**: they make no model call at all on the next scan.
 
 ## Caveats
 
