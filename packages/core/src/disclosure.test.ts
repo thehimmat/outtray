@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { firstRunNotice, IDENTIFIER_STORAGE_DISCLOSURE } from './disclosure.js';
+import {
+  APP_IDENTIFIER_STORAGE_DISCLOSURE,
+  firstRunNotice,
+  IDENTIFIER_STORAGE_DISCLOSURE,
+} from './disclosure.js';
 
-describe('IDENTIFIER_STORAGE_DISCLOSURE', () => {
+describe.each([
+  ['the CLI', IDENTIFIER_STORAGE_DISCLOSURE, /outtray reveal/],
+  ['the app', APP_IDENTIFIER_STORAGE_DISCLOSURE, /Reveal button/],
+])('the identifier storage disclosure for %s', (_host, text, revealHow) => {
   // The ADR-0011 honesty requirements, one assertion each, so a later rewrite
-  // of the wording cannot quietly drop one.
-  const text = IDENTIFIER_STORAGE_DISCLOSURE;
+  // of the wording cannot quietly drop one from either host's text.
 
   it('presents the choice in the user terms ADR-0011 names, off by default', () => {
     expect(text).toMatch(/remember your ID numbers/);
@@ -12,10 +18,11 @@ describe('IDENTIFIER_STORAGE_DISCLOSURE', () => {
     expect(text).toMatch(/off unless you turn it on/i);
   });
 
-  it('says the number is kept once, encrypted, and shown only on request', () => {
+  it('says the number is kept once, encrypted, and shown only on request, by that host', () => {
     expect(text).toMatch(/once/);
     expect(text).toMatch(/encrypted/);
-    expect(text).toMatch(/outtray reveal/);
+    expect(text).toMatch(/shown only when you ask/);
+    expect(text).toMatch(revealHow);
   });
 
   it('states the best-effort limit as reducing copies, never guaranteeing one', () => {
@@ -37,6 +44,12 @@ describe('IDENTIFIER_STORAGE_DISCLOSURE', () => {
 
   it('stays short enough to be read: under 15 lines', () => {
     expect(text.trimEnd().split('\n').length).toBeLessThan(15);
+  });
+});
+
+describe('APP_IDENTIFIER_STORAGE_DISCLOSURE', () => {
+  it('does not send an app user to a CLI command', () => {
+    expect(APP_IDENTIFIER_STORAGE_DISCLOSURE).not.toMatch(/outtray reveal/);
   });
 });
 

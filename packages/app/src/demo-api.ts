@@ -20,6 +20,7 @@ import {
   userVerdict,
 } from '@outtray/core';
 import type { OuttrayApi, PlannedFolder } from './api.js';
+import { plannedDocuments } from './planned-documents.js';
 
 const usage = { loadMs: 0, promptTokens: 0, genTokens: 0, genTokPerSec: null, totalMs: 0 };
 
@@ -135,7 +136,9 @@ function item(
  * The demo host. `today` is injectable so the queue is deterministic in tests.
  *
  * Failure modes: `setDocumentType` rejects for an item not in the last plan
- * or a type that cannot be pinned, and `search` before any plan; nothing else rejects, and it never touches
+ * or a type that cannot be pinned, `search` before any plan, and
+ * `revealIdentifier` for a document not in the last plan. It never remembers
+ * a number, so a reveal always resolves `not_stored`; nothing else rejects, and it never touches
  * a real folder. Marks and pins last for the page's lifetime.
  */
 export function demoApi(
@@ -146,6 +149,7 @@ export function demoApi(
   const pins = new Map<string, DocumentType>();
   const files = new Map<string, string>();
   let lastReport: ScanReport | null = null;
+  let identifierStorage = false;
   return {
     async chooseFolder() {
       return 'Demo documents';
@@ -171,6 +175,7 @@ export function demoApi(
         skipped: [],
         notes: ['Demo mode: synthetic documents, planned by the real Outtray planner.'],
         reviewed: [...reviewed],
+        documents: plannedDocuments(lastReport),
       };
     },
     async setReviewed(itemId: string, on: boolean) {
@@ -185,6 +190,19 @@ export function demoApi(
       const extracted = [...DEMO, DISPUTED].find(([name]) => name === file)?.[1];
       // The demo cannot read a document again; the real host does (#67).
       return { reextract: extracted?.type !== type, learned: true };
+    },
+    async readSettings() {
+      return { identifierStorage };
+    },
+    async setIdentifierStorage(on: boolean) {
+      identifierStorage = on;
+      return { identifierStorage, purged: 0 };
+    },
+    async revealIdentifier(file: string) {
+      const item = lastReport?.items.find((i) => i.file === file);
+      if (!item) throw new Error('This document is not in the last plan; plan the folder again.');
+      // The demo never remembers a number, whatever the setting says.
+      return 'not_stored' as const;
     },
     async search(query: string) {
       if (!lastReport) throw new Error('Plan a folder first; search looks through its documents.');

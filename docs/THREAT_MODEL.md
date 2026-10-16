@@ -90,6 +90,17 @@ Conclusions:
 - Crash logs and telemetry: there is no telemetry; crash reporting, if ever
   added, must be opt-in and document-content-free.
 
+## What the desktop app's page may read
+
+The app's page (the webview) renders text the model extracted from
+documents, so it is treated as the least trusted part of the app. It reaches
+the store only through the Rust bridge, and the bridge refuses
+`getIdentifier`: the page can write and purge remembered ID numbers but never
+read one. Revealing a number is a Rust command that shows it in a native
+dialog (ADR-0013 amendment 1); the page learns only whether one was shown.
+Turning on remembering ID numbers also asks in a native dialog, so the page
+cannot opt the person in by itself.
+
 ## Who may read the database key
 
 The key is a legacy Keychain item, and macOS trusts only the program that

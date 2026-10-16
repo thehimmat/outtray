@@ -1,15 +1,18 @@
 /**
  * The app shell's one screen for now: choose a folder, see its proposed
  * action queue, settle questioned types, plan the same folder again to see
- * the result, and search the folder's documents. The host behind `api` is the demo until the Tauri adapters
+ * the result, search the folder's documents, list them with ID numbers
+ * redacted (revealed only in a native window), and change the one setting. The host behind `api` is the demo until the Tauri adapters
  * land (ADR-0013).
  */
 
-import { FolderOpen, LoaderCircle, RefreshCw } from 'lucide-react';
+import { FolderOpen, LoaderCircle, RefreshCw, Settings } from 'lucide-react';
 import { useState } from 'react';
 import type { OuttrayApi, PlannedFolder } from './api.js';
+import { DocumentsView } from './DocumentsView.js';
 import { QueueView } from './QueueView.js';
 import { SearchView } from './SearchView.js';
+import { SettingsView } from './SettingsView.js';
 
 type State =
   | { kind: 'idle' }
@@ -20,6 +23,7 @@ type State =
 export function App({ api }: { api: OuttrayApi }) {
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [runs, setRuns] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
 
   const plan = async (folder: string) => {
     setState({ kind: 'planning', folder });
@@ -52,8 +56,21 @@ export function App({ api }: { api: OuttrayApi }) {
               <RefreshCw aria-hidden="true" size={18} /> Plan again
             </button>
           ) : null}
+          <button
+            type="button"
+            aria-expanded={showSettings}
+            onClick={() => setShowSettings((v) => !v)}
+          >
+            <Settings aria-hidden="true" size={18} /> Settings
+          </button>
         </div>
       </header>
+      {showSettings ? (
+        <SettingsView
+          readSettings={api.readSettings}
+          setIdentifierStorage={(on) => api.setIdentifierStorage(on)}
+        />
+      ) : null}
       {state.kind === 'idle' ? (
         <p className="intro">
           Point Outtray at a folder of documents. It reads them on this computer and proposes what
@@ -92,6 +109,11 @@ export function App({ api }: { api: OuttrayApi }) {
             initialReviewed={state.result.reviewed}
             onReviewedChange={(id, reviewed) => api.setReviewed(id, reviewed)}
             onTypeChange={(id, type) => api.setDocumentType(id, type)}
+          />
+          <DocumentsView
+            key={`documents-${state.run}`}
+            documents={state.result.documents}
+            onReveal={(file) => api.revealIdentifier(file)}
           />
           <SearchView key={`search-${state.run}`} onSearch={(query) => api.search(query)} />
         </>

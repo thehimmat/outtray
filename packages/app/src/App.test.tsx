@@ -55,13 +55,11 @@ describe('App', () => {
   it('shows the host error in plain words and lets the person try again', async () => {
     const user = userEvent.setup();
     const api: OuttrayApi = {
+      ...demoApi(),
       chooseFolder: async () => '/docs',
       planFolder: async () => {
         throw new Error('The local model is not running. Start Ollama and try again.');
       },
-      setReviewed: async () => {},
-      setDocumentType: async () => ({ reextract: false, learned: false }),
-      search: async () => [],
     };
     render(<App api={api} />);
     await user.click(screen.getByRole('button', { name: /Choose a folder/ }));
@@ -124,5 +122,63 @@ describe('App', () => {
     expect((await screen.findByRole('alert')).textContent).toMatch(
       /Could not search: The local model is not running/,
     );
+  });
+
+  it('lists the documents read with ID numbers redacted, and reveals through the host', async () => {
+    const user = userEvent.setup();
+    const asked: string[] = [];
+    const api: OuttrayApi = {
+      ...demoApi(() => '2026-07-22'),
+      revealIdentifier: async (file) => {
+        asked.push(file);
+        return file === 'auto-policy.png' ? 'shown' : 'not_stored';
+      },
+    };
+    render(<App api={api} />);
+    await user.click(screen.getByRole('button', { name: /Choose a folder/ }));
+    const summary = await screen.findByText(/Documents read \(5\)/);
+    await user.click(summary);
+    const list = within(summary.closest('details') as HTMLElement);
+    const policy = list.getByRole('listitem', { name: /auto-policy\.png/ });
+    expect(policy.textContent).toMatch(/policy_number ending 4220/);
+    const bill = list.getByRole('listitem', { name: /electric-bill\.png/ });
+    expect(within(bill).queryByRole('button', { name: /Reveal/ })).toBeNull();
+
+    await user.click(within(policy).getByRole('button', { name: /Reveal/ }));
+    expect((await within(policy).findByRole('status')).textContent).toMatch(/its own window/);
+    const license = list.getByRole('listitem', { name: /drivers-license\.png/ });
+    await user.click(within(license).getByRole('button', { name: /Reveal/ }));
+    expect((await within(license).findByRole('status')).textContent).toMatch(/Not remembered/);
+    expect(asked).toEqual(['auto-policy.png', 'drivers-license.png']);
+    expect(document.body.textContent).not.toMatch(/D8923829|POL-804220/);
+  });
+
+  it('shows the disclosure before turning on remembering ID numbers, and says what off deleted', async () => {
+    const user = userEvent.setup();
+    render(<App api={demoApi(() => '2026-07-22')} />);
+    await user.click(screen.getByRole('button', { name: /Settings/ }));
+    const panel = await screen.findByRole('region', { name: /Settings/ });
+    expect(within(panel).getByText(/Remembering ID numbers is off/)).toBeTruthy();
+    expect(panel.textContent).toMatch(/best effort/);
+    expect(panel.textContent).toMatch(/Reveal button/);
+    await user.click(within(panel).getByRole('button', { name: /Remember ID numbers/ }));
+    expect(await within(panel).findByText(/Remembering ID numbers is on/)).toBeTruthy();
+    await user.click(within(panel).getByRole('button', { name: /Stop remembering/ }));
+    expect(await within(panel).findByText(/Remembering ID numbers is off/)).toBeTruthy();
+    expect(within(panel).getByRole('status').textContent).toMatch(/Deleted 0 remembered/);
+  });
+
+  it('says the setting did not change when the host reports it was declined', async () => {
+    const user = userEvent.setup();
+    const api: OuttrayApi = {
+      ...demoApi(() => '2026-07-22'),
+      setIdentifierStorage: async () => ({ identifierStorage: false, purged: 0 }),
+    };
+    render(<App api={api} />);
+    await user.click(screen.getByRole('button', { name: /Settings/ }));
+    const panel = await screen.findByRole('region', { name: /Settings/ });
+    await user.click(await within(panel).findByRole('button', { name: /Remember ID numbers/ }));
+    expect((await within(panel).findByRole('status')).textContent).toBe('Not changed.');
+    expect(within(panel).getByText(/Remembering ID numbers is off/)).toBeTruthy();
   });
 });
