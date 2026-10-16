@@ -112,6 +112,19 @@ When those conflict, favor the showcase.
   sends no event to this session: after a recording run, fetch the branch
   instead of waiting. Not wired into `scan` yet; classify-first
   (ADR-0009 section 1) and #97 build on it.
+- **Handoff (2026-10-16, cloud session)**: #162 (`--enhance` preprocessing,
+  harsh 8 to 11/36, off by default) is merged. In flight, owned by Claude,
+  self-mergeable when green:
+  - #164 (`feat/ocr-readability`, draft): `assessReadability` in core plus
+    its eval (10/10 unreadable pages flagged, 0 false alarms, in-sample).
+    main is already merged in and the scoreboard regenerated. Remaining:
+    confirm CI is green on the head (fetch the branch first: the `ocr` job's
+    recording push sends no event and starts no CI; if it pushed, pull, run
+    `pnpm eval:ocr`, commit and push), self-review, mark ready, merge.
+  - Then: #159 (OCR text into `scan`, classify-first, unreadable pages to
+    the VLM or an attention flag per #163) is the next substantive
+    cloud-doable item; its accuracy measurement needs the Air. #160 keeps
+    `RecognizeDocumentsRequest` and timing on the Air.
 - **Competitive teardown** (`docs/research/competitive-teardown.md`, #155,
   #156, from vendor sites and repos): paperless-ngx v3 has opt-in local AI;
   paperless-ai is unmaintained; Paperspell (cloud) shows per-document

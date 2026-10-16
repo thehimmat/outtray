@@ -21,7 +21,7 @@
 
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { type OcrResult, ocrPlainText, parseOcrOutput } from '@outtray/core';
+import { assessReadability, type OcrResult, ocrPlainText, parseOcrOutput } from '@outtray/core';
 import { SCORED_FIELDS } from './field-kinds.js';
 import type { FixtureLabels } from './fixtures/generate.js';
 import {
@@ -443,4 +443,58 @@ export function summarizeByLevel(
     if (at.length > 0) out[level] = summarizeOcr(at);
   }
   return out;
+}
+
+/** A page is truly unreadable when its OCR text misses more than this share of labelled fields. */
+export const UNREADABLE_MISS_SHARE = 0.25;
+
+export interface ReadabilityPage {
+  id: string;
+  /** Ground truth: the OCR text missed more than `UNREADABLE_MISS_SHARE` of the fields. */
+  unreadable: boolean;
+  /** The detector (`assessReadability`) called it unreadable. */
+  flagged: boolean;
+  reasons: string[];
+}
+
+export interface ReadabilityScore {
+  counts: {
+    /** Unreadable and flagged: the page goes to the VLM or a rescan, as it should. */
+    flaggedUnreadable: number;
+    /** Readable but flagged: one extra VLM call or rescan prompt. */
+    falseAlarm: number;
+    /** Unreadable but passed: fields silently lost. The costly error. */
+    missedUnreadable: number;
+    passedReadable: number;
+  };
+  pages: ReadabilityPage[];
+}
+
+/**
+ * Score the readability detector (#163) against what the OCR actually read.
+ *
+ * Failure modes: none; a row with no recorded result or no scored fields is
+ * skipped.
+ */
+export function scoreReadability(
+  rows: readonly OcrFixtureScore[],
+  results: ReadonlyMap<string, OcrResult>,
+): ReadabilityScore {
+  const counts = { flaggedUnreadable: 0, falseAlarm: 0, missedUnreadable: 0, passedReadable: 0 };
+  const pages: ReadabilityPage[] = [];
+  for (const row of rows) {
+    const result = results.get(row.id);
+    if (!result || row.fields.length === 0) continue;
+    const missed = row.fields.filter((f) => !f.found).length / row.fields.length;
+    const unreadable = missed > UNREADABLE_MISS_SHARE;
+    const verdict = assessReadability(result);
+    const flagged = !verdict.readable;
+    const reasons = [...new Set(verdict.pages.flatMap((p) => p.reasons))];
+    pages.push({ id: row.id, unreadable, flagged, reasons });
+    if (unreadable && flagged) counts.flaggedUnreadable += 1;
+    else if (flagged) counts.falseAlarm += 1;
+    else if (unreadable) counts.missedUnreadable += 1;
+    else counts.passedReadable += 1;
+  }
+  return { counts, pages };
 }

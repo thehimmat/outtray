@@ -15,6 +15,7 @@ import {
   replayRecognizer,
   runOcrReport,
   scoreOcrFixture,
+  scoreReadability,
   summarizeByLevel,
   summarizeOcr,
   verifyDegradedManifest,
@@ -147,6 +148,46 @@ describe('identifiers are matched character for character', () => {
   it('misses it in another case or with a space inside', () => {
     expect(idFound('License number c4821983')).toBe(false);
     expect(idFound('License number C482 1983')).toBe(false);
+  });
+});
+
+describe('scoreReadability', () => {
+  const row = (id: string, found: boolean[]) => ({
+    id,
+    level: 'clean' as const,
+    fields: found.map((f, i) => ({ field: `f${i}`, expected: 'x', found: f })),
+    words: { found: 0, total: 0 },
+    lines: 0,
+    minConfidence: null,
+    elapsedMs: 0,
+  });
+  const body = 'Payments received after the due date';
+
+  it('counts the detector against pages where the OCR missed over a quarter of the fields', () => {
+    const results = new Map([
+      ['read', ocr(...Array(10).fill(body))],
+      ['missed', ocr('Metro Electric')],
+      ['false-alarm', ocr('short')],
+    ]);
+    const out = scoreReadability(
+      [
+        row('read', [true, true, true, true]),
+        row('missed', [true, false, false, false]),
+        row('false-alarm', [true, true, true, true]),
+      ],
+      results,
+    );
+    expect(out.counts).toEqual({
+      flaggedUnreadable: 1,
+      falseAlarm: 1,
+      missedUnreadable: 0,
+      passedReadable: 1,
+    });
+    expect(out.pages.find((p) => p.id === 'missed')).toMatchObject({
+      unreadable: true,
+      flagged: true,
+      reasons: ['too-little-text'],
+    });
   });
 });
 
@@ -290,9 +331,12 @@ describe('the committed OCR recordings and snapshot', () => {
   it('replaying them reproduces fixtures/ocr.json', async () => {
     const snapshot = JSON.parse(await readFile(join(fixturesRoot(), 'ocr.json'), 'utf8'));
     for (const variant of OCR_VARIANTS) {
-      const { rows } = await runOcrReport(replayRecognizer(variant));
+      const { rows, results } = await runOcrReport(replayRecognizer(variant));
       expect(rows).toEqual(snapshot.variants[variant].rows);
       expect(summarizeByLevel(rows)).toEqual(snapshot.variants[variant].byLevel);
+      if (variant === 'default') {
+        expect(scoreReadability(rows, results)).toEqual(snapshot.readability);
+      }
     }
   });
 });

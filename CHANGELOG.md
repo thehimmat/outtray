@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a page before recognition: upscale, noise reduction, grayscale, contrast.
   On the poor phone photos it gains 4 fields and loses 1 (8 to 11 of 36)
   and recovers no identifier, so it is off by default (#160).
+- Core can tell when the OCR arm did not really read a page
+  (`assessReadability`, #163): too little text, or only large text, the
+  shape of Vision's failure on poor photos. On the 30 recorded OCR pages it
+  flags all 10 that lost fields and none of the 20 that did not (thresholds
+  set on those same pages; real scans unmeasured). Routing such pages to the
+  VLM or a rescan prompt follows with #159.
 
 - The OCR eval reads degraded pages too (#160): a simulated flatbed scan and
   a poor phone photo of every fixture, with Vision's language correction on

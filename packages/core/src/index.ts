@@ -105,6 +105,14 @@ export {
   parseOcrOutput,
 } from './ocr-contract.js';
 export {
+  assessReadability,
+  type PageReadability,
+  READABILITY_THRESHOLDS,
+  type ReadabilityThresholds,
+  type ReadabilityVerdict,
+  type UnreadableReason,
+} from './ocr-readability.js';
+export {
   NonLoopbackHostError,
   OllamaProvider,
   type OllamaProviderOptions,

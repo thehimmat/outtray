@@ -7,7 +7,7 @@ Regenerate with `pnpm eval:ocr`; CI replays it and fails on drift. The
 read is missed, and records and commits new recordings when the sidecar or
 the pages change.
 
-Generated at commit `e7d9752fe26b` from recordings made on macOS 26.6.2 (arm64),
+Generated at commit `8daa509b2ec1` from recordings made on macOS 26.6.2 (arm64),
 engine `vision-recognize-text` revision 3.
 
 ## Pages
@@ -60,6 +60,23 @@ Against `default`, field by field.
 - receipt-002.harsh `total` (`$97.49`): missed by default, read by enhanced
 - letter-002.harsh `sender` (`Northgate Property Mgmt`): missed by default, read by enhanced
 - id_document-002.harsh `issuer` (`State of California`): missed by default, read by enhanced
+
+## Readability detector (#163)
+
+Does the OCR result itself show that a page was not read? `assessReadability`
+(core) calls a page unreadable when it has fewer than
+130 characters or a median line height
+above 0.021 of the page (only large
+text found). Ground truth: the OCR text missed more than
+25% of the page's labelled fields. Default variant.
+
+| | Truly unreadable | Truly readable |
+| --- | --- | --- |
+| Flagged unreadable | 10 | 0 (false alarm: one extra VLM call) |
+| Passed as readable | 0 (fields silently lost) | 20 |
+
+The thresholds were set on these same pages, so this shows the signal
+separates them, not how it generalizes; real scans are unmeasured.
 
 ## Per page (default variant)
 
