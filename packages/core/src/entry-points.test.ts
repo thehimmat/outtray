@@ -37,6 +37,19 @@ describe('entry points (ADR-0013)', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('the default entry uses no Node global, which throws in WebKit (#132)', async () => {
+    const offenders: string[] = [];
+    for (const file of (await graph('index.ts')).keys()) {
+      const code = (await readFile(join(SRC, file), 'utf8'))
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      for (const name of ['Buffer', 'process', '__dirname', 'require']) {
+        if (new RegExp(`\\b${name}\\b`).test(code)) offenders.push(`${file} -> ${name}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it('the node entry is where the Node adapters live', async () => {
     const files = [...(await graph('node.ts')).keys()];
     expect(files).toEqual(

@@ -54,6 +54,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is receipt is dropped; other receipt actions (a return window) stay. Action
   eval precision 11/17 to 11/15, attention flags 3/5 to 3/3 (#140).
 
+- Core's host-neutral entry no longer touches Node's `Buffer`: the
+  embedding encoder returns a plain `Uint8Array` and the encrypted-header
+  check decodes bytes without it, so neither throws in the webview. A test
+  now fails if any module the webview loads names a Node global (#132).
+
 - The action queue no longer lists field headings the model copies into its
   action items ("Policy number", "Coverage", "Expiration date") as to-dos.
   A heading that names a deadline with a real date ("Payment due date") is
