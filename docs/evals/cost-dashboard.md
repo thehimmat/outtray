@@ -6,7 +6,7 @@ recorded. Load and generating are reported by the runtime. **Prefill**
 (reading the prompt and the page image) is the rest of the wall time, taken by difference.
 Regenerate with `pnpm eval:cost`; CI replays it and fails on drift.
 
-Generated at commit `5303b0149021` over 10 fixture extractions with `qwen3-vl:2b`.
+Generated at commit `c096c4229ce5` over 10 fixture extractions with `qwen3-vl:2b`.
 
 ## Headline
 
