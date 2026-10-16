@@ -54,6 +54,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Both crates declare `rust-version = "1.90"` and CI checks them on exactly
   that toolchain (#131).
 
+- Receipts no longer raise "Past due: Pay $36.49" flags. A receipt records a
+  payment already made, so a payment action on a document whose trusted type
+  is receipt is dropped; other receipt actions (a return window) stay. Action
+  eval precision 11/17 to 11/15, attention flags 3/5 to 3/3 (#140).
+
 - Core's host-neutral entry no longer touches Node's `Buffer`: the
   embedding encoder returns a plain `Uint8Array` and the encrypted-header
   check decodes bytes without it, so neither throws in the webview. A test
