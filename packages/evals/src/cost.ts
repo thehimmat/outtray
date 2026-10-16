@@ -7,9 +7,10 @@
  * time. Replaying them costs nothing, so CI regenerates the same breakdown the
  * dev machine measured and fails if it drifts from the committed snapshot.
  *
- * The runtime reports load and generation directly; the rest of the wall time
- * is reading the prompt and the page image (prefill) plus a little overhead,
- * so prefill is taken by difference and labeled that way.
+ * The runtime reports load and generation directly. Prefill (reading the
+ * prompt and the page image) is measured when the recording has Ollama's
+ * `prompt_eval_duration` (#150), and otherwise taken as the rest of the wall
+ * time, which includes a little overhead; each row says which.
  */
 
 import { extract, type GenerateUsage, type ModelProvider } from '@outtray/core';
@@ -22,8 +23,13 @@ export interface CallCost {
   loadMs: number;
   /** Output tokens over reported throughput; null when throughput was not reported. */
   generateMs: number | null;
-  /** Wall time left after load and generating: the prompt and image, by difference. */
+  /**
+   * Reading the prompt and image: measured by the runtime when the recording
+   * has it (#150), else the wall time left after load and generating.
+   */
   prefillMs: number | null;
+  /** True when `prefillMs` was measured, false when taken by difference. */
+  prefillMeasured: boolean;
   totalMs: number;
   promptTokens: number | null;
   genTokens: number | null;
@@ -33,21 +39,27 @@ export interface CallCost {
  * Split one call's reported usage.
  *
  * Failure modes: none; pure. A remainder below zero (runtime rounding) is
- * reported as 0; without a throughput figure, generating and prefill are null.
+ * reported as 0; without a throughput figure, generating is null, and so is
+ * prefill unless the runtime measured it.
  */
 export function breakdown(id: string, type: string, usage: GenerateUsage): CallCost {
   const generateMs =
     usage.genTokPerSec && usage.genTokens !== undefined
       ? Math.round((usage.genTokens / usage.genTokPerSec) * 1000)
       : null;
-  const prefillMs =
-    generateMs === null ? null : Math.max(0, usage.totalMs - usage.loadMs - generateMs);
+  const measured = usage.promptMs !== undefined;
+  const prefillMs = measured
+    ? (usage.promptMs as number)
+    : generateMs === null
+      ? null
+      : Math.max(0, usage.totalMs - usage.loadMs - generateMs);
   return {
     id,
     type,
     loadMs: usage.loadMs,
     generateMs,
     prefillMs,
+    prefillMeasured: measured,
     totalMs: usage.totalMs,
     promptTokens: usage.promptTokens ?? null,
     genTokens: usage.genTokens ?? null,

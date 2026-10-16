@@ -34,6 +34,7 @@ interface OllamaTiming {
   total_duration?: number;
   load_duration?: number;
   prompt_eval_count?: number;
+  prompt_eval_duration?: number;
   eval_count?: number;
   eval_duration?: number;
 }
@@ -132,6 +133,9 @@ export class OllamaProvider implements ModelProvider {
         genTokens: timing.eval_count,
         genTokPerSec: tokensPerSecond(timing.eval_count, timing.eval_duration),
         totalMs: nsToMs(timing.total_duration),
+        ...(timing.prompt_eval_duration !== undefined
+          ? { promptMs: nsToMs(timing.prompt_eval_duration) }
+          : {}),
       },
     };
   }

@@ -20,6 +20,7 @@
       "loadMs": 10409,
       "generateMs": 2388,
       "prefillMs": 30099,
+      "prefillMeasured": false,
       "totalMs": 42896,
       "promptTokens": 3319,
       "genTokens": 104
@@ -30,6 +31,7 @@
       "loadMs": 193,
       "generateMs": 2074,
       "prefillMs": 38297,
+      "prefillMeasured": false,
       "totalMs": 40564,
       "promptTokens": 3319,
       "genTokens": 86
@@ -40,6 +42,7 @@
       "loadMs": 262,
       "generateMs": 2084,
       "prefillMs": 38652,
+      "prefillMeasured": false,
       "totalMs": 40998,
       "promptTokens": 3319,
       "genTokens": 91
@@ -50,6 +53,7 @@
       "loadMs": 499,
       "generateMs": 2180,
       "prefillMs": 41937,
+      "prefillMeasured": false,
       "totalMs": 44616,
       "promptTokens": 3319,
       "genTokens": 91
@@ -60,6 +64,7 @@
       "loadMs": 174,
       "generateMs": 3673,
       "prefillMs": 23113,
+      "prefillMeasured": false,
       "totalMs": 26960,
       "promptTokens": 3319,
       "genTokens": 163
@@ -70,6 +75,7 @@
       "loadMs": 160,
       "generateMs": 2539,
       "prefillMs": 26968,
+      "prefillMeasured": false,
       "totalMs": 29667,
       "promptTokens": 3319,
       "genTokens": 113
@@ -80,6 +86,7 @@
       "loadMs": 158,
       "generateMs": 1829,
       "prefillMs": 22659,
+      "prefillMeasured": false,
       "totalMs": 24646,
       "promptTokens": 3319,
       "genTokens": 78
@@ -90,6 +97,7 @@
       "loadMs": 144,
       "generateMs": 2597,
       "prefillMs": 28165,
+      "prefillMeasured": false,
       "totalMs": 30906,
       "promptTokens": 3319,
       "genTokens": 108
@@ -100,6 +108,7 @@
       "loadMs": 402,
       "generateMs": 2207,
       "prefillMs": 30081,
+      "prefillMeasured": false,
       "totalMs": 32690,
       "promptTokens": 3319,
       "genTokens": 93
@@ -110,6 +119,7 @@
       "loadMs": 176,
       "generateMs": 3615,
       "prefillMs": 23806,
+      "prefillMeasured": false,
       "totalMs": 27597,
       "promptTokens": 3319,
       "genTokens": 159
