@@ -10,10 +10,13 @@ import {
   type Classification,
   type DocumentExtraction,
   type DocumentType,
+  type EmbeddingProvider,
   PINNABLE_TYPES,
   planActions,
   reconcileType,
   type ScanItem,
+  type ScanReport,
+  searchReport,
   userVerdict,
 } from '@outtray/core';
 import type { OuttrayApi, PlannedFolder } from './api.js';
@@ -90,6 +93,28 @@ const DISPUTED: [string, DocumentExtraction, Classification] = [
   { type: 'bill', confidence: 0.82, votes: { bill: 4, statement: 1 } },
 ];
 
+/**
+ * A stand-in for the embedding model: each word lands in one of 64 buckets,
+ * so passages sharing words with the query rank first. Deterministic and
+ * model-free; the ranking itself is core's (`searchReport`).
+ */
+const wordEmbedder: EmbeddingProvider = {
+  name: 'demo-words',
+  async embed(texts) {
+    return texts.map((text) => {
+      const v: number[] = new Array<number>(64).fill(0);
+      for (const word of text.toLowerCase().match(/[a-z]+/g) ?? []) {
+        let h = 0;
+        for (const c of word) h = (h * 31 + c.charCodeAt(0)) % 64;
+        v[h] = (v[h] ?? 0) + 1;
+      }
+      // An all-zero vector has no direction; give it one so cosine stays defined.
+      if (!v.some((x) => x > 0)) v[0] = 1;
+      return v;
+    });
+  },
+};
+
 function item(
   file: string,
   doc: DocumentExtraction,
@@ -110,7 +135,7 @@ function item(
  * The demo host. `today` is injectable so the queue is deterministic in tests.
  *
  * Failure modes: `setDocumentType` rejects for an item not in the last plan
- * or a type that cannot be pinned; nothing else rejects, and it never touches
+ * or a type that cannot be pinned, and `search` before any plan; nothing else rejects, and it never touches
  * a real folder. Marks and pins last for the page's lifetime.
  */
 export function demoApi(
@@ -120,6 +145,7 @@ export function demoApi(
   const reviewed = new Set<string>();
   const pins = new Map<string, DocumentType>();
   const files = new Map<string, string>();
+  let lastReport: ScanReport | null = null;
   return {
     async chooseFolder() {
       return 'Demo documents';
@@ -129,10 +155,8 @@ export function demoApi(
         ...DEMO.map(([file, doc]) => item(file, doc, null, pins.get(file))),
         item(DISPUTED[0], DISPUTED[1], DISPUTED[2], pins.get(DISPUTED[0])),
       ];
-      const queue = planActions(
-        { scanned: items.map((i) => i.file), skipped: [], items, classifierError: null },
-        { today: today() },
-      );
+      lastReport = { scanned: items.map((i) => i.file), skipped: [], items, classifierError: null };
+      const queue = planActions(lastReport, { today: today() });
       files.clear();
       for (const action of queue.items) {
         const source = items.find((i) =>
@@ -161,6 +185,12 @@ export function demoApi(
       const extracted = [...DEMO, DISPUTED].find(([name]) => name === file)?.[1];
       // The demo cannot read a document again; the real host does (#67).
       return { reextract: extracted?.type !== type, learned: true };
+    },
+    async search(query: string) {
+      if (!lastReport) throw new Error('Plan a folder first; search looks through its documents.');
+      if (query.trim() === '') return [];
+      // Word buckets give unrelated passages a score of 0; a real embedder rarely does.
+      return (await searchReport(wordEmbedder, lastReport, query, 5)).filter((c) => c.score > 0);
     },
   };
 }

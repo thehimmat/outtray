@@ -40,7 +40,11 @@ class FakeProvider implements ModelProvider {
 
 class FakeEmbedder implements EmbeddingProvider {
   readonly name = 'fake-embed';
+  calls = 0;
+  constructor(private readonly failure: Error | null = null) {}
   async embed(texts: string[]): Promise<number[][]> {
+    this.calls += 1;
+    if (this.failure) throw this.failure;
     return texts.map(() => [1, 0, 0]);
   }
 }
@@ -114,11 +118,11 @@ function fakeShell(files: Record<string, Uint8Array>, options: { storeFails?: bo
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
 
-function api(invoke: Invoke, provider = new FakeProvider()) {
+function api(invoke: Invoke, provider = new FakeProvider(), embedder = new FakeEmbedder()) {
   return tauriApi({
     invoke,
     pickFolder: async () => '/docs',
-    models: { provider, embedder: new FakeEmbedder() },
+    models: { provider, embedder },
     today: () => '2027-02-01',
   });
 }
@@ -285,5 +289,50 @@ describe('tauriApi', () => {
     await expect(host.setDocumentType(planned.queue.items[0]?.id ?? '', 'unknown')).rejects.toThrow(
       /cannot be pinned/,
     );
+  });
+
+  describe('search', () => {
+    it('answers from the stored chunks of the last planned folder, cited by file', async () => {
+      const shell = fakeShell({ 'bill.png': PNG });
+      const host = api(shell.invoke);
+      await host.planFolder('/docs');
+      const found = await host.search('electric bill');
+      expect(found.map((c) => c.source.documentId)).toEqual(['bill.png']);
+      expect(found[0]?.text).toMatch(/Metro Electric/);
+      expect(shell.log.filter((c) => c === 'store:listChunks')).toHaveLength(1);
+      expect(shell.isOpen()).toBe(false);
+    });
+
+    it('searches the last plan in memory when the store could not be opened', async () => {
+      const shell = fakeShell({ 'bill.png': PNG }, { storeFails: true });
+      const host = api(shell.invoke);
+      await host.planFolder('/docs');
+      const found = await host.search('electric bill');
+      expect(found.map((c) => c.source.documentId)).toEqual(['bill.png']);
+    });
+
+    it('asks for a plan first, and answers a blank query without the model', async () => {
+      const shell = fakeShell({ 'bill.png': PNG });
+      const embedder = new FakeEmbedder();
+      const host = api(shell.invoke, new FakeProvider(), embedder);
+      await expect(host.search('bill')).rejects.toThrow(/Plan a folder first/);
+      await host.planFolder('/docs');
+      const before = embedder.calls;
+      expect(await host.search('   ')).toEqual([]);
+      expect(embedder.calls).toBe(before);
+    });
+
+    it('explains an unreachable embedding model', async () => {
+      const shell = fakeShell({ 'bill.png': PNG }, { storeFails: true });
+      const host = api(shell.invoke);
+      await host.planFolder('/docs');
+      const broken = api(
+        shell.invoke,
+        new FakeProvider(),
+        new FakeEmbedder(new TypeError('Failed to fetch')),
+      );
+      await broken.planFolder('/docs').catch(() => undefined);
+      await expect(broken.search('bill')).rejects.toThrow(/Start Ollama/);
+    });
   });
 });

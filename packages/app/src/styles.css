@@ -111,6 +111,29 @@ ul {
   margin-top: 6px;
   font-size: 0.9rem;
 }
+.search form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.search input {
+  flex: 1;
+  min-width: 12rem;
+  padding: 8px;
+  font: inherit;
+}
+.results {
+  padding-left: 1.5rem;
+}
+.results .score {
+  margin-left: 8px;
+  opacity: 0.7;
+  font-size: 0.85rem;
+}
+.results p {
+  margin: 4px 0 12px;
+}
 .type-choice {
   display: flex;
   flex-wrap: wrap;

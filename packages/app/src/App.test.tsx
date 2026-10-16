@@ -61,6 +61,7 @@ describe('App', () => {
       },
       setReviewed: async () => {},
       setDocumentType: async () => ({ reextract: false, learned: false }),
+      search: async () => [],
     };
     render(<App api={api} />);
     await user.click(screen.getByRole('button', { name: /Choose a folder/ }));
@@ -87,5 +88,41 @@ describe('App', () => {
   it('offers no Plan again before a folder is planned', () => {
     render(<App api={demoApi(() => '2026-07-22')} />);
     expect(screen.queryByRole('button', { name: /Plan again/ })).toBeNull();
+  });
+
+  it('searches the planned documents and cites where each passage came from', async () => {
+    const user = userEvent.setup();
+    render(<App api={demoApi(() => '2026-07-22')} />);
+    await user.click(screen.getByRole('button', { name: /Choose a folder/ }));
+    const box = await screen.findByRole('searchbox', { name: /Search these documents/ });
+    await user.type(box, 'grocery receipt');
+    await user.click(screen.getByRole('button', { name: /^Search$/ }));
+    const results = await screen.findByRole('list', { name: /Search results/ });
+    const first = within(results).getAllByRole('listitem')[0];
+    expect(first?.textContent).toMatch(/grocery-receipt\.png/);
+    expect(document.body.textContent).not.toMatch(/4410-2287-19|4410228719|D8923829|POL-804220/);
+  });
+
+  it('says so when a search finds nothing, and shows a search error in plain words', async () => {
+    const user = userEvent.setup();
+    const api: OuttrayApi = {
+      ...demoApi(() => '2026-07-22'),
+      search: async (q) => {
+        if (q === 'boom') throw new Error('The local model is not running.');
+        return [];
+      },
+    };
+    render(<App api={api} />);
+    await user.click(screen.getByRole('button', { name: /Choose a folder/ }));
+    const box = await screen.findByRole('searchbox', { name: /Search these documents/ });
+    await user.type(box, 'nothing here');
+    await user.click(screen.getByRole('button', { name: /^Search$/ }));
+    expect(await screen.findByText('No matching passages.')).toBeTruthy();
+    await user.clear(box);
+    await user.type(box, 'boom');
+    await user.click(screen.getByRole('button', { name: /^Search$/ }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(
+      /Could not search: The local model is not running/,
+    );
   });
 });

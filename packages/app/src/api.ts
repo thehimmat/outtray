@@ -8,7 +8,7 @@
  * proposes, the human acts (ADR-0008).
  */
 
-import type { ActionQueue, CorrectionOutcome, DocumentType } from '@outtray/core';
+import type { ActionQueue, Citation, CorrectionOutcome, DocumentType } from '@outtray/core';
 
 /** One planned folder. */
 export interface PlannedFolder {
@@ -61,4 +61,14 @@ export interface OuttrayApi {
    * written.
    */
   setDocumentType(itemId: string, type: DocumentType): Promise<CorrectionOutcome>;
+  /**
+   * The passages of the last planned folder's documents that best match
+   * `query`, as `outtray find` ranks them (ADR-0005, ADR-0012). Passages are
+   * tokenized derived text, so they never carry a full identifier
+   * (ADR-0011). A blank query resolves `[]` without loading a model.
+   *
+   * Failure modes: rejects with an Error whose message is shown to the user
+   * before any folder is planned, or when the embedding model is unreachable.
+   */
+  search(query: string): Promise<Citation[]>;
 }
