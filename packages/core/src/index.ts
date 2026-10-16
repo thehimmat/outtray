@@ -101,6 +101,7 @@ export {
 export {
   type CorrectionOutcome,
   correctDocument,
+  PINNABLE_TYPES,
   personalClassifier,
   reuseOrPin,
 } from './personalize.js';

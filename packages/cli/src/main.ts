@@ -20,8 +20,6 @@ import { fileURLToPath } from 'node:url';
 import {
   type ActionQueue,
   correctDocument,
-  DOCUMENT_TYPES,
-  type DocumentType,
   type EmbeddingProvider,
   explainStorageError,
   type FindResult,
@@ -32,6 +30,7 @@ import {
   type ModelProvider,
   OllamaEmbeddingProvider,
   OllamaProvider,
+  PINNABLE_TYPES,
   planActions,
   redactExtraction,
   revealIdentifier,
@@ -493,9 +492,6 @@ export async function runReveal(
     await storage?.close();
   }
 }
-
-/** Types a user can pin: every document type except `unknown`. */
-const PINNABLE_TYPES: readonly DocumentType[] = DOCUMENT_TYPES.filter((t) => t !== 'unknown');
 
 /**
  * `outtray correct <file> <type>`: pin a document's type (#67). The pin wins

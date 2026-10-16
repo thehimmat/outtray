@@ -244,4 +244,46 @@ describe('tauriApi', () => {
     await Promise.all(ids.map((id) => host.setReviewed(id, true)));
     expect((await host.planFolder('/docs')).reviewed.sort()).toEqual([...ids].sort());
   });
+
+  it('pins a document type from a queue item, learns from it, and re-reads it next plan', async () => {
+    const shell = fakeShell({ 'bill.png': PNG });
+    const provider = new FakeProvider();
+    const host = api(shell.invoke, provider);
+    const planned = await host.planFolder('/docs');
+    const id = planned.queue.items[0]?.id ?? '';
+
+    const change = await host.setDocumentType(id, 'statement');
+    expect(change).toEqual({ reextract: true, learned: true });
+    expect(shell.isOpen()).toBe(false);
+    const [doc] = await shell.store.listDocuments();
+    expect(doc?.userType).toBe('statement');
+    expect(doc?.reconciliation?.status).toBe('user');
+    const labels = await shell.store.listLabels();
+    expect(labels.map((l) => [l.type, l.provenance])).toEqual([['statement', 'correction']]);
+
+    const callsBefore = provider.calls;
+    await host.planFolder('/docs');
+    expect(provider.calls).toBe(callsBefore + 1);
+  });
+
+  it('refuses to pin a type for an item it did not plan, or whose document was not saved', async () => {
+    const shell = fakeShell({ 'bill.png': PNG });
+    const host = api(shell.invoke);
+    await expect(host.setDocumentType('nope', 'bill')).rejects.toThrow(/plan the folder again/);
+    const failing = fakeShell({ 'bill.png': PNG }, { storeFails: true });
+    const noStore = api(failing.invoke);
+    const planned = await noStore.planFolder('/docs');
+    await expect(
+      noStore.setDocumentType(planned.queue.items[0]?.id ?? '', 'statement'),
+    ).rejects.toThrow(/Keychain refused/);
+  });
+
+  it('refuses a type nobody can pin', async () => {
+    const shell = fakeShell({ 'bill.png': PNG });
+    const host = api(shell.invoke);
+    const planned = await host.planFolder('/docs');
+    await expect(host.setDocumentType(planned.queue.items[0]?.id ?? '', 'unknown')).rejects.toThrow(
+      /cannot be pinned/,
+    );
+  });
 });

@@ -19,12 +19,17 @@
 import type { TypeClassifier } from './classifier.js';
 import { buildClassifier } from './classifier-seeds.js';
 import type { EmbeddingProvider } from './embedding-provider.js';
-import type { DocumentType } from './extraction-schema.js';
+import { DOCUMENT_TYPES, type DocumentType } from './extraction-schema.js';
 import { derivedText } from './extraction-text.js';
 import { type ReuseKeys, reusableDocument, reusedItem } from './incremental.js';
 import { userVerdict } from './reconcile.js';
 import type { ReuseAnswer } from './scan.js';
 import type { StorageProvider, StoredDocument } from './storage-provider.js';
+
+/** Types a person can pin with a correction: every document type except `unknown`. */
+export const PINNABLE_TYPES: readonly DocumentType[] = DOCUMENT_TYPES.filter(
+  (t) => t !== 'unknown',
+);
 
 /** What a correction did. */
 export interface CorrectionOutcome {

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { App } from './App.js';
@@ -16,7 +16,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Demo documents' })).toBeTruthy();
     expect(screen.getByText(/drivers-license\.png expired 2026-01-19/)).toBeTruthy();
     expect(screen.getByRole('listitem', { name: /Pay Metro Electric \$91\.00/ })).toBeTruthy();
-    expect(screen.getByText(/4 documents read/)).toBeTruthy();
+    expect(screen.getByText(/5 documents read/)).toBeTruthy();
   });
 
   it('never shows a full ID number from the demo documents', async () => {
@@ -24,7 +24,7 @@ describe('App', () => {
     render(<App api={demoApi(() => '2026-07-22')} />);
     await user.click(screen.getByRole('button', { name: /Choose a folder/ }));
     await screen.findByRole('heading', { name: 'Demo documents' });
-    expect(document.body.textContent).not.toMatch(/D8923829|POL-804220/);
+    expect(document.body.textContent).not.toMatch(/D8923829|POL-804220|4410-2287-19|4410228719/);
   });
 
   it('takes the marks from the host, not the last screen, when a folder is planned again', async () => {
@@ -60,10 +60,32 @@ describe('App', () => {
         throw new Error('The local model is not running. Start Ollama and try again.');
       },
       setReviewed: async () => {},
+      setDocumentType: async () => ({ reextract: false, learned: false }),
     };
     render(<App api={api} />);
     await user.click(screen.getByRole('button', { name: /Choose a folder/ }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/Start Ollama/);
     expect(screen.getByRole('button', { name: /Choose a folder/ })).toBeTruthy();
+  });
+
+  it('settles a disputed type and shows the corrected queue on the next plan', async () => {
+    const user = userEvent.setup();
+    render(<App api={demoApi(() => '2026-07-22')} />);
+    await user.click(screen.getByRole('button', { name: /Choose a folder/ }));
+    const flag = await screen.findByRole('listitem', { name: /Type disputed for water-bill\.png/ });
+    await user.selectOptions(within(flag).getByRole('combobox', { name: /Document type/ }), 'bill');
+    await user.click(within(flag).getByRole('button', { name: /Set type/ }));
+    await within(flag).findByRole('status');
+
+    await user.click(screen.getByRole('button', { name: /Plan again/ }));
+    await screen.findByRole('heading', { name: 'Demo documents' });
+    expect(screen.queryByRole('listitem', { name: /Type disputed/ })).toBeNull();
+    const advice = screen.getAllByRole('listitem', { name: /Shred once payment has cleared/ });
+    expect(advice.some((li) => /water-bill\.png/.test(li.textContent ?? ''))).toBe(true);
+  });
+
+  it('offers no Plan again before a folder is planned', () => {
+    render(<App api={demoApi(() => '2026-07-22')} />);
+    expect(screen.queryByRole('button', { name: /Plan again/ })).toBeNull();
   });
 });

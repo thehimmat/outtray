@@ -8,7 +8,7 @@
  * proposes, the human acts (ADR-0008).
  */
 
-import type { ActionQueue } from '@outtray/core';
+import type { ActionQueue, CorrectionOutcome, DocumentType } from '@outtray/core';
 
 /** One planned folder. */
 export interface PlannedFolder {
@@ -49,4 +49,16 @@ export interface OuttrayApi {
    * document is not in it).
    */
   setReviewed(itemId: string, reviewed: boolean): Promise<void>;
+  /**
+   * Pin the type of the document behind one item of the last planned folder,
+   * as `outtray correct` does (#67): the pin wins over the classifier from
+   * now on, and the correction becomes an example it learns from. The queue
+   * changes on the next plan. Changes no document.
+   *
+   * Failure modes: rejects with an Error whose message is shown to the user
+   * when the type cannot be pinned (`unknown`), the item is not in the last
+   * plan, its document was not saved, or the store cannot be opened or
+   * written.
+   */
+  setDocumentType(itemId: string, type: DocumentType): Promise<CorrectionOutcome>;
 }
