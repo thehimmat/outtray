@@ -1,0 +1,118 @@
+{
+  "summary": {
+    "calls": 10,
+    "medianMs": {
+      "load": 185,
+      "prefill": 29123,
+      "generate": 2298,
+      "total": 31798
+    },
+    "slowest": {
+      "id": "id_document-001",
+      "totalMs": 44616
+    },
+    "prefillShare": 0.8894331557065058
+  },
+  "rows": [
+    {
+      "id": "bill-001",
+      "type": "bill",
+      "loadMs": 10409,
+      "generateMs": 2388,
+      "prefillMs": 30099,
+      "totalMs": 42896,
+      "promptTokens": 3319,
+      "genTokens": 104
+    },
+    {
+      "id": "receipt-001",
+      "type": "receipt",
+      "loadMs": 193,
+      "generateMs": 2074,
+      "prefillMs": 38297,
+      "totalMs": 40564,
+      "promptTokens": 3319,
+      "genTokens": 86
+    },
+    {
+      "id": "letter-001",
+      "type": "letter",
+      "loadMs": 262,
+      "generateMs": 2084,
+      "prefillMs": 38652,
+      "totalMs": 40998,
+      "promptTokens": 3319,
+      "genTokens": 91
+    },
+    {
+      "id": "id_document-001",
+      "type": "id_document",
+      "loadMs": 499,
+      "generateMs": 2180,
+      "prefillMs": 41937,
+      "totalMs": 44616,
+      "promptTokens": 3319,
+      "genTokens": 91
+    },
+    {
+      "id": "policy-001",
+      "type": "policy",
+      "loadMs": 174,
+      "generateMs": 3673,
+      "prefillMs": 23113,
+      "totalMs": 26960,
+      "promptTokens": 3319,
+      "genTokens": 163
+    },
+    {
+      "id": "bill-002",
+      "type": "bill",
+      "loadMs": 160,
+      "generateMs": 2539,
+      "prefillMs": 26968,
+      "totalMs": 29667,
+      "promptTokens": 3319,
+      "genTokens": 113
+    },
+    {
+      "id": "receipt-002",
+      "type": "receipt",
+      "loadMs": 158,
+      "generateMs": 1829,
+      "prefillMs": 22659,
+      "totalMs": 24646,
+      "promptTokens": 3319,
+      "genTokens": 78
+    },
+    {
+      "id": "letter-002",
+      "type": "letter",
+      "loadMs": 144,
+      "generateMs": 2597,
+      "prefillMs": 28165,
+      "totalMs": 30906,
+      "promptTokens": 3319,
+      "genTokens": 108
+    },
+    {
+      "id": "id_document-002",
+      "type": "id_document",
+      "loadMs": 402,
+      "generateMs": 2207,
+      "prefillMs": 30081,
+      "totalMs": 32690,
+      "promptTokens": 3319,
+      "genTokens": 93
+    },
+    {
+      "id": "policy-002",
+      "type": "policy",
+      "loadMs": 176,
+      "generateMs": 3615,
+      "prefillMs": 23806,
+      "totalMs": 27597,
+      "promptTokens": 3319,
+      "genTokens": 159
+    }
+  ]
+}
