@@ -1,0 +1,50 @@
+{
+  "page": "policy-002.harsh",
+  "variant": "enhanced",
+  "imageSha256": "6d7d4a9f8ead3b1aaf5e209cee389293e383aef0ae8e1e156dc727569b8eb3e4",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1237.7,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Evergrene Mutual",
+            "confidence": 1,
+            "box": {
+              "x": 0.1095,
+              "y": 0.0415,
+              "width": 0.191,
+              "height": 0.0263
+            }
+          },
+          {
+            "text": "Insurance Policy Declarations",
+            "confidence": 1,
+            "box": {
+              "x": 0.102,
+              "y": 0.0956,
+              "width": 0.3897,
+              "height": 0.0507
+            }
+          },
+          {
+            "text": "Tire",
+            "confidence": 0.5,
+            "box": {
+              "x": 0.0927,
+              "y": 0.266,
+              "width": 0.0357,
+              "height": 0.0131
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

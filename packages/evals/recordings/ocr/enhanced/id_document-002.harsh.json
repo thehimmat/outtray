@@ -1,0 +1,40 @@
+{
+  "page": "id_document-002.harsh",
+  "variant": "enhanced",
+  "imageSha256": "edc67efca3fc7ae47562ea83be9e7f6e9db4e06a64c603232fc632f92b3015d7",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 1284.7,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "State of California",
+            "confidence": 1,
+            "box": {
+              "x": 0.1093,
+              "y": 0.0389,
+              "width": 0.1952,
+              "height": 0.0301
+            }
+          },
+          {
+            "text": "Identification Cand",
+            "confidence": 1,
+            "box": {
+              "x": 0.1022,
+              "y": 0.0988,
+              "width": 0.245,
+              "height": 0.035
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

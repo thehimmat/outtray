@@ -7,7 +7,7 @@ Regenerate with `pnpm eval:ocr`; CI replays it and fails on drift. The
 read is missed, and records and commits new recordings when the sidecar or
 the pages change.
 
-Generated at commit `6f06e66240f8` from recordings made on macOS 26.6.2 (arm64),
+Generated at commit `93b7105cca89` from recordings made on macOS 26.6.2 (arm64),
 engine `vision-recognize-text` revision 3.
 
 ## Pages
@@ -21,7 +21,9 @@ the same labels:
 
 **Variants**: `default` runs Vision with language correction on;
 `no-language-correction` turns it off, since correction can rewrite
-identifier-like tokens toward dictionary words.
+identifier-like tokens toward dictionary words; `enhanced` keeps correction
+on and preprocesses the image first (`outtray-ocr --enhance`: upscale an
+image narrower than 1600 px, reduce noise, grayscale, raise contrast).
 
 ## Headline
 
@@ -33,6 +35,9 @@ identifier-like tokens toward dictionary words.
 | clean | no-language-correction | 36/36 (100%) | 4/4 (100%) | 373/375 (99%) | 1597 |
 | scan | no-language-correction | 36/36 (100%) | 4/4 (100%) | 373/375 (99%) | 1577 |
 | harsh | no-language-correction | 9/36 (25%) | 0/4 (0%) | 43/375 (11%) | 1198 |
+| clean | enhanced | 36/36 (100%) | 4/4 (100%) | 373/375 (99%) | 1979 |
+| scan | enhanced | 36/36 (100%) | 4/4 (100%) | 373/375 (99%) | 2163 |
+| harsh | enhanced | 11/36 (31%) | 0/4 (0%) | 52/375 (14%) | 2164 |
 
 - **Fields**: the labelled value is present in the OCR text (normalized;
   amounts need a currency sign or cents, text matches on word boundaries).
@@ -40,9 +45,21 @@ identifier-like tokens toward dictionary words.
   read character for character.
 - **Words**: rendered words present in the OCR text, as a multiset.
 
-## Where language correction changes the result
+## Where a variant changes the result
 
-- letter-002.harsh `sender` (`Northgate Property Mgmt`): missed with correction, read without
+Against `default`, field by field.
+
+### Language correction off
+
+- letter-002.harsh `sender` (`Northgate Property Mgmt`): missed by default, read by no-language-correction
+
+### Enhanced
+
+- receipt-001.harsh `merchant` (`Northside Grocers`): read by default, missed by enhanced
+- receipt-002.harsh `merchant` (`Sunbelt Mart`): missed by default, read by enhanced
+- receipt-002.harsh `total` (`$97.49`): missed by default, read by enhanced
+- letter-002.harsh `sender` (`Northgate Property Mgmt`): missed by default, read by enhanced
+- id_document-002.harsh `issuer` (`State of California`): missed by default, read by enhanced
 
 ## Readability detector (#163)
 
@@ -131,6 +148,41 @@ separates them, not how it generalizes; real scans are unmeasured.
 | policy-002.scan | 3/3 | 100% | 10 | 1 | 1006 | - |
 | policy-002.harsh | 0/3 | 6% | 2 | 1 | 1249 | insurer, policy_number, expiry_date |
 
+## Per page (enhanced)
+
+| Page | Fields | Words | Lines | Min confidence | ms | Missed |
+| --- | --- | --- | --- | --- | --- | --- |
+| bill-001 | 4/4 | 100% | 14 | 1 | 2613 | - |
+| receipt-001 | 3/3 | 97% | 13 | 1 | 1824 | - |
+| letter-001 | 4/4 | 100% | 11 | 1 | 1830 | - |
+| id_document-001 | 4/4 | 100% | 10 | 1 | 1578 | - |
+| policy-001 | 3/3 | 100% | 10 | 1 | 2215 | - |
+| bill-002 | 4/4 | 100% | 14 | 1 | 1861 | - |
+| receipt-002 | 3/3 | 97% | 13 | 1 | 1960 | - |
+| letter-002 | 4/4 | 100% | 11 | 1 | 1999 | - |
+| id_document-002 | 4/4 | 100% | 10 | 1 | 2141 | - |
+| policy-002 | 3/3 | 100% | 10 | 1 | 2308 | - |
+| bill-001.scan | 4/4 | 100% | 14 | 1 | 2600 | - |
+| bill-001.harsh | 2/4 | 13% | 5 | 0.3 | 2188 | due_date, late_fee |
+| receipt-001.scan | 3/3 | 97% | 13 | 1 | 2193 | - |
+| receipt-001.harsh | 1/3 | 13% | 5 | 0.3 | 2415 | merchant, purchased_at |
+| letter-001.scan | 4/4 | 100% | 11 | 1 | 1401 | - |
+| letter-001.harsh | 1/4 | 17% | 4 | 0.5 | 2169 | sender, recipient, sent_date |
+| id_document-001.scan | 4/4 | 100% | 10 | 1 | 2133 | - |
+| id_document-001.harsh | 0/4 | 12% | 2 | 1 | 2286 | holder_name, id_number, issuer, expiry_date |
+| policy-001.scan | 3/3 | 100% | 10 | 1 | 2388 | - |
+| policy-001.harsh | 0/3 | 11% | 3 | 0.3 | 2313 | insurer, policy_number, expiry_date |
+| bill-002.scan | 4/4 | 100% | 14 | 1 | 2890 | - |
+| bill-002.harsh | 2/4 | 15% | 6 | 0.3 | 2158 | due_date, late_fee |
+| receipt-002.scan | 3/3 | 97% | 13 | 1 | 2123 | - |
+| receipt-002.harsh | 2/3 | 13% | 3 | 1 | 2080 | purchased_at |
+| letter-002.scan | 4/4 | 100% | 11 | 1 | 2282 | - |
+| letter-002.harsh | 2/4 | 16% | 5 | 0.3 | 1673 | recipient, sent_date |
+| id_document-002.scan | 4/4 | 100% | 10 | 1 | 1356 | - |
+| id_document-002.harsh | 1/4 | 15% | 2 | 1 | 1285 | holder_name, id_number, expiry_date |
+| policy-002.scan | 3/3 | 100% | 10 | 1 | 866 | - |
+| policy-002.harsh | 0/3 | 11% | 3 | 0.5 | 1238 | insurer, policy_number, expiry_date |
+
 ## How to read this
 
 - **Field recall is an upper bound** for anything that reads this text: a
@@ -139,7 +191,10 @@ separates them, not how it generalizes; real scans are unmeasured.
 - **Word recall** ignores order and does not count extra words, so it
   measures what was read, not layout.
 - **Timing is the sidecar's own** (image decode excluded), on the machine
-  that recorded it, a CI Mac, not the dev machine
+  that recorded it, a CI Mac, not the dev machine. A recording keeps its
+  timing until what Vision reads changes, so variants recorded in different
+  runs were timed on different runners: compare times within a variant, not
+  across them
   (`docs/evals/ocr-spike.md`).
 
 ## Caveats

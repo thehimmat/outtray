@@ -1,0 +1,120 @@
+{
+  "page": "policy-001",
+  "variant": "enhanced",
+  "imageSha256": "e899c1f33f3183c902f1bd4ce99d44db16f748de50f084ff8b298f7c4081f8a0",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 2214.9,
+    "pages": [
+      {
+        "width": 1632,
+        "height": 2000,
+        "lines": [
+          {
+            "text": "Harbor Casualty",
+            "confidence": 1,
+            "box": {
+              "x": 0.0783,
+              "y": 0.061,
+              "width": 0.1744,
+              "height": 0.0205
+            }
+          },
+          {
+            "text": "Policy POL-804220",
+            "confidence": 1,
+            "box": {
+              "x": 0.7705,
+              "y": 0.061,
+              "width": 0.1512,
+              "height": 0.016
+            }
+          },
+          {
+            "text": "Insurance Policy Declarations",
+            "confidence": 1,
+            "box": {
+              "x": 0.0744,
+              "y": 0.1171,
+              "width": 0.3886,
+              "height": 0.0295
+            }
+          },
+          {
+            "text": "Policy number",
+            "confidence": 1,
+            "box": {
+              "x": 0.0872,
+              "y": 0.1759,
+              "width": 0.1139,
+              "height": 0.0146
+            }
+          },
+          {
+            "text": "POL-804220",
+            "confidence": 1,
+            "box": {
+              "x": 0.8095,
+              "y": 0.174,
+              "width": 0.1016,
+              "height": 0.0167
+            }
+          },
+          {
+            "text": "Coverage",
+            "confidence": 1,
+            "box": {
+              "x": 0.0872,
+              "y": 0.2106,
+              "width": 0.0766,
+              "height": 0.0148
+            }
+          },
+          {
+            "text": "Comprehensive auto, $500 deductible",
+            "confidence": 1,
+            "box": {
+              "x": 0.6174,
+              "y": 0.2093,
+              "width": 0.2936,
+              "height": 0.0174
+            }
+          },
+          {
+            "text": "Expiration date",
+            "confidence": 1,
+            "box": {
+              "x": 0.0872,
+              "y": 0.244,
+              "width": 0.1174,
+              "height": 0.0147
+            }
+          },
+          {
+            "text": "December 16, 2026",
+            "confidence": 1,
+            "box": {
+              "x": 0.7527,
+              "y": 0.244,
+              "width": 0.1584,
+              "height": 0.0162
+            }
+          },
+          {
+            "text": "This policy provides the coverage described above for the policy period ending December 16, 2026.",
+            "confidence": 1,
+            "box": {
+              "x": 0.0765,
+              "y": 0.2849,
+              "width": 0.7687,
+              "height": 0.0176
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

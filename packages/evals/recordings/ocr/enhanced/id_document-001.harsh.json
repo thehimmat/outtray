@@ -1,0 +1,40 @@
+{
+  "page": "id_document-001.harsh",
+  "variant": "enhanced",
+  "imageSha256": "687e3cc6d38892714064d7fff655cb46f7618f1f966b0a0d2eac7fbb1da802ee",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 2285.5,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "State of Weshington",
+            "confidence": 1,
+            "box": {
+              "x": 0.109,
+              "y": 0.0374,
+              "width": 0.2187,
+              "height": 0.0359
+            }
+          },
+          {
+            "text": "Identitication Card",
+            "confidence": 1,
+            "box": {
+              "x": 0.1022,
+              "y": 0.1004,
+              "width": 0.2464,
+              "height": 0.0333
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

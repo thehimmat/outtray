@@ -1,0 +1,50 @@
+{
+  "page": "receipt-002.harsh",
+  "variant": "enhanced",
+  "imageSha256": "252660ffbfbd53d2a7d655b6fd7a2e44601eab7bd1b494df80b94ffbb789b038",
+  "host": "macOS 26.6.2 (arm64)",
+  "result": {
+    "contract": "ocr-v1",
+    "engine": "vision-recognize-text",
+    "engineRevision": 3,
+    "elapsedMs": 2080.3,
+    "pages": [
+      {
+        "width": 816,
+        "height": 1000,
+        "lines": [
+          {
+            "text": "Sunbelt Mart",
+            "confidence": 1,
+            "box": {
+              "x": 0.1111,
+              "y": 0.0402,
+              "width": 0.138,
+              "height": 0.0268
+            }
+          },
+          {
+            "text": "Sales Receipt",
+            "confidence": 1,
+            "box": {
+              "x": 0.1036,
+              "y": 0.114,
+              "width": 0.1829,
+              "height": 0.0329
+            }
+          },
+          {
+            "text": "$97,49",
+            "confidence": 1,
+            "box": {
+              "x": 0.8182,
+              "y": 0.3372,
+              "width": 0.0945,
+              "height": 0.0276
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

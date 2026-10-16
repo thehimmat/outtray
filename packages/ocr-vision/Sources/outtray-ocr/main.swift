@@ -1,20 +1,25 @@
 // outtray-ocr: recognize the text in one image with Apple Vision and print it
 // as one `ocr-v1` JSON object on stdout (ADR-0002, issue #8).
 //
-//   outtray-ocr [--no-language-correction] <image>   recognize; JSON on stdout
-//   outtray-ocr --contract                           print the contract version
+//   outtray-ocr [--no-language-correction] [--enhance] <image>
+//                                  recognize; JSON on stdout
+//   outtray-ocr --contract         print the contract version
 //
 // Exit status: 0 on success, 64 on bad usage, 65 when the image cannot be
-// read, 70 when Vision fails. Errors go to stderr, never to stdout, so stdout
+// read, 70 when preprocessing (--enhance) or Vision fails. Errors go to stderr, never to stdout, so stdout
 // is either a complete result or empty.
 //
 // Engine: VNRecognizeTextRequest at the accurate level. Language correction
 // is on by default; --no-language-correction turns it off, because it can
 // rewrite identifier-like tokens toward dictionary words (#160 measures both).
-// RecognizeDocumentsRequest (macOS 26, adds paragraphs and tables) is the
-// planned upgrade; the contract's `engine` field already names it.
+// --enhance preprocesses the image first (upscale a small image, reduce noise,
+// grayscale, raise contrast), for poor photos (#160; off by default, since it
+// barely helped). RecognizeDocumentsRequest (macOS
+// 26, adds paragraphs and tables) is the planned upgrade; the contract's
+// `engine` field already names it.
 
 import CoreGraphics
+import CoreImage
 import Foundation
 import ImageIO
 import OcrCore
@@ -35,8 +40,34 @@ if let flag = args.firstIndex(of: "--no-language-correction") {
   languageCorrection = false
   args.remove(at: flag)
 }
+var enhanceImage = false
+if let flag = args.firstIndex(of: "--enhance") {
+  enhanceImage = true
+  args.remove(at: flag)
+}
 guard args.count == 1, !args[0].hasPrefix("--") else {
-  fail("usage: outtray-ocr [--no-language-correction] <image> | outtray-ocr --contract", 64)
+  fail(
+    "usage: outtray-ocr [--no-language-correction] [--enhance] <image> | outtray-ocr --contract",
+    64)
+}
+
+/// Upscale a small image (`enhanceScale`, Lanczos), reduce noise, convert to
+/// grayscale and raise contrast. Rendered on the CPU so the result, and so
+/// the recording, is the same on every run.
+func enhance(_ image: CGImage) -> CGImage? {
+  var ci = CIImage(cgImage: image)
+  let scale = enhanceScale(width: image.width, height: image.height)
+  if scale > 1 {
+    ci = ci.applyingFilter(
+      "CILanczosScaleTransform",
+      parameters: [kCIInputScaleKey: scale, kCIInputAspectRatioKey: 1.0])
+  }
+  ci = ci.applyingFilter(
+    "CINoiseReduction", parameters: ["inputNoiseLevel": 0.06, "inputSharpness": 0.5])
+  ci = ci.applyingFilter(
+    "CIColorControls", parameters: [kCIInputSaturationKey: 0.0, kCIInputContrastKey: 1.5])
+  let context = CIContext(options: [.useSoftwareRenderer: true])
+  return context.createCGImage(ci, from: ci.extent.integral)
 }
 
 let path = args[0]
@@ -48,10 +79,15 @@ else {
 }
 
 let started = DispatchTime.now().uptimeNanoseconds
+var input = image
+if enhanceImage {
+  guard let enhanced = enhance(image) else { fail("could not preprocess \(path)", 70) }
+  input = enhanced
+}
 let request = VNRecognizeTextRequest()
 request.recognitionLevel = .accurate
 request.usesLanguageCorrection = languageCorrection
-let handler = VNImageRequestHandler(cgImage: image, options: [:])
+let handler = VNImageRequestHandler(cgImage: input, options: [:])
 do {
   try handler.perform([request])
 } catch {
