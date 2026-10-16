@@ -287,6 +287,11 @@ describe('replaceNearMisses (#97)', () => {
     expect(replaceNearMisses(text, 'POL-769782', R)).toEqual({ text, count: 0 });
   });
 
+  it('never redacts an ISO date, even one ending in the last four', () => {
+    const text = 'Expires 2026-12-16.';
+    expect(replaceNearMisses(text, 'D8921216', R)).toEqual({ text, count: 0 });
+  });
+
   it('does not look for near misses of values under 8 characters', () => {
     expect(replaceNearMisses('code 12346', '12345', R).count).toBe(0);
   });

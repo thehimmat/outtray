@@ -212,7 +212,8 @@ const CANDIDATE_RUN = /[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*/g;
  * a lookalike is the safe direction (#97).
  *
  * Failure modes: none; pure. Values shorter than `MIN_LAST_FOUR_LENGTH` are
- * not searched, since a short run has too many lookalikes. A rewrite that
+ * not searched, since a short run has too many lookalikes, and ISO dates are
+ * never treated as lookalikes. A rewrite that
  * splits the value with spaces, or changes more than that, still survives.
  */
 export function replaceNearMisses(
@@ -224,7 +225,8 @@ export function replaceNearMisses(
   if (needle.length < MIN_LAST_FOUR_LENGTH) return { text, count: 0 };
   let count = 0;
   const out = text.replace(CANDIDATE_RUN, (run) => {
-    if (!/\d/.test(run)) return run;
+    // A date is never an identifier, and redacting one would hide an expiry.
+    if (!/\d/.test(run) || /^\d{4}-\d{2}-\d{2}$/.test(run)) return run;
     const key = matchKey(run);
     if (Math.abs(key.length - needle.length) > 2) return run;
     const near = key.slice(-4) === needle.slice(-4) || editDistance(key, needle) <= 1;
