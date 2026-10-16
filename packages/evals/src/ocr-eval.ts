@@ -30,7 +30,7 @@ import { type FieldKind, normalizeAmount, normalizeDate, normalizeText } from '.
 /** Fields not scored for OCR: the discriminant, and free text no page states verbatim. */
 const UNSCORED = new Set(['type', 'coverage_summary']);
 
-const AMOUNT = /-?[$€£]?\s?\d[\d.,]*/g;
+const AMOUNT = /-?[$€£]?\s?\d(?:[\d.,]*\d)?/g;
 const DATES = [
   /[A-Za-z]+\.?\s+\d{1,2},?\s+\d{4}/g,
   /\d{1,2}\s+[A-Za-z]+\.?\s+\d{4}/g,
@@ -67,17 +67,18 @@ const ENTITIES: Record<string, string> = {
   '&quot;': '"',
   '&#39;': "'",
   '&nbsp;': ' ',
+  '&middot;': '\u00b7',
 };
 
 /**
- * The text a fixture's HTML renders: style and script dropped, tags turned
+ * The text a fixture's HTML renders: head, style and script dropped, tags turned
  * into spaces, the common entities decoded, whitespace collapsed.
  *
  * Failure modes: none. Only good enough for the generator's own markup.
  */
 export function htmlVisibleText(html: string): string {
   return html
-    .replace(/<(style|script)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<(head|style|script)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&[a-z#0-9]+;/gi, (e) => ENTITIES[e] ?? e)
     .replace(/\s+/g, ' ')

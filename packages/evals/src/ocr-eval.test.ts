@@ -1,13 +1,14 @@
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OCR_CONTRACT, type OcrResult } from '@outtray/core';
 import { describe, expect, it } from 'vitest';
-import type { ManifestEntry } from './fixtures/load.js';
+import { fixturesRoot, type ManifestEntry } from './fixtures/load.js';
 import {
   findField,
   htmlVisibleText,
   replayRecognizer,
+  runOcrReport,
   scoreOcrFixture,
   summarizeOcr,
   wordRecall,
@@ -49,6 +50,13 @@ describe('findField', () => {
     expect(findField('amount', '$56.00', text)).toBe(false);
   });
 
+  it('finds an amount that ends a sentence', () => {
+    expect(findField('amount', '$56.00', 'incur a late fee of $56.00. Do not mail cash.')).toBe(
+      true,
+    );
+    expect(findField('amount', '1,250', 'a fee of $1,250, payable')).toBe(true);
+  });
+
   it('finds an ISO-labelled date written out in words', () => {
     expect(findField('date', '2027-02-16', text)).toBe(true);
     expect(findField('date', '2027-02-17', text)).toBe(false);
@@ -69,6 +77,11 @@ describe('htmlVisibleText', () => {
     const html =
       '<html><head><style>p{color:red}</style></head><body><p>A &amp; B</p><td>$1.00</td></body></html>';
     expect(htmlVisibleText(html)).toBe('A & B $1.00');
+  });
+
+  it('drops the head, whose title is never rendered on the page', () => {
+    const html = '<html><head><title>Bill</title></head><body>Reg 4 &middot; Trn 1</body></html>';
+    expect(htmlVisibleText(html)).toBe('Reg 4 \u00b7 Trn 1');
   });
 });
 
@@ -164,5 +177,15 @@ describe('replayRecognizer', () => {
   it('names the missing fixture and how to record it', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'ocr-rec-'));
     await expect(replayRecognizer(dir)(entry, 'unused')).rejects.toThrow(/bill-001.*record/);
+  });
+});
+
+describe('runOcrReport (replay) matches the committed OCR snapshot', () => {
+  it('replays every fixture recording and reproduces fixtures/ocr.json', async () => {
+    const { rows } = await runOcrReport(replayRecognizer());
+    const snapshot = JSON.parse(await readFile(join(fixturesRoot(), 'ocr.json'), 'utf8'));
+    expect(rows.length).toBe(10);
+    expect(rows).toEqual(snapshot.rows);
+    expect(summarizeOcr(rows)).toEqual(snapshot.summary);
   });
 });

@@ -94,3 +94,50 @@ Cross-reference: this also resolves the ADR-0004 open question. `z.toJSONSchema(
 on a `type`-discriminated union compiled and produced valid single-branch output
 on all three models, so the classify-then-extract fallback is not required for
 Phase 1 (kept as a documented contingency).
+
+## Amendment 2 (accepted by Claude 2026-10-16, issue #8)
+
+Status: **accepted by Claude 2026-10-16.** A refinement of how the OCR arm
+is built, not a change to the decision that Apple Vision is the primary
+deterministic arm. Evidence: `docs/evals/ocr-spike.md` and
+`docs/evals/ocr-scoreboard.md`.
+
+What is built:
+
+- **The sidecar is a SwiftPM package, `packages/ocr-vision`**, producing one
+  binary, `outtray-ocr`. One image in, one `ocr-v1` JSON object on stdout,
+  errors on stderr with distinct exit statuses. It is not a pnpm workspace
+  member and Node never links it; the CLI spawns it
+  (`VisionOcr` in `@outtray/core/node`) and the app will run it as a Tauri
+  sidecar. Both parse its output with the same `parseOcrOutput`.
+- **The contract is a strict Zod schema in core (`ocr-contract.ts`)**: lines
+  of text with a 0..1 confidence and a page-normalized box, origin top left.
+  Strict means a sidecar that adds a field fails until the contract version
+  moves with it.
+- **The first engine is `VNRecognizeTextRequest`** (accurate level, language
+  correction on). The ADR named `RecognizeDocumentsRequest` first with this
+  as the fallback; the order is reversed for now, and the contract's
+  `engine` field already names both so switching is not a contract change.
+- **OCR results are recorded and replayed like model output** (ADR-0006):
+  `packages/evals/recordings/ocr`, checked against the fixture image's
+  SHA-256. Linux CI replays them; a macOS CI job builds the sidecar, runs it
+  live and fails if a field the committed snapshot read is now missed.
+
+Options considered:
+
+1. **`RecognizeDocumentsRequest` first, as the ADR ordered.** It returns
+   paragraphs, lists and tables, which is the structure we eventually want.
+   But it needs macOS 26 and a Swift-only API I could not compile outside
+   CI, and nothing downstream reads structure yet. Deferred to a follow-up,
+   not rejected.
+2. **A Node native addon calling Vision directly.** No process spawn per
+   page. But it would be the workspace's second native module (ADR-0011 kept
+   that to one file), it needs Objective-C++ bindings, and the app cannot
+   use a Node addon at all (ADR-0013). Rejected.
+3. **Tesseract first.** Portable, but an extra install for users, and the
+   ADR already makes it the cross-check arm rather than the primary.
+   Unchanged: still planned, still second.
+4. **A shared Swift library compiled into the Tauri shell instead of a
+   binary.** Saves a process for the app, but the CLI would need a second
+   path. A binary serves both hosts. Rejected for now; revisit if spawn cost
+   ever shows up next to a two-second page.

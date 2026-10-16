@@ -94,6 +94,16 @@ When those conflict, favor the showcase.
   #152 before any performance work. Phase 3 closes after #149 (on-device
   check of the app features and the demo video); then post the Phase 3
   checkpoint and file the walkthrough issue pinned to that SHA.
+- **OCR arm built (#8, ADR-0002 amendment 2)**: `packages/ocr-vision`
+  (SwiftPM, `outtray-ocr <image>`, `VNRecognizeTextRequest`) prints an
+  `ocr-v1` result validated by `core/src/ocr-contract.ts`; `VisionOcr` in
+  `@outtray/core/node` runs it. Recordings in `evals/recordings/ocr`,
+  `pnpm eval:ocr` (`docs/evals/ocr-scoreboard.md`): 36/36 labelled values
+  present, 373/375 words, about 2 s and 207 MB per page on the CI Mac. The
+  `ocr` CI job (macos-latest) builds it and fails if a field it read is
+  missed. Swift cannot be built in the cloud container; iterate through
+  that job and harvest its OCR-RECORDING log lines. Not wired into `scan`
+  yet; classify-first (ADR-0009 section 1) and #97 build on it.
 - **Competitive teardown** (`docs/research/competitive-teardown.md`, #155,
   #156, from vendor sites and repos): paperless-ngx v3 has opt-in local AI;
   paperless-ai is unmaintained; Paperspell (cloud) shows per-document

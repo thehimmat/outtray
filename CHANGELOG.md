@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The Apple Vision OCR arm (ADR-0002 amendment 2, #8): `outtray-ocr`, a
+  small Swift sidecar in `packages/ocr-vision`, reads one page image and
+  prints its text, line confidences and positions as an `ocr-v1` JSON object
+  that core validates with a strict Zod schema. On the ten fixtures it reads
+  every labelled value and 373 of 375 rendered words, in about 2 s and 207
+  MB per page on a CI Mac (`docs/evals/ocr-spike.md`). `pnpm eval:ocr`
+  replays committed recordings anywhere; a macOS CI job runs the sidecar
+  live. Not yet wired into `scan`.
+
 - `pnpm eval:noise [runs]` measures the noise floor on the dev machine, as
   the eval methodology requires before trusting a threshold or a speed
   claim: it runs the live eval several times on one commit and writes which
