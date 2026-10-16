@@ -118,11 +118,11 @@ When those conflict, favor the showcase.
   #164), votes on readable OCR text, routes a confident vote to the typed
   prompt (`routed` status) and reconciles a weak one; unreadable pages and
   OCR errors take amendment 1's path. OCR adds the recognizer key and
-  `ROUTING_VERSION` to the extractor key. Opt-in: no host turns it on yet.
-  Next: the CLI `ocr` setting (config.json is shared with the Rust app, whose
-  writer drops unknown keys, so both writers must preserve keys first), then
-  the Air measurement of the OCR-text vote, then an attention flag for
-  unreadable pages. #160 keeps `RecognizeDocumentsRequest` and timing on the
+  `ROUTING_VERSION` to the extractor key. Opt-in: `outtray settings ocr
+  on` (config.json, shared with the app; both writers keep keys they do not
+  change); the app has no OCR yet (sidecar packaging, #12). Next: the Air
+  measurement of the OCR-text vote, then an attention flag for unreadable
+  pages. #160 keeps `RecognizeDocumentsRequest` and timing on the
   Air.
 - **Competitive teardown** (`docs/research/competitive-teardown.md`, #155,
   #156, from vendor sites and repos): paperless-ngx v3 has opt-in local AI;

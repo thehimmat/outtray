@@ -42,11 +42,20 @@ fn page_may_run(op: &str) -> bool {
     !PAGE_DENIED_OPS.contains(&op)
 }
 
-/// `config.json` as core's `writeSettings` writes it.
-fn settings_json(identifier_storage: bool) -> String {
-    let body = serde_json::to_string_pretty(&json!({ "identifierStorage": identifier_storage }))
-        .unwrap_or_default();
-    format!("{body}\n")
+/// `config.json` as core's `writeSettings` writes it: `existing` (the file as
+/// it stands) with `identifierStorage` set, every other key kept, since the
+/// CLI keeps settings here too (the `ocr` setting). A file that is not a JSON
+/// object is replaced by one holding only this setting.
+fn settings_json(existing: Option<&str>, identifier_storage: bool) -> String {
+    let mut body = existing
+        .and_then(|t| serde_json::from_str::<Value>(t).ok())
+        .filter(Value::is_object)
+        .unwrap_or_else(|| json!({}));
+    body["identifierStorage"] = json!(identifier_storage);
+    format!(
+        "{}\n",
+        serde_json::to_string_pretty(&body).unwrap_or_default()
+    )
 }
 
 /// The open store, if any.
@@ -332,7 +341,8 @@ async fn write_settings(
         let mut file = options
             .open(&temp)
             .map_err(|e| error("storage", format!("Cannot write settings: {e}")))?;
-        file.write_all(settings_json(identifier_storage).as_bytes())
+        let existing = std::fs::read_to_string(dir.join("config.json")).ok();
+        file.write_all(settings_json(existing.as_deref(), identifier_storage).as_bytes())
             .map_err(|e| error("storage", format!("Cannot write settings: {e}")))?;
     }
     std::fs::rename(&temp, dir.join("config.json"))
@@ -432,10 +442,20 @@ mod tests {
 
     #[test]
     fn settings_are_written_as_core_writes_them() {
-        assert_eq!(settings_json(true), "{\n  \"identifierStorage\": true\n}\n");
         assert_eq!(
-            settings_json(false),
+            settings_json(None, true),
+            "{\n  \"identifierStorage\": true\n}\n"
+        );
+        assert_eq!(
+            settings_json(Some("not json"), false),
             "{\n  \"identifierStorage\": false\n}\n"
         );
+    }
+
+    #[test]
+    fn writing_settings_keeps_the_keys_the_cli_set() {
+        let written = settings_json(Some(r#"{"identifierStorage":false,"ocr":true}"#), true);
+        let back: Value = serde_json::from_str(&written).unwrap();
+        assert_eq!(back, json!({ "identifierStorage": true, "ocr": true }));
     }
 }

@@ -25,7 +25,7 @@ describe('readSettings', () => {
   it('reads back what was written', async () => {
     await writeSettings(path, { identifierStorage: true });
     expect(await readSettings(path)).toEqual({
-      settings: { identifierStorage: true },
+      settings: { identifierStorage: true, ocr: false },
       warning: null,
     });
   });
@@ -53,7 +53,41 @@ describe('readSettings', () => {
   });
 });
 
+describe('the ocr setting (ADR-0009 amendment 3)', () => {
+  it('is off by default and reads back what was written', async () => {
+    expect(DEFAULT_SETTINGS.ocr).toBe(false);
+    await writeSettings(path, { ocr: true });
+    expect((await readSettings(path)).settings).toEqual({ identifierStorage: false, ocr: true });
+  });
+
+  it('warns about a bad ocr value without resetting identifier storage', async () => {
+    await writeSettings(path, DEFAULT_SETTINGS);
+    await writeFile(path, JSON.stringify({ identifierStorage: true, ocr: 'on' }));
+    const { settings, warning } = await readSettings(path);
+    expect(settings).toEqual({ identifierStorage: true, ocr: false });
+    expect(warning).toMatch(/ocr in .*config\.json/);
+  });
+});
+
 describe('writeSettings', () => {
+  it('changes only the keys it is given, keeping the others and any it does not know', async () => {
+    await writeSettings(path, DEFAULT_SETTINGS);
+    await writeFile(path, JSON.stringify({ identifierStorage: true, later: 1 }));
+    await writeSettings(path, { ocr: true });
+    expect(JSON.parse(await readFile(path, 'utf8'))).toEqual({
+      identifierStorage: true,
+      later: 1,
+      ocr: true,
+    });
+  });
+
+  it('starts afresh over a file that is not a JSON object', async () => {
+    await writeSettings(path, DEFAULT_SETTINGS);
+    await writeFile(path, 'not json');
+    await writeSettings(path, { ocr: true });
+    expect(JSON.parse(await readFile(path, 'utf8'))).toEqual({ ocr: true });
+  });
+
   it('creates the data directory owner-only and the file owner-readable', async () => {
     await writeSettings(path, { identifierStorage: true });
     expect((await stat(join(dir, 'outtray'))).mode & 0o777).toBe(0o700);

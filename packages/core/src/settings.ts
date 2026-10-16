@@ -9,9 +9,13 @@
  * boolean about a setting, never anything about a document.
  *
  * Every read failure resolves to the defaults rather than rejecting, because
- * the only setting today is an opt-in and "off" is always a safe answer. The
- * reason is returned as a warning so the caller can show it instead of the
- * user wondering why the setting did not stick.
+ * every setting is an opt-in and "off" is always a safe answer. The reason is
+ * returned as a warning so the caller can show it instead of the user
+ * wondering why the setting did not stick.
+ *
+ * The desktop app writes the same file (ADR-0013), so a write changes only
+ * the keys it is given and keeps the rest, including keys this build does not
+ * know.
  */
 
 import { chmod, readFile, rename, writeFile } from 'node:fs/promises';
@@ -26,10 +30,21 @@ export interface Settings {
    * Off by default; off means only last four are ever stored (ADR-0011).
    */
   identifierStorage: boolean;
+  /**
+   * Whether scans read each new document with the OCR sidecar first and
+   * classify from its text (ADR-0009 amendment 3). Off by default until the
+   * vote on OCR text is measured; switching it re-extracts every document once.
+   */
+  ocr: boolean;
 }
 
 /** What an absent, unreadable or partial config file means. */
-export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({ identifierStorage: false });
+export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
+  identifierStorage: false,
+  ocr: false,
+});
+
+const SETTING_KEYS = ['identifierStorage', 'ocr'] as const;
 
 /** Settings as read, plus why the defaults were used, if they were. */
 export interface SettingsRead {
@@ -41,10 +56,11 @@ export interface SettingsRead {
 /**
  * Read the settings at `path`.
  *
- * Failure modes: never rejects. A missing file, or a file without the key,
- * reads as the defaults with no warning. A file that cannot be read or parsed,
- * or a value that is not a boolean, reads as the defaults for that value with
- * a warning naming the file. Only a literal `true` turns identifier storage on.
+ * Failure modes: never rejects. A missing file, or a file without a key,
+ * reads as the defaults with no warning. A file that cannot be read or parsed
+ * reads as the defaults with a warning naming the file; a value that is not a
+ * boolean reads as off for that key alone, with a warning naming the key.
+ * Only a literal `true` turns a setting on.
  */
 export async function readSettings(path: string): Promise<SettingsRead> {
   let text: string;
@@ -60,46 +76,59 @@ export async function readSettings(path: string): Promise<SettingsRead> {
     };
   }
 
+  const parsed = parseObject(text);
+  if (typeof parsed === 'string') {
+    return { settings: { ...DEFAULT_SETTINGS }, warning: `${path} ${parsed}; using defaults.` };
+  }
+
+  const settings: Settings = { ...DEFAULT_SETTINGS };
+  const warnings: string[] = [];
+  for (const key of SETTING_KEYS) {
+    const value = parsed[key];
+    if (value === undefined) continue;
+    if (typeof value === 'boolean') settings[key] = value;
+    else warnings.push(`${key} in ${path} is not true or false; treating it as off.`);
+  }
+  return { settings, warning: warnings.length > 0 ? warnings.join(' ') : null };
+}
+
+/** The JSON object in `text`, or why it is not one. */
+function parseObject(text: string): Record<string, unknown> | string {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    return {
-      settings: { ...DEFAULT_SETTINGS },
-      warning: `${path} is not valid JSON; using defaults.`,
-    };
+    return 'is not valid JSON';
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    return {
-      settings: { ...DEFAULT_SETTINGS },
-      warning: `${path} is not a JSON object; using defaults.`,
-    };
+    return 'is not a JSON object';
   }
-
-  const value = (parsed as Record<string, unknown>).identifierStorage;
-  if (value === undefined) return { settings: { ...DEFAULT_SETTINGS }, warning: null };
-  if (typeof value !== 'boolean') {
-    return {
-      settings: { ...DEFAULT_SETTINGS },
-      warning: `identifierStorage in ${path} is not true or false; treating it as off.`,
-    };
-  }
-  return { settings: { identifierStorage: value }, warning: null };
+  return parsed as Record<string, unknown>;
 }
 
 /**
- * Write `settings` to `path`, creating the data directory owner-only if needed.
- * The file is written beside the target and renamed over it, so a crash leaves
- * the old file or the new one, never half of either.
+ * Write the given settings to `path`, keeping every other key the file holds
+ * (the app writes it too), and creating the data directory owner-only if
+ * needed. The file is written beside the target and renamed over it, so a
+ * crash leaves the old file or the new one, never half of either.
  *
  * Failure modes: rejects if the directory cannot be created owner-only or the
  * filesystem refuses the write or the rename. The previous file is intact when
- * it rejects.
+ * it rejects. A file that is not a JSON object is replaced by one holding only
+ * `settings`.
  */
-export async function writeSettings(path: string, settings: Settings): Promise<void> {
+export async function writeSettings(path: string, settings: Partial<Settings>): Promise<void> {
   const dir = await ensureAppDataDir(dirname(path));
+  let existing: Record<string, unknown> = {};
+  try {
+    const parsed = parseObject(await readFile(path, 'utf8'));
+    if (typeof parsed !== 'string') existing = parsed;
+  } catch {
+    // Absent or unreadable: nothing to keep.
+  }
   const temp = join(dir, `.config.json.${process.pid}.tmp`);
-  await writeFile(temp, `${JSON.stringify(settings, null, 2)}\n`, { mode: DATABASE_FILE_MODE });
+  const body = { ...existing, ...settings };
+  await writeFile(temp, `${JSON.stringify(body, null, 2)}\n`, { mode: DATABASE_FILE_MODE });
   await chmod(temp, DATABASE_FILE_MODE);
   await rename(temp, path);
 }
