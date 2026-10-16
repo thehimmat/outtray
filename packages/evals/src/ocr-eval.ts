@@ -71,6 +71,19 @@ export function findField(kind: FieldKind, expected: string, text: string): bool
   );
 }
 
+/**
+ * Is `expected` in `text` exactly as written: same case, no inserted spaces,
+ * not inside a longer token? This is how identifiers are matched, since #97
+ * needs them read character for character.
+ *
+ * Failure modes: none; an empty value is never found.
+ */
+export function findExact(expected: string, text: string): boolean {
+  if (expected === '') return false;
+  const escaped = expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`, 'u').test(text);
+}
+
 const ENTITIES: Record<string, string> = {
   '&amp;': '&',
   '&lt;': '<',
@@ -157,7 +170,10 @@ export function scoreOcrFixture(
   for (const [field, kind] of Object.entries(kinds)) {
     const expected = labels[field];
     if (UNSCORED.has(field) || expected == null) continue;
-    fields.push({ field, expected, found: findField(kind, expected, text) });
+    const found = IDENTIFIER_FIELDS.has(field)
+      ? findExact(expected, text)
+      : findField(kind, expected, text);
+    fields.push({ field, expected, found });
   }
   const lines = result.pages.flatMap((p) => p.lines);
   return {
@@ -257,7 +273,8 @@ export async function loadDegradedManifest(): Promise<DegradedManifest> {
  * in manifest order.
  *
  * Failure modes: rejects when a manifest cannot be read, or when a degraded
- * page names a source fixture the clean manifest does not have.
+ * page names a source fixture the clean manifest does not have or a level
+ * other than the degraded ones in `OCR_LEVELS`.
  */
 export async function loadOcrPages(): Promise<OcrPage[]> {
   const clean = await loadManifest();
@@ -273,6 +290,9 @@ export async function loadOcrPages(): Promise<OcrPage[]> {
   for (const p of degraded.pages) {
     const source = byId.get(p.source);
     if (!source) throw new Error(`Degraded page ${p.id} names unknown fixture ${p.source}`);
+    if (!(OCR_LEVELS as readonly string[]).includes(p.level) || p.level === 'clean') {
+      throw new Error(`Degraded page ${p.id} has unknown level ${JSON.stringify(p.level)}`);
+    }
     pages.push({
       id: p.id,
       level: p.level,

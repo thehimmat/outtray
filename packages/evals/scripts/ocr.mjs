@@ -71,6 +71,14 @@ if (MODE === 'record' || MODE === 'check') {
       rows.flatMap((r) => r.fields.filter((f) => !f.found).map((f) => `${r.id}/${f.field}`)),
     );
     for (const r of before?.variants?.[variant]?.rows ?? []) {
+      // A page whose image changed since it was recorded is new, not regressed.
+      const page = pages.find((p) => p.id === r.id);
+      if (
+        !page ||
+        recordedSha(join(recordings, recordingPath(variant, r.id))) !== page.imageSha256
+      ) {
+        continue;
+      }
       for (const f of r.fields) {
         const key = `${r.id}/${f.field}`;
         if (f.found && missedNow.has(key)) regressed.push(`${variant}: ${key}`);
@@ -105,8 +113,8 @@ if (MODE === 'replay' || (MODE === 'record' && process.exitCode !== 1)) await re
  * recording is only rewritten when what Vision read changed.
  */
 function sameReading(path, page, result) {
-  if (!existsSync(path)) return false;
-  const old = JSON.parse(readFileSync(path, 'utf8'));
+  const old = readRecording(path);
+  if (!old) return false;
   const strip = (r) => JSON.stringify({ ...r, elapsedMs: 0 });
   return old.imageSha256 === page.imageSha256 && strip(old.result) === strip(result);
 }
@@ -121,18 +129,22 @@ async function replay() {
   writeFileSync(mdPath, markdown(variants));
   const d = variants.default.byLevel;
   process.stdout.write(
-    `OCR (default): ${OCR_LEVELS.map((l) => `${l} ${d[l].fieldsFound}/${d[l].fieldsTotal}`).join(', ')}\nwrote ${snapshotPath}\nwrote ${mdPath}\n`,
+    `OCR (default): ${OCR_LEVELS.filter((l) => d[l])
+      .map((l) => `${l} ${d[l].fieldsFound}/${d[l].fieldsTotal}`)
+      .join(', ')}\nwrote ${snapshotPath}\nwrote ${mdPath}\n`,
   );
 }
 
 function markdown(variants) {
-  const first = JSON.parse(
-    readFileSync(join(recordings, recordingPath('default', variants.default.rows[0].id)), 'utf8'),
+  const all = OCR_VARIANTS.flatMap((v) =>
+    variants[v].rows.map((r) => readRecording(join(recordings, recordingPath(v, r.id)))),
   );
+  const first = all[0];
+  const hosts = [...new Set(all.map((r) => r.host))].sort();
   const pct = (k, n) => (n === 0 ? '-' : `${Math.round((k / n) * 100)}%`);
   const frac = (k, n) => `${k}/${n} (${pct(k, n)})`;
   const headline = OCR_VARIANTS.flatMap((v) =>
-    OCR_LEVELS.map((l) => {
+    OCR_LEVELS.filter((l) => variants[v].byLevel[l]).map((l) => {
       const s = variants[v].byLevel[l];
       return `| ${l} | ${v} | ${frac(s.fieldsFound, s.fieldsTotal)} | ${frac(s.identifiersFound, s.identifiersTotal)} | ${frac(s.wordsFound, s.wordsTotal)} | ${Math.round(s.medianMs)} |`;
     }),
@@ -177,7 +189,7 @@ Regenerate with \`pnpm eval:ocr\`; CI replays it and fails on drift. The
 read is missed, and records and commits new recordings when the sidecar or
 the pages change.
 
-Generated at commit \`${gitSha}\` from recordings made on ${first.host},
+Generated at commit \`${gitSha}\` from recordings made on ${hosts.join(' and ')},
 engine \`${first.result.engine}\` revision ${first.result.engineRevision}.
 
 ## Pages
@@ -238,4 +250,19 @@ ${perPage('no-language-correction')}
   multi-page PDFs are not covered.
 - \`coverage_summary\` is free text and not scored.
 `;
+}
+
+/** A committed recording, or null when it is missing or not valid JSON (record replaces it). */
+function readRecording(path) {
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/** The image checksum a committed recording was made from, or null. */
+function recordedSha(path) {
+  return readRecording(path)?.imageSha256 ?? null;
 }

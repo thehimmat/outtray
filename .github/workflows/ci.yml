@@ -70,13 +70,20 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: write
+    # A newer push to the same PR cancels this one's recording.
+    concurrency:
+      group: ocr-${{ github.head_ref || github.run_id }}
+      cancel-in-progress: true
     env:
-      SAME_REPO_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+      # Dependabot's token is read-only whatever `permissions` says, so its
+      # PRs only check.
+      SAME_REPO_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@v7
         with:
-          # The branch itself on a same-repo PR, so the job can push to it.
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || '' }}
+          # The PR's own head commit (not the merge commit) on a same-repo
+          # PR, so a recording commit lands on top of exactly what was read.
+          ref: ${{ env.SAME_REPO_PR == 'true' && github.event.pull_request.head.sha || '' }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -101,7 +108,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add packages/evals/recordings/ocr packages/evals/fixtures/ocr.json docs/evals/ocr-scoreboard.md
           git commit -m "chore(evals): record OCR on the CI Mac"
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
+          # Fails rather than overwrite if the branch moved since this run began.
+          git push origin "HEAD:refs/heads/${GITHUB_HEAD_REF}"
 
   # The minimum Rust both crates declare (`rust-version`, #131). CI's other
   # jobs use latest stable, so without this a lockfile bump could raise the

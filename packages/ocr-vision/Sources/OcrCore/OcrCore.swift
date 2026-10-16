@@ -69,9 +69,10 @@ func unit(_ v: Double) -> Double {
 /// Reading order: rows top to bottom, left to right within a row.
 ///
 /// Two lines share a row when each one's vertical centre falls inside the
-/// other's vertical span. Requiring it both ways keeps a tall heading from
-/// absorbing the small lines beside it, while a label and its larger value
-/// on one baseline still pair up. Multi-column prose still interleaves row by
+/// other's vertical span, or when their bottoms (the baseline, roughly)
+/// align. Requiring the centres both ways keeps a tall heading from
+/// absorbing the small lines beside it; the baseline rule pairs a label with
+/// a value set much larger on the same line. Multi-column prose still interleaves row by
 /// row; RecognizeDocumentsRequest (paragraphs) is the fix for that (#160).
 public func readingOrder(_ lines: [Line]) -> [Line] {
   let byTop = lines.sorted { ($0.box.y, $0.box.x) < ($1.box.y, $1.box.x) }
@@ -88,6 +89,11 @@ public func readingOrder(_ lines: [Line]) -> [Line] {
 
 func sameRow(_ a: Line, _ b: Line) -> Bool {
   func centre(_ l: Line) -> Double { l.box.y + l.box.height / 2 }
-  func contains(_ l: Line, _ y: Double) -> Bool { y >= l.box.y && y <= l.box.y + l.box.height }
-  return contains(a, centre(b)) && contains(b, centre(a))
+  func bottom(_ l: Line) -> Double { l.box.y + l.box.height }
+  func contains(_ l: Line, _ y: Double) -> Bool { y >= l.box.y && y <= bottom(l) }
+  let mutual = contains(a, centre(b)) && contains(b, centre(a))
+  // Text set in different sizes on one line shares a baseline, which the box
+  // bottom approximates; a heading beside small lines shares only its top.
+  let baseline = abs(bottom(a) - bottom(b)) <= min(a.box.height, b.box.height) / 2
+  return mutual || baseline
 }

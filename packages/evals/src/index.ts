@@ -32,6 +32,7 @@ export {
 } from './normalize.js';
 export {
   type DegradedManifest,
+  findExact,
   findField,
   htmlVisibleText,
   IDENTIFIER_FIELDS,
@@ -58,3 +59,27 @@ export {
   verifyDegradedManifest,
   wordRecall,
 } from './ocr-eval.js';
+export {
+  RecordingProvider,
+  type RecordingProviderOptions,
+  type RecordMode,
+  StaleRecordingError,
+} from './recording-provider.js';
+export {
+  type Aggregate,
+  type EvalReport,
+  type FieldScore,
+  type FixtureScore,
+  runEval,
+  scoreFixture,
+} from './run-eval.js';
+export {
+  type Counts,
+  compareField,
+  type FieldVerdict,
+  type Interval,
+  type Proportion,
+  precisionRecall,
+  tally,
+  wilson,
+} from './score.js';

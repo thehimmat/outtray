@@ -19,6 +19,15 @@ final class ReadingOrderTests: XCTestCase {
     XCTAssertEqual(order, ["Total amount due", "$91.00", "Late fee"])
   }
 
+  func testMuchTallerValueOnTheLabelsBaselinePairsUp() {
+    // The amount is more than twice the label's height; their bottoms align.
+    let order = texts([
+      line("$91.00", x: 0.80, y: 0.3475, h: 0.035),
+      line("Total amount due", x: 0.10, y: 0.3675, h: 0.015),
+    ])
+    XCTAssertEqual(order, ["Total amount due", "$91.00"])
+  }
+
   func testTallHeadingDoesNotSwallowTheLinesBesideIt() {
     let order = texts([
       line("HEADING", x: 0.05, y: 0.10, h: 0.06),

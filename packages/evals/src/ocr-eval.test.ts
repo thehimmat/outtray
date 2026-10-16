@@ -135,6 +135,21 @@ describe('scoreOcrFixture', () => {
   });
 });
 
+describe('identifiers are matched character for character', () => {
+  const labels = { type: 'id_document' as const, id_number: 'C4821983' };
+  const idFound = (line: string) =>
+    scoreOcrFixture('x', labels, '', ocr(line)).fields.find((f) => f.field === 'id_number')?.found;
+
+  it('finds the identifier as printed', () => {
+    expect(idFound('License number C4821983')).toBe(true);
+  });
+
+  it('misses it in another case or with a space inside', () => {
+    expect(idFound('License number c4821983')).toBe(false);
+    expect(idFound('License number C482 1983')).toBe(false);
+  });
+});
+
 describe('summarizeOcr', () => {
   it('totals field, identifier and word recall and takes the median time', () => {
     const a = {
