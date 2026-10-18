@@ -217,3 +217,29 @@ describe('tallyClassification with an OCR column', () => {
     expect(tallyClassification(rows).ocr).toEqual({ k: 0, n: 0 });
   });
 });
+
+describe('tallyClassification: effective type with ocr on', () => {
+  it('takes a routed vote as the type and the reconciled type otherwise (#171)', () => {
+    const withOcr: ClassifyRow[] = rows.map((r) =>
+      r.id === 'bill-002'
+        ? { ...r, ocr: 'statement', ocrRouted: false } // weak and wrong: falls back
+        : { ...r, ocr: r.label, ocrRouted: true },
+    );
+    const report = tallyClassification([
+      ...withOcr,
+      {
+        id: 'receipt-003',
+        label: 'receipt',
+        vlm: 'receipt',
+        classifier: 'receipt',
+        confidence: 0.7,
+        reconciled: 'receipt',
+        status: 'confirmed',
+        ocr: 'bill', // routed and wrong: the typed prompt would cost its fields
+        ocrRouted: true,
+      },
+    ]);
+    expect(report.ocr).toEqual({ k: 3, n: 5 });
+    expect(report.ocrOn).toEqual({ k: 4, n: 5 });
+  });
+});

@@ -50,6 +50,8 @@ export interface ClassifyRow {
   status: string;
   /** The OCR-text vote (`unreadable` when the gate rejected the page); absent when not measured. */
   ocr?: string;
+  /** Whether that vote would route; with `ocr` on a weak vote settles nothing (#171). */
+  ocrRouted?: boolean;
 }
 
 /** Correct-count out of total for a labeller. */
@@ -66,12 +68,15 @@ export interface ClassifyReport {
   reconciled: Accuracy;
   /** The OCR-text vote; `n` is 0 when no row carries one. */
   ocr: Accuracy;
+  /** The effective type with `ocr` on: a routed vote's type, else the reconciled type. */
+  ocrOn: Accuracy;
   perType: Array<{
     type: string;
     vlm: Accuracy;
     classifier: Accuracy;
     reconciled: Accuracy;
     ocr: Accuracy;
+    ocrOn: Accuracy;
   }>;
 }
 
@@ -160,13 +165,15 @@ export function tallyOcrVotes(rows: OcrVoteRow[]): OcrVoteTally {
  * Failure modes: rejects if a fixture cannot be read, the model rejects (or, in
  * replay, a recording is missing), or the embedder rejects. `model` is the
  * extraction model tag, passed through for stable recording keys. `ocr`, when
- * given, holds each fixture's OCR-text vote by id (from `ocrVotes`) for the
- * fourth column; a fixture missing from it has no OCR column entry.
+ * given, holds each fixture's OCR-text vote and whether it routes, by id (from
+ * `ocrVotes`); a fixture missing from it has no OCR column entries. The
+ * `ocr on` column assumes a routed vote's typed extraction comes back as that
+ * type (the fallback is not replayed: there are no typed recordings for it).
  */
 export async function classifyEval(
   model: ModelProvider,
   embedder: EmbeddingProvider,
-  options: { model: string; ocr?: ReadonlyMap<string, string> },
+  options: { model: string; ocr?: ReadonlyMap<string, { vote: string; routed: boolean }> },
 ): Promise<ClassifyReport> {
   const classifier = await buildClassifier(embedder);
   const manifest = await loadManifest();
@@ -201,7 +208,7 @@ export async function classifyEval(
       confidence: classification ? classification.confidence : null,
       reconciled: reconciliation.effectiveType,
       status: reconciliation.status,
-      ...(ocr === undefined ? {} : { ocr }),
+      ...(ocr === undefined ? {} : { ocr: ocr.vote, ocrRouted: ocr.routed }),
     });
   }
 
@@ -215,6 +222,7 @@ export function tallyClassification(rows: ClassifyRow[]): ClassifyReport {
     classifier: { k: 0, n: 0 },
     reconciled: { k: 0, n: 0 },
     ocr: { k: 0, n: 0 },
+    ocrOn: { k: 0, n: 0 },
   });
   const byType = new Map<string, ReturnType<typeof blank>>();
   const overall = blank();
@@ -225,6 +233,7 @@ export function tallyClassification(rows: ClassifyRow[]): ClassifyReport {
       ['classifier', row.classifier],
       ['reconciled', row.reconciled],
       ['ocr', row.ocr],
+      ['ocrOn', row.ocr === undefined ? undefined : row.ocrRouted ? row.ocr : row.reconciled],
     ] as const) {
       if (value === undefined) continue;
       acc[labeller].n += 1;

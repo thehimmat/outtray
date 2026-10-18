@@ -250,13 +250,13 @@ amendment 1's order, unchanged.
   the generic prompt, and the two labels are reconciled as usual. If they
   then disagree the item stays `disputed` for review without another typed
   attempt: it has had its one.
-- **A vote below the threshold is a reconciliation input.** The document is
-  extracted with the generic prompt and its label reconciled against the
-  OCR vote: `confirmed` when they agree, `low_confidence` and review when
-  they do not.
+- **A vote below the threshold settles nothing** (refined 2026-10-18, see
+  refinement 1 below; it was first a reconciliation input). The document
+  takes amendment 1's path: extract with the generic prompt, classify the
+  extraction text, reconcile, re-extract once on a confident dispute.
 - **OCR joins the reuse key.** With OCR on, the extractor key (ADR-0012)
   adds the recognizer's key (contract, engine and flags) and a routing
-  version, `classify-first-v1`, to bump when the readability thresholds or
+  version (now `classify-first-v2`), to bump when the readability thresholds or
   the routing rules change. Turning OCR on or off re-extracts every document
   once; that is the price of a key that says what an extraction depends on.
 - **Opt-in until measured.** OCR routing is off unless the host turns it on.
@@ -306,5 +306,41 @@ amendment 1's order, unchanged.
   known only after OCR runs; an OS update does not invalidate stored
   extractions.
 - Stage order with OCR: OCR, embedder (vote), VLM (extract), embedder
-  (vote on what OCR could not read), VLM (typed retries), embedder (index).
-  Still batched by model; never two resident at once.
+  (vote on what OCR could not read or voted on weakly), VLM (typed
+  retries), embedder (index). Still batched by model. (Measured on the Air,
+  Ollama's keep-alive leaves both models loaded at once, about 2.4 GB; that
+  predates OCR and is tracked in #172.)
+
+### Refinement 1 (2026-10-18): a weak vote settles nothing
+
+Status: **accepted 2026-10-18 by Claude** (issue #171). It refines how
+amendment 3 is built; routing on a confident vote is unchanged.
+
+The measurement this amendment waited for ran on the Air (#170,
+`docs/evals/classification-scoreboard.md`): the OCR vote was right on 9 of
+10 fixtures, routed 8 of them and routed none wrongly, with scan-quality
+copies the same and every poor photo gated as unreadable. Routed votes sat
+at 0.68 to 0.74, wrong ones at 0.34 to 0.35. The end-to-end scan then showed
+what the eval had not modelled: `letter-002`, whose OCR text voted `bill` at
+0.35, came out `low_confidence` and went to review, where without OCR the
+vote on its extraction text says `letter` and it is `confirmed`. A vote too
+weak to act on was still displacing the better signal.
+
+Options considered:
+
+1. **Drop a weak vote; classify the extraction text as without OCR
+   (chosen).** Pros: with OCR on, a document is never classified worse than
+   with it off, except on the routed path, which the measurement covers.
+   Cons: one more embedding batch for weak-vote documents (milliseconds),
+   and the OCR text no longer adds an independent second label there.
+2. **Raise the threshold for OCR text.** Rejected: the threshold already
+   keeps this vote from routing. The fault was what a below-threshold vote
+   did, not where the line sits.
+3. **Combine the two votes.** Rejected for now: no calibration data for
+   mixing them, and N is 10.
+
+`ROUTING_VERSION` becomes `classify-first-v2`, so documents scanned with OCR
+on re-extract once. `ocr` stays off by default: the bar is every routed
+vote right and accuracy at least the classifier's, and the scoreboard's new
+"effective type, ocr on" column is what to judge it on, alongside the
+end-to-end check.

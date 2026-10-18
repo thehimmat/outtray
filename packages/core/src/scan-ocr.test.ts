@@ -216,8 +216,12 @@ describe('scanSource with an OCR recognizer (classify first, ADR-0009 amendment 
     expect(report.items[0]?.reconciliation.status).toBe('confirmed');
   });
 
-  it('extracts generically under a low-confidence vote and reconciles against it', async () => {
-    const { provider, ocr, embedder } = setup(
+  it('extracts generically under a low-confidence vote and classifies the extraction text instead', async () => {
+    // Measured on the Air (#171): a weak, wrong OCR vote (letter-002 voting bill
+    // at 0.35) used to stand in for the extraction-text vote and sent a
+    // correctly read letter to review. A vote too weak to route now settles
+    // nothing; the item is classified exactly as it would be without OCR.
+    const { log, provider, ocr, embedder } = setup(
       { 'a.png': page(VAGUE_TEXT), 'b.png': page(VAGUE_TEXT) },
       (f) => (f === 'a.png' ? BILL : STATEMENT),
     );
@@ -229,12 +233,35 @@ describe('scanSource with an OCR recognizer (classify first, ADR-0009 amendment 
     });
 
     expect(provider.requests.every((r) => !r.prompt.includes('This document'))).toBe(true);
+    expect(log.filter((l) => l.startsWith('embed'))).toEqual(['embed 2', 'embed 2']);
     for (const item of report.items) {
-      expect(item.reconciliation.classification?.confidence).toBeCloseTo(0.5);
-      // Whichever way the tie broke, a label that disagrees with it is not trusted.
-      const agrees = item.reconciliation.classification?.type === item.result.document?.type;
-      expect(item.reconciliation.status).toBe(agrees ? 'confirmed' : 'low_confidence');
+      expect(item.reconciliation.status).toBe('confirmed');
+      expect(item.reconciliation.review).toBe(false);
+      expect(item.reconciliation.classification?.type).toBe(item.result.document?.type);
+      expect(item.reconciliation.classification?.confidence).toBe(1);
     }
+  });
+
+  it('re-extracts once when the extraction-text vote confidently disputes a weak-vote item', async () => {
+    // The OCR vote is a tie; the generic label is statement; the extraction
+    // text says bill. That is the ordinary disputed path, with its one retry.
+    const { provider, ocr, embedder } = setup({ 'a.png': page(VAGUE_TEXT) }, (_f, typed) =>
+      typed ? BILL : { ...STATEMENT, summary: 'electric bill' },
+    );
+
+    const report = await scanSource(provider, memorySource(['a.png']), {
+      ocr,
+      classify: { embedder, classifier: axisClassifier(), k: 2 },
+    });
+
+    expect(provider.requests.map((r) => r.prompt === typedExtractionPrompt('bill'))).toEqual([
+      false,
+      true,
+    ]);
+    expect(report.items[0]?.reconciliation).toMatchObject({
+      effectiveType: 'bill',
+      status: 'corrected',
+    });
   });
 
   it('sends a page the OCR could not read down the extract-then-classify path', async () => {

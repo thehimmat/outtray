@@ -53,7 +53,7 @@ const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp']);
  * they rely on (ADR-0009 amendment 3). Part of the extractor key when OCR is
  * on; bump it when either changes.
  */
-export const ROUTING_VERSION = 'classify-first-v1';
+export const ROUTING_VERSION = 'classify-first-v2';
 
 /**
  * Reads a document's text before extraction (ADR-0009 amendment 3). The host
@@ -250,9 +250,9 @@ export async function scanSource(
   const ocrOutcomes = new Map<string, OcrOutcome>();
   const votes = new Map<string, Classification>();
   const threshold = options.classify?.threshold ?? CONFIDENCE_THRESHOLD;
-  // Items whose type the OCR vote already settled skip the classification
-  // stage below; a routed item that fell back has had its one typed attempt
-  // and skips the re-extraction.
+  // Items whose type a routed OCR vote already settled skip the
+  // classification stage below; a routed item that fell back has had its one
+  // typed attempt and skips the re-extraction. A weak vote settles nothing.
   const voted = new Set<ScanItem>();
   const typedTried = new Set<ScanItem>();
 
@@ -275,8 +275,9 @@ export async function scanSource(
     if (answer) return answer;
     const ocr = ocrOutcomes.get(file);
     const vote = votes.get(file) ?? null;
+    const routable = vote !== null && vote.confidence >= threshold;
     let item: ScanItem | null = null;
-    if (vote && vote.confidence >= threshold) {
+    if (routable) {
       const result = await extractFile(file, vote.type, bytes);
       if (result.valid && result.document?.type === vote.type) {
         item = { file, contentHash, result, reconciliation: routedVerdict(vote) };
@@ -288,12 +289,19 @@ export async function scanSource(
         file,
         contentHash,
         result,
-        reconciliation: reconcileType(result.document?.type ?? null, vote, threshold),
+        reconciliation: reconcileType(
+          result.document?.type ?? null,
+          routable ? vote : null,
+          threshold,
+        ),
       };
-      if (vote && vote.confidence >= threshold) typedTried.add(item);
+      if (routable) typedTried.add(item);
     }
     if (ocr) item.ocr = ocr;
-    if (vote) voted.add(item);
+    // Only a vote strong enough to route settles the type. A weak one is
+    // dropped and the item is classified from its extraction text below,
+    // exactly as without OCR (#171).
+    if (routable) voted.add(item);
     return item;
   };
 
