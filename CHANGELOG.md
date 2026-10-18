@@ -23,9 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Classify first when OCR text exists (#159, ADR-0009 amendment 3): given
   an OCR recognizer, a scan reads each new document's text before any model
   loads and votes on its type. A confident vote sends the document straight
-  to the typed prompt (one vision call; new `routed` verdict), a weak one is
-  checked against the generic extraction, and a page the OCR could not read
-  is extracted and classified as before. Measured on the Air with
+  to the typed prompt (one vision call; new `routed` verdict); a weak vote, or
+  a page the OCR could not read, is extracted and classified as before
+  (#171). Measured on the Air with
   `pnpm eval:classify` (new OCR column): the OCR vote is right on 9 of 10
   fixtures and routes 8, none wrongly; the one wrong vote (a letter, 0.35)
   falls below the threshold. Scan-quality copies give the same numbers and
@@ -130,6 +130,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- With `ocr` on, a document whose OCR text voted weakly on its type is
+  classified from its extraction text, as with `ocr` off, instead of being
+  reconciled against the weak vote (#171, ADR-0009 amendment 3 refinement
+  1). On the Air a correctly read letter had gone to review this way.
+  Documents scanned with `ocr` on re-extract once.
 - Building the desktop app on a Rust older than 1.90 now stops with Cargo's
   own message naming the minimum, instead of failing inside a dependency.
   Both crates declare `rust-version = "1.90"` and CI checks them on exactly
