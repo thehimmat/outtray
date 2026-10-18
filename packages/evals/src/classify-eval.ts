@@ -18,6 +18,7 @@
  * document its fields; `tallyOcrVotes` counts those.
  */
 
+import { join } from 'node:path';
 import {
   applyCorrection,
   assessReadability,
@@ -33,7 +34,7 @@ import {
   reconcileType,
   type TypeClassifier,
 } from '@outtray/core';
-import { loadFixture, loadManifest } from './fixtures/load.js';
+import { fixturesRoot, loadFixture, loadManifest } from './fixtures/load.js';
 import type { OcrLevel, OcrPage, PageRecognizer } from './ocr-eval.js';
 
 /** One fixture's classification outcome. */
@@ -117,7 +118,7 @@ export async function ocrVotes(
   const threshold = options.threshold ?? CONFIDENCE_THRESHOLD;
   const read: Array<{ page: OcrPage; text: string | null }> = [];
   for (const page of pages) {
-    const result = await recognize(page, page.imagePath);
+    const result = await recognize(page, join(fixturesRoot(), page.imagePath));
     read.push({
       page,
       text: assessReadability(result).readable ? ocrPlainText(result) : null,
