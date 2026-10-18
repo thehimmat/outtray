@@ -25,8 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   loads and votes on its type. A confident vote sends the document straight
   to the typed prompt (one vision call; new `routed` verdict), a weak one is
   checked against the generic extraction, and a page the OCR could not read
-  is extracted and classified as before. Accuracy is unmeasured until a
-  dev-machine run.
+  is extracted and classified as before. Measured on the Air with
+  `pnpm eval:classify` (new OCR column): the OCR vote is right on 9 of 10
+  fixtures and routes 8, none wrongly; the one wrong vote (a letter, 0.35)
+  falls below the threshold. Scan-quality copies give the same numbers and
+  every poor photo is gated as unreadable. `ocr` stays off by default.
 - `outtray settings ocr on|off` turns classify-first on for `scan`,
   `actions` and `find` (off by default; macOS with `outtray-ocr` on PATH).
   With it on and the sidecar missing, the command stops and says so rather

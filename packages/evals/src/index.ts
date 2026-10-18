@@ -3,7 +3,11 @@ export {
   type ClassifyReport,
   type ClassifyRow,
   classifyEval,
+  type OcrVoteRow,
+  type OcrVoteTally,
+  ocrVotes,
   tallyClassification,
+  tallyOcrVotes,
 } from './classify-eval.js';
 export { canonicalize, contractKey } from './contract.js';
 export { SCORED_FIELDS } from './field-kinds.js';
